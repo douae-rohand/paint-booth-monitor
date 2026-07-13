@@ -16,9 +16,22 @@ import {
 import {
   AlertTriangle,
   Calendar as CalendarIcon,
+  ChevronDown,
+  Thermometer,
+  Droplets,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Tooltip as RadixTooltip,
+  TooltipTrigger as RadixTooltipTrigger,
+  TooltipContent as RadixTooltipContent,
+  TooltipProvider as RadixTooltipProvider,
+} from "@/components/ui/tooltip";
 import { format, differenceInCalendarDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
@@ -29,8 +42,13 @@ import {
   THRESHOLD,
   aggregateTrend,
   generateHeatmap,
+  generateHourlyTrend,
+  generateRangeTrend,
   generateTrend,
+  generateDetailedHeatmap,
   type Metric,
+  type DetailedHeatmapDay,
+  type HeatmapDetail,
 } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/")({
@@ -38,6 +56,7 @@ export const Route = createFileRoute("/")({
 });
 
 const RANGES = [
+  { key: "1", label: "24h", days: 1 },
   { key: "7", label: "7j", days: 7 },
   { key: "30", label: "30j", days: 30 },
   { key: "90", label: "3 mois", days: 90 },
@@ -48,7 +67,6 @@ const RANGES = [
 const COLORS: Record<Metric, string> = {
   m1: "var(--chart-1)",
   m2: "var(--chart-2)",
-  m3: "var(--chart-3)",
 };
 
 function Dashboard() {
@@ -65,36 +83,162 @@ function Dashboard() {
     return Number(RANGES.find((r) => r.key === range)?.days ?? 30);
   }, [range, customRange]);
 
-  const points = useMemo(() => generateTrend(days), [days]);
-  const chartData = useMemo(() => aggregateTrend(points, unit), [points, unit]);
-  const heatmap = useMemo(() => generateHeatmap(), []);
+  const allowedUnits = useMemo(() => {
+    if (days === 1) {
+      return ["hour"] as const;
+    }
+    if (days <= 30) {
+      return ["day"] as const;
+    }
+    if (days >= 730) {
+      return ["day", "month", "year"] as const;
+    }
+    return ["day", "month"] as const;
+  }, [days]);
+
+  const activeUnit = useMemo(() => {
+    if ((allowedUnits as readonly string[]).includes(unit)) {
+      return unit;
+    }
+    return allowedUnits[0];
+  }, [unit, allowedUnits]);
+
+  const points = useMemo(() => {
+    if (range === "1") {
+      return generateHourlyTrend();
+    }
+    if (range === "custom" && customRange?.from) {
+      if (days === 1) {
+        return generateHourlyTrend(customRange.from);
+      }
+      return generateRangeTrend(customRange.from, customRange.to ?? customRange.from);
+    }
+    return generateTrend(days);
+  }, [days, range, customRange]);
+
+  const chartData = useMemo(() => {
+    if (days === 1) {
+      return points;
+    }
+    return aggregateTrend(points, activeUnit === "hour" ? "day" : activeUnit);
+  }, [points, days, activeUnit]);
+  // Heatmap upgrades
+  const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date());
+  const [metricFilter, setMetricFilter] = useState<"all" | "Température" | "Pression">("all");
+
+  const handlePrevMonth = () => {
+    setCurrentMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+  };
+  const handleNextMonth = () => {
+    setCurrentMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+  };
+
+  const heatmap = useMemo(() => {
+    return generateDetailedHeatmap(currentMonthDate.getFullYear(), currentMonthDate.getMonth());
+  }, [currentMonthDate]);
 
   const toggleMetric = (m: Metric) => {
     setSelected((cur) =>
       cur.includes(m) ? cur.filter((x) => x !== m) || cur : [...cur, m],
     );
   };
-  const showAll = () => setSelected(["m1", "m2", "m3"]);
+  const showAll = () => setSelected(["m1", "m2"]);
 
   const active = selected.length === 0 ? (["m1"] as Metric[]) : selected;
 
   const topAlerts = [
-    { name: "Cabine A — COV", count: 14, pct: 92 },
-    { name: "Cabine C — Débit d'air", count: 11, pct: 74 },
-    { name: "Cabine B — Température", count: 8, pct: 55 },
-    { name: "Cabine D — COV", count: 5, pct: 34 },
+    { name: "Cabine A - Humidité", count: 14, pct: 92 },
+    { name: "Cabine C - Température", count: 11, pct: 74 },
+    { name: "Cabine B - Température", count: 8, pct: 55 },
+    { name: "Cabine D - Humidité", count: 5, pct: 34 },
   ];
 
   const realtime = [
-    { name: "Cabine A", state: "danger", label: "COV élevé", value: "93 ppm" },
-    { name: "Cabine B", state: "warning", label: "T° limite", value: "78°C" },
-    { name: "Cabine C", state: "success", label: "Nominal", value: "68 m³/h" },
-    { name: "Cabine D", state: "success", label: "Nominal", value: "72 m³/h" },
-    { name: "Cabine E", state: "warning", label: "Débit bas", value: "58 m³/h" },
+    { name: "Cabine A", state: "danger",  label: "T° élevée",  temp: 93,  humidity: 62 },
+    { name: "Cabine B", state: "warning", label: "T° limite",  temp: 78,  humidity: 55 },
+    { name: "Cabine C", state: "success", label: "Nominal",     temp: 64,  humidity: 48 },
+    { name: "Cabine D", state: "success", label: "Nominal",     temp: 67,  humidity: 51 },
+    { name: "Cabine E", state: "warning", label: "Humidité élevée", temp: 70, humidity: 82 },
   ];
+
+  const [expandedCabin, setExpandedCabin] = useState<string | null>(null);
+  const toggleCabin = (name: string) =>
+    setExpandedCabin((prev) => (prev === name ? null : name));
+
+  // Compute live KPIs
+  const activeAlerts = useMemo(() => {
+    return realtime.filter((r) => r.state !== "success").length;
+  }, [realtime]);
+
+  const avgTemp = useMemo(() => {
+    return Math.round(realtime.reduce((acc, r) => acc + r.temp, 0) / realtime.length);
+  }, [realtime]);
+
+  const avgHumidity = useMemo(() => {
+    return Math.round(realtime.reduce((acc, r) => acc + r.humidity, 0) / realtime.length);
+  }, [realtime]);
+
+  const successCount = useMemo(() => {
+    return realtime.filter((r) => r.state === "success").length;
+  }, [realtime]);
+
+  const complianceRate = useMemo(() => {
+    return Math.round((successCount / realtime.length) * 100);
+  }, [successCount, realtime.length]);
 
   return (
     <div className="space-y-6">
+
+      {/* KPI Section */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {/* KPI 1: Alerts */}
+        <div className="neu-card p-5 flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Alertes Actives</p>
+            <h3 className="text-2xl font-bold tracking-tight text-[color:var(--danger)]">{activeAlerts}</h3>
+            <p className="text-xs text-muted-foreground">cabines nécessitant attention</p>
+          </div>
+          <div className="neu-pressable p-3 rounded-2xl">
+            <AlertTriangle className="h-5 w-5 text-[color:var(--danger)]" />
+          </div>
+        </div>
+
+        {/* KPI 2: Temp moyenne */}
+        <div className="neu-card p-5 flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Température Moyenne</p>
+            <h3 className="text-2xl font-bold tracking-tight text-foreground">{avgTemp} °C</h3>
+            <p className="text-xs text-muted-foreground">Consigne: &lt; {THRESHOLD} °C</p>
+          </div>
+          <div className="neu-pressable p-3 rounded-2xl">
+            <Thermometer className="h-5 w-5 text-primary" />
+          </div>
+        </div>
+
+        {/* KPI 3: Humidité moyenne */}
+        <div className="neu-card p-5 flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Humidité Moyenne</p>
+            <h3 className="text-2xl font-bold tracking-tight text-foreground">{avgHumidity} %</h3>
+            <p className="text-xs text-muted-foreground">Consigne: &lt; 70 %</p>
+          </div>
+          <div className="neu-pressable p-3 rounded-2xl">
+            <Droplets className="h-5 w-5 text-chart-2" />
+          </div>
+        </div>
+
+        {/* KPI 4: Conformité */}
+        <div className="neu-card p-5 flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Taux de Conformité</p>
+            <h3 className="text-2xl font-bold tracking-tight text-foreground">{complianceRate} %</h3>
+            <p className="text-xs text-muted-foreground">{successCount} cabines nominales sur {realtime.length}</p>
+          </div>
+          <div className="neu-pressable p-3 rounded-2xl">
+            <CheckCircle className="h-5 w-5 text-chart-3" />
+          </div>
+        </div>
+      </div>
 
       {/* Chart + right widgets */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
@@ -189,20 +333,39 @@ function Dashboard() {
               Tout afficher
             </button>
             <div className="ml-auto neu-inset flex gap-1 rounded-2xl p-1">
-              {(["day", "month", "year"] as const).map((u) => (
+              {days === 1 ? (
                 <button
-                  key={u}
-                  onClick={() => setUnit(u)}
-                  className={
-                    "rounded-xl px-3 py-1.5 text-xs font-semibold capitalize transition-all " +
-                    (unit === u
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground")
-                  }
+                  disabled
+                  className="rounded-xl px-3 py-1.5 text-xs font-semibold bg-primary text-primary-foreground opacity-90 cursor-default"
                 >
-                  {u === "day" ? "Jour" : u === "month" ? "Mois" : "Année"}
+                  Heure
                 </button>
-              ))}
+              ) : days <= 30 ? (
+                <button
+                  disabled
+                  className="rounded-xl px-3 py-1.5 text-xs font-semibold bg-primary text-primary-foreground opacity-90 cursor-default"
+                >
+                  Jour
+                </button>
+              ) : (
+                (days >= 730
+                  ? (["day", "month", "year"] as const)
+                  : (["day", "month"] as const)
+                ).map((u) => (
+                  <button
+                    key={u}
+                    onClick={() => setUnit(u)}
+                    className={
+                      "rounded-xl px-3 py-1.5 text-xs font-semibold capitalize transition-all " +
+                      (activeUnit === u
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground")
+                    }
+                  >
+                    {u === "day" ? "Jour" : u === "month" ? "Mois" : "Année"}
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
@@ -261,7 +424,7 @@ function Dashboard() {
             <h3 className="text-base font-bold">Statut temps réel</h3>
             <span className="text-xs text-muted-foreground">Live</span>
           </div>
-          <ul className="mt-4 space-y-3">
+          <ul className="mt-4 space-y-2">
             {realtime.map((r) => {
               const color =
                 r.state === "danger"
@@ -269,27 +432,57 @@ function Dashboard() {
                   : r.state === "warning"
                     ? "var(--warning)"
                     : "var(--success)";
+              const isOpen = expandedCabin === r.name;
               return (
-                <li
-                  key={r.name}
-                  className="flex items-center justify-between rounded-2xl px-3 py-2.5"
-                  style={{ boxShadow: "var(--shadow-neu-inset)" }}
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={
-                        "h-2.5 w-2.5 rounded-full " + (r.state === "danger" ? "pulse-dot" : "")
-                      }
-                      style={{ background: color }}
-                    />
-                    <div>
-                      <p className="text-sm font-semibold">{r.name}</p>
-                      <p className="text-xs text-muted-foreground">{r.label}</p>
+                <li key={r.name}>
+                  <button
+                    onClick={() => toggleCabin(r.name)}
+                    className="w-full flex items-center justify-between rounded-2xl px-3 py-2.5 transition-all hover:bg-muted/40"
+                    style={{ boxShadow: "var(--shadow-neu-inset)" }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={
+                          "h-2.5 w-2.5 rounded-full flex-shrink-0 " +
+                          (r.state === "danger" ? "pulse-dot" : "")
+                        }
+                        style={{ background: color }}
+                      />
+                      <div className="text-left">
+                        <p className="text-sm font-semibold">{r.name}</p>
+                        <p className="text-xs text-muted-foreground">{r.label}</p>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-sm font-semibold" style={{ color }}>
-                    {r.value}
-                  </span>
+                    <ChevronDown
+                      className={"h-4 w-4 text-muted-foreground transition-transform duration-200 " +
+                        (isOpen ? "rotate-180" : "")}
+                    />
+                  </button>
+
+                  {isOpen && (
+                    <div className="mt-1 mx-1 rounded-xl px-4 py-3 space-y-2"
+                      style={{ boxShadow: "var(--shadow-neu-sm)" }}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground font-medium">Température</span>
+                        <span
+                          className="font-bold"
+                          style={{ color: r.temp > 82 ? "var(--danger)" : r.temp > 74 ? "var(--warning)" : "var(--success)" }}
+                        >
+                          {r.temp} °C
+                        </span>
+                      </div>
+                      <div className="h-px bg-border/50" />
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground font-medium">Humidité</span>
+                        <span
+                          className="font-bold"
+                          style={{ color: r.humidity > 75 ? "var(--danger)" : r.humidity > 65 ? "var(--warning)" : "var(--success)" }}
+                        >
+                          {r.humidity} %
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -334,15 +527,56 @@ function Dashboard() {
         </div>
 
         <div className="neu-card p-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold">Heatmap</h3>
-            <span className="text-xs text-muted-foreground">
-              {new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
-            </span>
+          {/* Title row */}
+          <div>
+            <h3 className="text-base font-bold">Heatmap des dépassements</h3>
+            <p className="text-xs text-muted-foreground">Consulter et filtrer les anomalies mensuelles</p>
           </div>
+
+          {/* Controls row */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
+            {/* Navigation Mois */}
+            <div className="neu-inset flex items-center gap-1.5 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className="p-1 hover:bg-primary/20 hover:text-primary rounded-lg transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-xs font-bold capitalize px-1 min-w-[100px] text-center text-foreground">
+                {currentMonthDate.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+              </span>
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="p-1 hover:bg-primary/20 hover:text-primary rounded-lg transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Filtre Métrique */}
+            <div className="neu-inset rounded-xl px-1">
+              <Select
+                value={metricFilter}
+                onValueChange={(v: "all" | "Température" | "Pression") => setMetricFilter(v)}
+              >
+                <SelectTrigger className="h-8 w-[150px] text-xs border-0 bg-transparent shadow-none focus:ring-0">
+                  <SelectValue placeholder="Toutes métriques" />
+                </SelectTrigger>
+                <SelectContent className="text-xs">
+                  <SelectItem value="all">Toutes métriques</SelectItem>
+                  <SelectItem value="Température">Température</SelectItem>
+                  <SelectItem value="Pression">Pression</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="mt-4 grid grid-cols-7 gap-2 text-center text-[10px] text-muted-foreground">
             {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
-              <div key={i} className="font-semibold">
+              <div key={i} className="font-semibold py-1">
                 {d}
               </div>
             ))}
@@ -355,28 +589,61 @@ function Dashboard() {
               ));
             })()}
             {heatmap.map((d) => {
-              const intensity = Math.min(d.count / 7, 1);
+              // Calculate counts filter-dependently
+              const dayDetails = metricFilter === "all" ? d.details : d.details.filter(x => x.metric === metricFilter);
+              const dayCount = dayDetails.reduce((sum, item) => sum + item.exceedancesCount, 0);
+
+              const intensity = Math.min(dayCount / 8, 1);
               const bg =
-                d.count === 0
+                dayCount === 0
                   ? "var(--surface)"
                   : `color-mix(in oklab, var(--primary) ${35 + intensity * 65}%, white)`;
+              
               return (
-                <div
-                  key={d.date.toISOString()}
-                  title={`${d.date.getDate()} — ${d.count} dépassements`}
-                  className="aspect-square rounded-lg text-[10px] font-semibold flex items-center justify-center"
-                  style={{
-                    background: bg,
-                    color:
-                      intensity > 0.5 ? "var(--primary-foreground)" : "var(--muted-foreground)",
-                    boxShadow:
-                      d.count === 0
-                        ? "var(--shadow-neu-inset)"
-                        : "var(--shadow-neu-sm)",
-                  }}
-                >
-                  {d.date.getDate()}
-                </div>
+                <RadixTooltipProvider key={d.date.toISOString()}>
+                  <RadixTooltip delayDuration={100}>
+                    <RadixTooltipTrigger asChild>
+                      <div
+                        className="aspect-square rounded-lg text-[10px] font-semibold flex items-center justify-center cursor-help transition-all duration-150 hover:scale-105"
+                        style={{
+                          background: bg,
+                          color:
+                            dayCount > 0 && intensity > 0.5 ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                          boxShadow:
+                            dayCount === 0
+                              ? "var(--shadow-neu-inset)"
+                              : "var(--shadow-neu-sm)",
+                        }}
+                      >
+                        {d.date.getDate()}
+                      </div>
+                    </RadixTooltipTrigger>
+                    <RadixTooltipContent className="neu-card border border-border rounded-xl p-3 shadow-xl w-72 pointer-events-none z-50 text-xs">
+                      <div className="space-y-2">
+                        <p className="font-bold text-foreground capitalize">
+                          {format(d.date, "EEEE d MMMM yyyy", { locale: fr })}
+                        </p>
+                        <div className="h-px bg-border" />
+                        <p className="font-semibold text-foreground">
+                          {dayCount} {dayCount <= 1 ? "dépassement" : "dépassements"}{" "}
+                          {metricFilter === "all" ? "au total" : `pour ${metricFilter}`}
+                        </p>
+                        {dayDetails.length > 0 && (
+                          <div className="space-y-1.5 mt-1 text-[11px] text-muted-foreground">
+                            {dayDetails.map((det) => (
+                              <p key={det.id} className="leading-snug">
+                                {det.cabin} - {det.metric} : {det.exceedancesCount} {det.exceedancesCount <= 1 ? "dépassement" : "dépassements"}{" "}
+                                <span className="font-medium font-mono text-[10px] text-muted-foreground/70">
+                                  (valeur max {det.maxValue}{det.unit}, seuil {det.threshold}{det.unit})
+                                </span>
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </RadixTooltipContent>
+                  </RadixTooltip>
+                </RadixTooltipProvider>
               );
             })}
           </div>

@@ -5,6 +5,7 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  Search,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -14,6 +15,7 @@ import {
   METRIC_LABELS,
   METRIC_UNIT,
   THRESHOLD,
+  CABINS,
   generateHistory,
   type HistoryRow,
 } from "@/lib/mock-data";
@@ -35,11 +37,13 @@ export const Route = createFileRoute("/history")({
 function HistoryPage() {
   const allRows = useMemo(() => generateHistory(180), []);
 
+  const [searchQuery, setSearchQuery] = useState("");
   const [year, setYear] = useState<string>(String(new Date().getFullYear()));
   const [mode, setMode] = useState<"exact" | "range">("range");
   const [exactDate, setExactDate] = useState<Date | undefined>();
   const [range, setRange] = useState<DateRange | undefined>();
   const [onlyExceed, setOnlyExceed] = useState(false);
+  const [cabin, setCabin] = useState<string>("all");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
 
@@ -66,12 +70,17 @@ function HistoryPage() {
         end.setHours(23, 59, 59, 999);
         if (r.date < start || r.date > end) return false;
       }
+      if (cabin !== "all" && r.cabin !== cabin) return false;
       if (onlyExceed) {
-        if (r.m1 <= THRESHOLD && r.m2 <= THRESHOLD && r.m3 <= THRESHOLD) return false;
+        if (r.m1 <= THRESHOLD && r.m2 <= THRESHOLD) return false;
+      }
+      if (searchQuery.trim() !== "") {
+        if (!r.caisseId.toLowerCase().includes(searchQuery.toLowerCase().trim()))
+          return false;
       }
       return true;
     });
-  }, [allRows, year, mode, exactDate, range, onlyExceed]);
+  }, [allRows, year, mode, exactDate, range, cabin, onlyExceed, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -89,103 +98,139 @@ function HistoryPage() {
           </div>
         </div>
 
-        {/* Filters bar */}
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          {/* Year */}
-          <div className="neu-inset rounded-2xl px-1">
-            <Select value={year} onValueChange={(v) => { setYear(v); setPage(1); }}>
-              <SelectTrigger className="h-10 w-[130px] border-0 bg-transparent shadow-none focus:ring-0">
-                <SelectValue placeholder="Année" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes années</SelectItem>
-                {years.map((y) => (
-                  <SelectItem key={y} value={String(y)}>
-                    {y}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Filters and search section */}
+        <div className="mt-5 space-y-4">
+          {/* Row 1: Search + Only Exceed Toggle */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Caisse ID Search */}
+            <div className="neu-inset flex flex-1 max-w-md items-center gap-2 px-4 h-10 rounded-2xl">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Rechercher une caisse par son ID (ex: CAT-0003)..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full border-0 bg-transparent p-0 text-sm outline-none placeholder:text-muted-foreground focus:ring-0"
+              />
+            </div>
+
+            {/* Only exceed */}
+            <div className="neu-pressable flex items-center gap-3 rounded-2xl px-4 h-10">
+              <AlertTriangle className="h-4 w-4 text-[color:var(--danger)]" />
+              <span className="text-xs font-semibold">Seulement les dépassements</span>
+              <Switch checked={onlyExceed} onCheckedChange={(v) => { setOnlyExceed(v); setPage(1); }} />
+            </div>
           </div>
 
-          {/* Mode toggle */}
-          <div className="neu-inset flex gap-1 rounded-2xl p-1">
-            <button
-              onClick={() => setMode("exact")}
-              className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-semibold transition-all",
-                mode === "exact"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Date exacte
-            </button>
-            <button
-              onClick={() => setMode("range")}
-              className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-semibold transition-all",
-                mode === "range"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Plage
-            </button>
-          </div>
+          {/* Row 2: Standard Selectors and Date Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Year */}
+            <div className="neu-inset rounded-2xl px-1">
+              <Select value={year} onValueChange={(v) => { setYear(v); setPage(1); }}>
+                <SelectTrigger className="h-10 w-[130px] border-0 bg-transparent shadow-none focus:ring-0">
+                  <SelectValue placeholder="Année" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes années</SelectItem>
+                  {years.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Date picker */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="neu-pressable flex h-10 items-center gap-2 rounded-2xl px-4 text-sm">
-                <CalendarIcon className="h-4 w-4 text-primary" />
-                {mode === "exact"
-                  ? exactDate
-                    ? format(exactDate, "d MMM yyyy", { locale: fr })
-                    : "Choisir une date"
-                  : range?.from
-                    ? range.to
-                      ? `${format(range.from, "d MMM", { locale: fr })} — ${format(range.to, "d MMM yyyy", { locale: fr })}`
-                      : format(range.from, "d MMM yyyy", { locale: fr })
-                    : "Choisir une plage"}
+            {/* Mode toggle */}
+            <div className="neu-inset flex gap-1 rounded-2xl p-1 h-10 items-center">
+              <button
+                onClick={() => setMode("exact")}
+                className={cn(
+                  "rounded-xl px-3 py-1.5 text-xs font-semibold transition-all h-8 flex items-center",
+                  mode === "exact"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Date exacte
               </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              {mode === "exact" ? (
-                <Calendar
-                  mode="single"
-                  selected={exactDate}
-                  onSelect={(d) => { setExactDate(d); setPage(1); }}
-                  locale={fr}
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              ) : (
-                <Calendar
-                  mode="range"
-                  selected={range}
-                  onSelect={(r) => { setRange(r); setPage(1); }}
-                  locale={fr}
-                  numberOfMonths={2}
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              )}
-            </PopoverContent>
-          </Popover>
+              <button
+                onClick={() => setMode("range")}
+                className={cn(
+                  "rounded-xl px-3 py-1.5 text-xs font-semibold transition-all h-8 flex items-center",
+                  mode === "range"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Plage
+              </button>
+            </div>
 
-          {(exactDate || range) && (
-            <button
-              onClick={() => { setExactDate(undefined); setRange(undefined); setPage(1); }}
-              className="text-xs font-semibold text-muted-foreground underline-offset-4 hover:underline"
-            >
-              Réinitialiser
-            </button>
-          )}
+            {/* Date picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="neu-pressable flex h-10 items-center gap-2 rounded-2xl px-4 text-sm">
+                  <CalendarIcon className="h-4 w-4 text-primary" />
+                  {mode === "exact"
+                    ? exactDate
+                      ? format(exactDate, "d MMM yyyy", { locale: fr })
+                      : "Choisir une date"
+                    : range?.from
+                      ? range.to
+                        ? `${format(range.from, "d MMM", { locale: fr })} — ${format(range.to, "d MMM yyyy", { locale: fr })}`
+                        : format(range.from, "d MMM yyyy", { locale: fr })
+                      : "Choisir une plage"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                {mode === "exact" ? (
+                  <Calendar
+                    mode="single"
+                    selected={exactDate}
+                    onSelect={(d) => { setExactDate(d); setPage(1); }}
+                    locale={fr}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                ) : (
+                  <Calendar
+                    mode="range"
+                    selected={range}
+                    onSelect={(r) => { setRange(r); setPage(1); }}
+                    locale={fr}
+                    numberOfMonths={2}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                )}
+              </PopoverContent>
+            </Popover>
 
-          {/* Only exceed */}
-          <div className="neu-pressable ml-auto flex items-center gap-3 rounded-2xl px-4 py-2">
-            <AlertTriangle className="h-4 w-4 text-[color:var(--danger)]" />
-            <span className="text-xs font-semibold">Seulement les dépassements</span>
-            <Switch checked={onlyExceed} onCheckedChange={(v) => { setOnlyExceed(v); setPage(1); }} />
+            {(exactDate || range) && (
+              <button
+                onClick={() => { setExactDate(undefined); setRange(undefined); setPage(1); }}
+                className="text-xs font-semibold text-muted-foreground underline-offset-4 hover:underline"
+              >
+                Réinitialiser
+              </button>
+            )}
+
+            {/* Cabin filter */}
+            <div className="neu-inset rounded-2xl px-1">
+              <Select value={cabin} onValueChange={(v) => { setCabin(v); setPage(1); }}>
+                <SelectTrigger className="h-10 w-[140px] border-0 bg-transparent shadow-none focus:ring-0">
+                  <SelectValue placeholder="Cabine" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes cabines</SelectItem>
+                  {CABINS.map((c) => (
+                    <SelectItem key={c} value={c}>Cabine {c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
@@ -195,18 +240,19 @@ function HistoryPage() {
             <table className="w-full border-collapse text-sm">
               <thead className="sticky top-0 z-10 bg-[color:var(--surface-raised)] backdrop-blur">
                 <tr className="text-left">
+                  <Th>Caisse ID</Th>
+                  <Th>Cabine</Th>
                   <Th>Date</Th>
                   <Th>Heure</Th>
                   <Th>{METRIC_LABELS.m1}</Th>
                   <Th>{METRIC_LABELS.m2}</Th>
-                  <Th>{METRIC_LABELS.m3}</Th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-6 py-12 text-center text-sm text-muted-foreground"
                     >
                       Aucun enregistrement pour ces filtres.
@@ -298,6 +344,12 @@ function Row({ row, striped }: { row: HistoryRow; striped: boolean }) {
         striped ? "bg-[color:oklch(0.98_0.005_90)]" : "bg-transparent",
       )}
     >
+      <td className="px-5 py-3 font-mono text-xs text-muted-foreground">{row.caisseId}</td>
+      <td className="px-5 py-3">
+        <span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
+          Cabine {row.cabin}
+        </span>
+      </td>
       <td className="px-5 py-3 font-medium">
         {row.date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
       </td>
@@ -306,7 +358,6 @@ function Row({ row, striped }: { row: HistoryRow; striped: boolean }) {
       </td>
       <Cell value={row.m1} unit={METRIC_UNIT.m1} />
       <Cell value={row.m2} unit={METRIC_UNIT.m2} />
-      <Cell value={row.m3} unit={METRIC_UNIT.m3} />
     </tr>
   );
 }
