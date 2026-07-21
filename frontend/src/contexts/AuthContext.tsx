@@ -11,7 +11,7 @@ export interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<any>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
 }
@@ -21,52 +21,58 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
 
   useEffect(() => {
     const initializeAuth = async () => {
-      if (token) {
-        try {
-          const currentUser = await authApi.getCurrentUser();
-          setUser(currentUser as User);
-        } catch (error) {
-          console.error("Failed to load user info:", error);
-          logout();
+      try {
+        const data = await authApi.getCurrentUser();
+        if (data && data.username) {
+          setUser({ username: data.username, role: data.role });
+        } else {
+          setUser(null);
         }
+      } catch (error) {
+        console.error("Failed to load user info:", error);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initializeAuth();
-  }, [token]);
+  }, []);
 
   const login = async (username: string, password: string) => {
     setLoading(true);
     try {
       const data = await authApi.login(username, password);
-      localStorage.setItem('token', data.token);
-      setToken(data.token);
-      setUser(data.user as User);
+      if (data && data.username) {
+        setUser({ username: data.username, role: data.role });
+      }
       return data;
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error("Failed to call logout API:", error);
+    } finally {
+      setUser(null);
+    }
   };
 
   const value: AuthContextType = {
     user,
-    token,
+    token: null, // JWT token is stored secure in HttpOnly cookie and managed by browser
     loading,
     login,
     logout,
-    isAuthenticated: !!token,
-    isAdmin: user?.role === 'ADMIN',
+    isAuthenticated: !!user,
+    isAdmin: user?.role === 'ROLE_ADMIN' || user?.role === 'ADMIN',
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
