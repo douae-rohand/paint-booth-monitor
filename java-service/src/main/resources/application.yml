@@ -24,6 +24,13 @@ spring:
 python-service:
   url: ${PYTHON_SERVICE_URL:http://localhost:8000}
 
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
+
+app:
+  security:
+    secure-cookie: ${SECURE_COOKIE:false}
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}

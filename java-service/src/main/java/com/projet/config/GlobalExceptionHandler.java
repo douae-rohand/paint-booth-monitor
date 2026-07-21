@@ -1,5 +1,6 @@
 package com.projet.config;
 
+import com.projet.auth.exception.InvalidTokenException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -27,6 +28,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ApiErrorResponse(403, "Access denied"));
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidToken(InvalidTokenException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiErrorResponse(401, ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
