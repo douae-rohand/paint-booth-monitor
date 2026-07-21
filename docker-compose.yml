@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: paint-booth-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JAVA_SERVICE_DB_USER: ${JAVA_SERVICE_DB_USER}
+      JAVA_SERVICE_DB_PASSWORD: ${JAVA_SERVICE_DB_PASSWORD}
+      PYTHON_SERVICE_DB_USER: ${PYTHON_SERVICE_DB_USER}
+      PYTHON_SERVICE_DB_PASSWORD: ${PYTHON_SERVICE_DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  java-service:
+    build:
+      context: ./java-service
+    container_name: java-gateway
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${JAVA_SERVICE_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${JAVA_SERVICE_DB_PASSWORD}
+      PYTHON_SERVICE_URL: http://python-service:8000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  python-service:
+    build:
+      context: ./python-service
+    container_name: python-ai-rag
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${PYTHON_SERVICE_DB_USER}:${PYTHON_SERVICE_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_ECHO: ${DATABASE_ECHO:-false}
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-5}
+      PLC_IP: ${PLC_IP}
+      PLC_RACK: ${PLC_RACK}
+      PLC_SLOT: ${PLC_SLOT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_WS_URL: ${VITE_WS_URL}
+    container_name: react-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - java-service
+
+volumes:
+  pgdata:

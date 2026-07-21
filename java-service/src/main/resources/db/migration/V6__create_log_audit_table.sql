@@ -1,0 +1,14 @@
+CREATE TABLE log_audit (
+    id_log UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_superviseur UUID NOT NULL REFERENCES superviseur(id_superviseur) ON DELETE CASCADE,
+    action VARCHAR(50) NOT NULL CHECK (action IN (
+        'CONNEXION', 'DECONNEXION', 'CREATION_UTILISATEUR', 'MODIFICATION_UTILISATEUR',
+        'DESACTIVATION_UTILISATEUR', 'MODIFICATION_DESTINATAIRE_NOTIFICATION',
+        'VALIDATION_ANOMALIE', 'EXPORT_DONNEES', 'TELECHARGEMENT_RAPPORT',
+        'TENTATIVE_CONNEXION_ECHOUEE', 'MODIFICATION_CONFIGURATION_SYSTEME'
+    )),
+    date_action TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_log_audit_superviseur ON log_audit(id_superviseur);
+CREATE INDEX idx_log_audit_date ON log_audit(date_action);
