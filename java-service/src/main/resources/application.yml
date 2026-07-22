@@ -34,3 +34,6 @@ app:
     secure-cookie: ${SECURE_COOKIE:false}
   cors:
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+  admin:
+    initial-email: ${ADMIN_INITIAL_EMAIL:admin@renault.com}
+    initial-password: ${ADMIN_INITIAL_PASSWORD:ChangeMe123!}

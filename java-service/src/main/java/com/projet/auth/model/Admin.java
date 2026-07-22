@@ -29,21 +29,14 @@ public class Admin {
 
     public Admin(Superviseur superviseur) {
         this.superviseur = superviseur;
-        if (superviseur != null) {
-            this.idAdmin = superviseur.getIdSuperviseur();
-        }
     }
 
     // ── Getters / Setters ─────────────────────────────────────────────────────
 
     public UUID getIdAdmin() { return idAdmin; }
-    public void setIdAdmin(UUID idAdmin) { this.idAdmin = idAdmin; }
 
     public Superviseur getSuperviseur() { return superviseur; }
     public void setSuperviseur(Superviseur superviseur) {
         this.superviseur = superviseur;
-        if (superviseur != null) {
-            this.idAdmin = superviseur.getIdSuperviseur();
-        }
     }
 }

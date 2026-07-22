@@ -1,20 +1,29 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, History, Factory } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { History, LayoutDashboard, Factory, LogOut } from "lucide-react";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/history", label: "Historique", icon: History },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const today = new Date().toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+
+  const handleLogout = async () => {
+    await logout();
+    navigate({ to: "/login" });
+  };
 
   return (
     <div className="flex min-h-screen w-full">
@@ -26,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav className="flex flex-col items-center gap-1 rounded-3xl border border-border bg-white p-2">
           {nav.map((item) => {
             const active =
-              item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+              item.to === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.to);
             const Icon = item.icon;
             return (
               <Link
@@ -45,6 +54,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+        <div className="mt-auto">
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="Déconnexion"
+            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground transition-all hover:opacity-90"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
       </aside>
 
       {/* Main */}
@@ -60,6 +79,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <p className="mt-1 text-sm text-muted-foreground">
               Voici l'état des cabines de peinture aujourd'hui.
             </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {user?.email && (
+              <span className="text-sm text-muted-foreground">
+                {user.email}
+              </span>
+            )}
           </div>
         </header>
 

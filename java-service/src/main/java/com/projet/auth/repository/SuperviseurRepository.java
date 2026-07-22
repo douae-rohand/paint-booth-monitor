@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface SuperviseurRepository extends JpaRepository<Superviseur, UUID> {
     Optional<Superviseur> findByEmail(String email);
+    boolean existsByAdminIsNotNull();
 }

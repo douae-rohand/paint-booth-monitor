@@ -24,7 +24,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
 
-export const Route = createFileRoute("/history")({
+export const Route = createFileRoute("/_authenticated/history")({
   head: () => ({
     meta: [
       { title: "Historique des métriques — Supervision" },

@@ -51,7 +51,7 @@ import {
   type HeatmapDetail,
 } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
@@ -468,7 +468,7 @@ function Dashboard() {
                           className="font-bold"
                           style={{ color: r.temp > 82 ? "var(--danger)" : r.temp > 74 ? "var(--warning)" : "var(--success)" }}
                         >
-                          {r.temp} °C
+                          {r.temp} °C
                         </span>
                       </div>
                       <div className="h-px bg-border/50" />
@@ -478,7 +478,7 @@ function Dashboard() {
                           className="font-bold"
                           style={{ color: r.humidity > 75 ? "var(--danger)" : r.humidity > 65 ? "var(--warning)" : "var(--success)" }}
                         >
-                          {r.humidity} %
+                          {r.humidity} %
                         </span>
                       </div>
                     </div>
