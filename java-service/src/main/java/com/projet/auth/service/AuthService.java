@@ -5,9 +5,11 @@ import com.projet.auth.model.RefreshToken;
 import com.projet.auth.model.Superviseur;
 import com.projet.auth.repository.RefreshTokenRepository;
 import com.projet.auth.repository.SuperviseurRepository;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,13 +26,16 @@ public class AuthService implements UserDetailsService {
     private final SuperviseurRepository superviseurRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthService(SuperviseurRepository superviseurRepository, 
                        RefreshTokenRepository refreshTokenRepository, 
-                       JwtUtil jwtUtil) {
+                       JwtUtil jwtUtil,
+                       PasswordEncoder passwordEncoder) {
         this.superviseurRepository = superviseurRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.jwtUtil = jwtUtil;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -40,6 +45,10 @@ public class AuthService implements UserDetailsService {
     }
 
     public String generateToken(Superviseur superviseur) {
+        // Initialize admin association if present to get correct role
+        if (superviseur.getAdmin() != null) {
+            superviseur.getAdmin().getIdAdmin();
+        }
         return jwtUtil.generateToken(superviseur, superviseur.getRole());
     }
 
@@ -159,5 +168,24 @@ public class AuthService implements UserDetailsService {
         } catch (Exception e) {
             throw new RuntimeException("Error hashing refresh token", e);
         }
+    }
+
+    @Transactional
+    public void changePassword(Superviseur superviseur, String oldPassword, String newPassword) {
+        // Verify old password
+        if (!passwordEncoder.matches(oldPassword, superviseur.getMotDePasseHash())) {
+            throw new IllegalArgumentException("Ancien mot de passe incorrect");
+        }
+
+        // Validate new password (at least 8 characters)
+        if (newPassword.length() < 8) {
+            throw new IllegalArgumentException("Le nouveau mot de passe doit contenir au moins 8 caractères");
+        }
+
+        // Update password and reset mustChangePassword
+        superviseur.setMotDePasseHash(passwordEncoder.encode(newPassword));
+        superviseur.setMustChangePassword(false);
+        superviseur.setUpdatedAt(LocalDateTime.now());
+        superviseurRepository.save(superviseur);
     }
 }

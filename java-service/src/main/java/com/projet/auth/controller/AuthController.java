@@ -1,6 +1,7 @@
 package com.projet.auth.controller;
 
 import com.projet.auth.dto.AuthResponse;
+import com.projet.auth.dto.ChangePasswordRequest;
 import com.projet.auth.dto.LoginRequest;
 import com.projet.auth.model.Superviseur;
 import com.projet.auth.service.AuthService;
@@ -35,12 +36,21 @@ public class AuthController {
             @RequestBody LoginRequest request,
             @RequestHeader(value = "User-Agent", required = false) String userAgent,
             HttpServletResponse response) {
+        System.out.println("Login request received for username: " + request.getUsername());
         
         Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
         Superviseur user = (Superviseur) auth.getPrincipal();
+        
+        // Initialize lazy-loaded admin association
+        if (user.getAdmin() != null) {
+            user.getAdmin().getIdAdmin(); // Touch the proxy to load it
+        }
+        
+        System.out.println("Authenticated user: " + user.getEmail() + ", has admin: " + (user.getAdmin() != null) + ", role: " + user.getRole() + ", isActif: " + user.isActif());
+        
         String token = authService.generateToken(user);
 
         // Access token (JWT) cookie - HttpOnly, 1 day duration
@@ -64,7 +74,7 @@ public class AuthController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-        return ResponseEntity.ok(new AuthResponse(null, user.getUsername(), user.getRole()));
+        return ResponseEntity.ok(new AuthResponse(null, user.getUsername(), user.getRole(), user.isMustChangePassword()));
     }
 
     @PostMapping("/refresh")
@@ -145,6 +155,16 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         Superviseur user = (Superviseur) authentication.getPrincipal();
-        return ResponseEntity.ok(new AuthResponse(null, user.getUsername(), user.getRole()));
+        return ResponseEntity.ok(new AuthResponse(null, user.getUsername(), user.getRole(), user.isMustChangePassword()));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        Superviseur user = (Superviseur) authentication.getPrincipal();
+        authService.changePassword(user, request.getOldPassword(), request.getNewPassword());
+        return ResponseEntity.ok().body("Mot de passe mis à jour avec succès");
     }
 }

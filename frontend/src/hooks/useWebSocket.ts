@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createWebSocketConnection } from '../api/ws';
 
-export const useWebSocket = (onMessageReceived) => {
+type WebSocketMessage = string | object;
+type MessageHandler = (data: unknown) => void;
+
+export const useWebSocket = (onMessageReceived?: MessageHandler) => {
   const [connected, setConnected] = useState(false);
-  const wsRef = useRef(null);
-  const reconnectTimeoutRef = useRef(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -50,7 +53,7 @@ export const useWebSocket = (onMessageReceived) => {
     };
   }, [connect]);
 
-  const sendMessage = (message) => {
+  const sendMessage = (message: WebSocketMessage) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(typeof message === 'string' ? message : JSON.stringify(message));
     } else {

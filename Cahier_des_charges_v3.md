@@ -16,8 +16,8 @@
 | Traçabilité des lots | Axe validé initialement | Exclue, remplacée par recherche manuelle | Exclue, remplacée par recherche manuelle |
 | Chatbot RAG | Non mentionné | Ajouté | Ajouté |
 | KPIs industriels | Non mentionnés | Ajoutés (adaptés) | Ajoutés (adaptés) |
-| Architecture logicielle | Non définie | Backend "à déterminer" | **Architecture polyglotte détaillée (Python + Java), avec stratégie de mitigation du risque** |
-| Stratégie de développement | Non définie | Non définie | **Approche en 2 temps : socle fonctionnel d'abord, extraction polyglotte ensuite (Option B)** |
+| Architecture logicielle | Non définie | Backend "à déterminer" | **Architecture polyglotte dès le départ (Python + Java)** |
+| Stratégie de développement | Non définie | Non définie | **Approche directe en microservices distincts** |
 
 ---
 
@@ -39,7 +39,7 @@ L'objectif du projet est de concevoir une application capable de se connecter à
 * Mettre en place un système d'alerting à seuils multiples (absolus et dynamiques)
 * Fournir un chatbot RAG permettant l'interrogation en langage naturel de l'historique des données
 * Calculer des indicateurs de performance (KPIs) adaptés au contexte qualité peinture
-* Gérer l'authentification et les droits d'accès selon 2 rôles (Utilisateur, Admin)
+* Gérer l'authentification et les droits d'accès selon 2 rôles (Superviseur, Admin)
 
 ---
 
@@ -56,7 +56,7 @@ L'objectif du projet est de concevoir une application capable de se connecter à
 * Module IA (Isolation Forest et/ou modèle de régression) pour la dérive thermique/hygrométrique
 * Chatbot RAG pour l'interrogation en langage naturel de l'historique
 * Calcul des KPIs adaptés (taux de conformité, temps moyen entre incidents, temps moyen de retour à la normale)
-* Système d'authentification et gestion des rôles (Utilisateur / Admin)
+* Système d'authentification et gestion des rôles (Superviseur / Admin)
 * Système de notification multicanal (email, WhatsApp, push)
 * Export des données (CSV/Excel)
 * Recherche manuelle dans l'historique par identifiant de caisse (en remplacement de la traçabilité formelle des lots)
@@ -101,7 +101,7 @@ Le choix du protocole de communication (Snap7 vs OPC UA) relève de la responsab
 
 Le système comporte **2 rôles**, confirmés par l'encadrant :
 
-### 5.1 Utilisateur
+### 5.1 Superviseur
 
 * Se connecter / se déconnecter
 * Consulter le dashboard temps réel (courbes et valeurs actuelles de température et d'humidité)
@@ -207,7 +207,7 @@ En remplacement, chaque mesure peut être associée à un **identifiant de caiss
 * Calcul et affichage des KPIs adaptés
 * Génération automatique du rapport journalier (PDF)
 * Export des données en CSV/Excel
-* Système d'authentification et de gestion des rôles (Utilisateur / Admin)
+* Système d'authentification et de gestion des rôles (Superviseur / Admin)
 * Documentation de conception complète (diagrammes UML, MCD/MLD, diagrammes de séquence, diagramme de composants et de déploiement)
 
 ---
@@ -296,23 +296,4 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 * Ce choix évite l'introduction d'un message broker dédié (RabbitMQ/Kafka), jugé disproportionné au regard du volume de données et de la criticité temporelle du projet.
 * Les échanges ponctuels (ex : Java interrogeant Python pour une prédiction IA à la demande, ou pour une requête au chatbot RAG) passent par une API REST interne simple entre les deux services.
 
-### 13.5 Stratégie de mitigation du risque (approche en 2 temps)
 
-Compte tenu d'une durée de développement contrainte (moins de 2 mois) et d'un développement en solo, l'architecture polyglotte est mise en œuvre selon une **approche en 2 temps** visant à sécuriser la livraison d'un système complet avant d'introduire la complexité du second langage :
-
-**Temps 1 — Socle fonctionnel modulaire (Python)**
-L'ensemble des fonctionnalités est d'abord développé en Python (FastAPI), organisé en modules strictement cloisonnés (`plc/`, `ai/`, `rag/`, `alerting/`, `auth/`, `notifications/`, `kpis/`), communiquant entre eux via des interfaces explicites (pas d'accès direct aux données d'un autre module). Les schémas d'entrée/sortie de chaque module sont définis avec Pydantic comme s'il s'agissait déjà de contrats d'API réseau, afin de préparer une extraction future à moindre coût.
-
-**Temps 2 — Extraction polyglotte (conditionnelle)**
-Une fois le socle fonctionnel validé (jalon fixé à environ 5 semaines sur les 8 disponibles), les modules les plus indépendants (typiquement `auth/` et `notifications/`) sont **réimplémentés** en Java/Spring Boot, avec le même contrat d'API, puis le frontend et les modules Python restants sont rebranchés vers ce nouveau service. Le module Python équivalent est conservé comme filet de sécurité jusqu'à validation complète de la bascule.
-
-Ce séquencement garantit que :
-* Un système complet et fonctionnel est disponible même si le temps ne permet pas d'aller au bout de l'extraction polyglotte
-* La décision d'engager l'extraction est prise avec une visibilité réelle sur l'avancement du projet, plutôt qu'anticipée dès le départ sans garantie de temps disponible
-* La modularisation initiale, si elle est bien conçue, rend l'extraction largement mécanique plutôt qu'une réécriture complète
-
-### 13.6 Limites assumées de cette approche
-
-* L'extraction d'un module vers Java représente un effort de réimplémentation réel (nouveau code, nouveaux tests), non un simple changement de configuration
-* En cas de non-extraction, le projet reste présenté comme un **modular monolith** — une architecture reconnue et légitime dans l'industrie, conçue pour être extraite en microservices si le contexte le justifie
-* Le choix du protocole PLC (Snap7 vs OPC UA) reste de la responsabilité du binôme automatisme et conditionne certains détails d'implémentation du module `plc/`
