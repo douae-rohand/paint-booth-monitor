@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import * as authApi from '../api/auth/index';
 import type { AuthUser } from '../api/auth/index';
-import { resolveAuthState, invalidateAuthCache } from '../lib/auth-check';
+import { resolveAuthState, invalidateAuthCache, setCachedAuthState } from '../lib/auth-check';
 import { registerAuthFailureHandler } from '../lib/auth-failure';
 
 export type { AuthUser as User };
@@ -49,8 +49,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const data = await authApi.login({ email, password });
       if (data?.email) {
         setUser(data);
-        // Invalidate shared cache so subsequent route guards re-resolve auth state
-        invalidateAuthCache();
+        // Pre-populate shared cache so subsequent route guards resolve immediately without fetching /api/auth/me
+        setCachedAuthState(data);
       }
       return data;
     } finally {

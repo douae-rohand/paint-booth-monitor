@@ -43,13 +43,14 @@ const SLIDES = [
  * LoginForm – Split-screen with carousel, neumorphism design
  */
 const LoginForm: React.FC = () => {
-  const { login, loading } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Auto-slide every 4.5 seconds
   const nextSlide = useCallback(() => {
@@ -68,11 +69,13 @@ const LoginForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsSubmitting(true);
     try {
       await login(username, password);
       navigate({ to: '/dashboard' });
     } catch {
       setError('Identifiants invalides. Veuillez réessayer.');
+      setIsSubmitting(false);
     }
   };
 
@@ -227,9 +230,9 @@ const LoginForm: React.FC = () => {
               type="submit"
               className="w-full h-12 text-base font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
               style={{ boxShadow: 'var(--shadow-glow)' }}
-              disabled={loading}
+              disabled={isSubmitting}
             >
-              {loading ? 'Connexion en cours...' : 'Se connecter'}
+              {isSubmitting ? 'Connexion en cours...' : 'Se connecter'}
             </Button>
           </form>
         </div>

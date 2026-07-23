@@ -44,4 +44,12 @@ export function invalidateAuthCache(): void {
   authPromise = null;
 }
 
-export default { resolveAuthState, invalidateAuthCache };
+/**
+ * Set the cached auth state directly to avoid redundant network requests.
+ */
+export function setCachedAuthState(user: AuthUser | null): void {
+  cached = { user };
+  authPromise = Promise.resolve(cached);
+}
+
+export default { resolveAuthState, invalidateAuthCache, setCachedAuthState };

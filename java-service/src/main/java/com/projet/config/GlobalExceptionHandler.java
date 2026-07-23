@@ -1,6 +1,7 @@
 package com.projet.config;
 
 import com.projet.auth.exception.InvalidTokenException;
+import com.projet.config.exception.ConfigurationPLCNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -40,6 +41,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleInvalidToken(InvalidTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ApiErrorResponse(401, ex.getMessage()));
+    }
+
+    @ExceptionHandler(ConfigurationPLCNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleConfigurationPLCNotFound(ConfigurationPLCNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse(404, ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
