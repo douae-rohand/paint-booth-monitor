@@ -1,4 +1,4 @@
-import client from './client';
+import client from '../lib/axios';
 import type { KPI } from '../types';
 
 export const getDashboardKPIs = async (): Promise<KPI> => {

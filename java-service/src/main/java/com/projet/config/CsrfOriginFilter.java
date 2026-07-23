@@ -63,7 +63,7 @@ public class CsrfOriginFilter extends OncePerRequestFilter {
                 response.setCharacterEncoding("UTF-8");
                 
                 String jsonResponse = String.format(
-                        "{\"code\":403,\"message\":\"Requête bloquée par protection CSRF (Origin invalide ou manquant)\",\"timestamp\":\"%s\"}",
+                        "{\"code\":403,\"message\":\"Requete bloquee par protection CSRF (Origin invalide ou manquant)\",\"timestamp\":\"%s\"}",
                         LocalDateTime.now().toString()
                 );
                 

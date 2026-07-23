@@ -1,4 +1,4 @@
-import client from './client';
+import client from '../lib/axios';
 
 interface ChatbotRequest {
   question: string;

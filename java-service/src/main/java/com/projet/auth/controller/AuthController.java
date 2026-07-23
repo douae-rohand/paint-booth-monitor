@@ -37,20 +37,20 @@ public class AuthController {
             @RequestHeader(value = "User-Agent", required = false) String userAgent,
             HttpServletResponse response) {
         System.out.println("Login request received for username: " + request.getUsername());
-        
+
         Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
 
         Superviseur user = (Superviseur) auth.getPrincipal();
-        
+
         // Initialize lazy-loaded admin association
         if (user.getAdmin() != null) {
             user.getAdmin().getIdAdmin(); // Touch the proxy to load it
         }
-        
-        System.out.println("Authenticated user: " + user.getEmail() + ", has admin: " + (user.getAdmin() != null) + ", role: " + user.getRole() + ", isActif: " + user.isActif());
-        
+
+        System.out.println("Authenticated user: " + user.getEmail() + ", has admin: " + (user.getAdmin() != null)
+                + ", role: " + user.getRole() + ", isActif: " + user.isActif());
+
         String token = authService.generateToken(user);
 
         // Access token (JWT) cookie - HttpOnly, 1 day duration
@@ -63,7 +63,8 @@ public class AuthController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
 
-        // Refresh token - HttpOnly, 7 days, path restricted to /api/auth/* to minimize exposure
+        // Refresh token - HttpOnly, 7 days, path restricted to /api/auth/* to minimize
+        // exposure
         String rawRefreshToken = authService.createRefreshToken(user, userAgent != null ? userAgent : "Unknown");
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", rawRefreshToken)
                 .httpOnly(true)
@@ -74,7 +75,8 @@ public class AuthController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-        return ResponseEntity.ok(new AuthResponse(null, user.getUsername(), user.getRole(), user.isMustChangePassword()));
+        return ResponseEntity
+                .ok(new AuthResponse(null, user.getUsername(), user.getRole(), user.isMustChangePassword()));
     }
 
     @PostMapping("/refresh")
@@ -90,8 +92,9 @@ public class AuthController {
         }
 
         // Rotation atomique (@Transactional dans AuthService) :
-        //   revoque l'ancien RT → insère un nouveau RT hashé → génère un nouveau JWT
-        // InvalidTokenException (invalide / révoqué / expiré) remonte au GlobalExceptionHandler → 401
+        // revoque l'ancien RT → insère un nouveau RT hashé → génère un nouveau JWT
+        // InvalidTokenException (invalide / révoqué / expiré) remonte au
+        // GlobalExceptionHandler → 401
         AuthService.RotationResult result = authService.rotateRefreshToken(
                 refreshToken, userAgent != null ? userAgent : "Unknown");
 
@@ -122,7 +125,7 @@ public class AuthController {
     public ResponseEntity<?> logout(
             @CookieValue(name = "refreshToken", required = false) String refreshToken,
             HttpServletResponse response) {
-        
+
         if (refreshToken != null && !refreshToken.isEmpty()) {
             authService.revokeRefreshToken(refreshToken);
         }
@@ -155,7 +158,8 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         Superviseur user = (Superviseur) authentication.getPrincipal();
-        return ResponseEntity.ok(new AuthResponse(null, user.getUsername(), user.getRole(), user.isMustChangePassword()));
+        return ResponseEntity
+                .ok(new AuthResponse(null, user.getUsername(), user.getRole(), user.isMustChangePassword()));
     }
 
     @PostMapping("/change-password")

@@ -1,10 +1,10 @@
-package com.javaservice;
+package com.projet;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class JavaServiceApplicationTests {
+@SpringBootTest(classes = SupervisionApplication.class)
+class SupervisionApplicationTests {
 
 	@Test
 	void contextLoads() {

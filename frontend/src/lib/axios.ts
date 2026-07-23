@@ -31,8 +31,7 @@ apiClient.interceptors.response.use(
     const requestUrl = originalRequest.url ?? '';
     const isAuthRequest =
       requestUrl.includes('/api/auth/login') ||
-      requestUrl.includes('/api/auth/logout') ||
-      requestUrl.includes('/api/auth/me');
+      requestUrl.includes('/api/auth/logout');
 
     if (
       error.response?.status === 401 &&
