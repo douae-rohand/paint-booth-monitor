@@ -19,4 +19,11 @@ public interface ConfigurationPLCRepository extends JpaRepository<ConfigurationP
      * Retourne l'historique complet des configurations, de la plus recente a la plus ancienne.
      */
     List<ConfigurationPLC> findAllByOrderByDateCreationDesc();
+
+    Optional<ConfigurationPLC> findFirstByPlcIpAndPlcPortAndPlcRackAndPlcSlotAndPlcPollingIntervalMs(
+            String plcIp,
+            Integer plcPort,
+            Integer plcRack,
+            Integer plcSlot,
+            Integer plcPollingIntervalMs);
 }

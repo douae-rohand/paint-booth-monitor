@@ -72,6 +72,17 @@ public class ConfigurationPLCService {
     public ConfigurationPLCResponse creerConfiguration(ConfigurationPLCRequest request, UUID adminId) {
         validerRequest(request);
 
+        String ip = request.getIp().trim();
+        int port = request.getPort() != null ? request.getPort() : PORT_DEFAUT;
+        boolean configurationExiste = configurationPLCRepository
+                .findFirstByPlcIpAndPlcPortAndPlcRackAndPlcSlotAndPlcPollingIntervalMs(
+                        ip, port, request.getRack(), request.getSlot(), request.getIntervallePolling())
+                .isPresent();
+        if (configurationExiste) {
+            throw new IllegalArgumentException(
+                    "Cette configuration existe deja. Activez-la depuis l'historique.");
+        }
+
         Admin admin = adminRepository.findById(adminId)
                 .orElseThrow(() -> new ConfigurationPLCNotFoundException(
                         "Admin introuvable : " + adminId));
@@ -86,8 +97,8 @@ public class ConfigurationPLCService {
         // Creer et persister la nouvelle configuration
         ConfigurationPLC config = new ConfigurationPLC();
         config.setAdmin(admin);
-        config.setPlcIp(request.getIp().trim());
-        config.setPlcPort(request.getPort() != null ? request.getPort() : PORT_DEFAUT);
+        config.setPlcIp(ip);
+        config.setPlcPort(port);
         config.setPlcRack(request.getRack());
         config.setPlcSlot(request.getSlot());
         config.setPlcPollingIntervalMs(request.getIntervallePolling());
