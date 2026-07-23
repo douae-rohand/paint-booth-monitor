@@ -1,4 +1,4 @@
-import client from './client';
+import client from '../lib/axios';
 import type { Measure } from '../types';
 
 interface HistoryParams {
