@@ -1,10 +1,10 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { History, LayoutDashboard, Factory, LogOut } from "lucide-react";
+import { Cpu, History, LayoutDashboard, Factory, LogOut } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
-const nav = [
+const baseNav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/history", label: "Historique", icon: History },
 ] as const;
@@ -12,7 +12,10 @@ const nav = [
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
+  const nav = isAdmin
+    ? [...baseNav, { to: "/plc", label: "PLC", icon: Cpu }]
+    : baseNav;
   const today = new Date().toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
