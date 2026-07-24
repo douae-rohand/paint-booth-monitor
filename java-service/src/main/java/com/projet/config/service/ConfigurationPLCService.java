@@ -10,6 +10,10 @@ import com.projet.config.repository.ConfigurationPLCRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -45,11 +49,14 @@ public class ConfigurationPLCService {
 
     private final ConfigurationPLCRepository configurationPLCRepository;
     private final AdminRepository adminRepository;
+    private final DataSource dataSource;
 
     public ConfigurationPLCService(ConfigurationPLCRepository configurationPLCRepository,
-                                   AdminRepository adminRepository) {
+                                   AdminRepository adminRepository,
+                                   DataSource dataSource) {
         this.configurationPLCRepository = configurationPLCRepository;
         this.adminRepository = adminRepository;
+        this.dataSource = dataSource;
     }
 
     // -- Methodes publiques ----------------------------------------------------
@@ -106,6 +113,10 @@ public class ConfigurationPLCService {
         config.setDateActivation(LocalDateTime.now());
 
         ConfigurationPLC saved = configurationPLCRepository.save(config);
+        
+        // Notifier le service Python pour reconfiguration dynamique
+        notifierChangementConfiguration(saved.getIdConfiguration());
+        
         return ConfigurationPLCResponse.from(saved);
     }
 
@@ -143,6 +154,9 @@ public class ConfigurationPLCService {
             cible.setDateActivation(LocalDateTime.now());
             cible.setDateDesactivation(null);
             configurationPLCRepository.save(cible);
+            
+            // Notifier le service Python pour reconfiguration dynamique
+            notifierChangementConfiguration(cible.getIdConfiguration());
         }
 
         return ConfigurationPLCResponse.from(cible);
@@ -225,6 +239,28 @@ public class ConfigurationPLCService {
         if (request.getIntervallePolling() == null || request.getIntervallePolling() < POLLING_MIN_MS) {
             throw new IllegalArgumentException(
                     "L'intervalle de polling doit etre d'au moins " + POLLING_MIN_MS + " ms");
+        }
+    }
+
+    // -- Notification PostgreSQL -------------------------------------------------
+
+    /**
+     * Envoie une notification PostgreSQL sur le canal config_plc_change
+     * pour informer le service Python de reconfigurer le PLC.
+     *
+     * @param idConfiguration UUID de la configuration créée ou activée
+     */
+    private void notifierChangementConfiguration(UUID idConfiguration) {
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+            
+            String payload = idConfiguration.toString();
+            stmt.execute("NOTIFY config_plc_change, '" + payload + "'");
+            
+        } catch (SQLException e) {
+            // On ne veut pas échouer la transaction si le NOTIFY échoue
+            // Le service Python relira la config active de toute façon
+            System.err.println("Erreur lors du NOTIFY config_plc_change: " + e.getMessage());
         }
     }
 }

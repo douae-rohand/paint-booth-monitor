@@ -1,0 +1,2 @@
+ALTER TABLE mesure
+    ADD COLUMN plausible BOOLEAN NOT NULL DEFAULT true;

@@ -16,7 +16,8 @@ from typing import Optional
 
 from sqlalchemy import Boolean, Enum as SAEnum, Integer, Numeric, String, select, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class Base(DeclarativeBase):
@@ -63,6 +64,11 @@ class Mesure(Base):
         String(100),
         nullable=True,
     )
+    plausible: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+    )
     created_at: Mapped[datetime] = mapped_column(
         nullable=False,
         server_default=text("now()"),
@@ -96,6 +102,10 @@ class ConfigurationPLC(Base):
         String(45),
         nullable=False,
     )
+    plc_port: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
     plc_rack: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
@@ -119,11 +129,12 @@ class ConfigurationPLC(Base):
     )
 
 
-def get_active_plc_config(session: Session) -> Optional[ConfigurationPLC]:
+async def get_active_plc_config(session: AsyncSession) -> Optional[ConfigurationPLC]:
     """
     Returns the currently active PLC configuration (where actif=True).
     Used at startup of the plc module.
     """
-    return session.execute(
+    result = await session.execute(
         select(ConfigurationPLC).where(ConfigurationPLC.actif == True)
-    ).scalar_one_or_none()
+    )
+    return result.scalar_one_or_none()

@@ -35,6 +35,9 @@ public class Mesure {
     @Column(name = "identifiant_caisse", length = 100, updatable = false, insertable = false)
     private String identifiantCaisse;
 
+    @Column(nullable = false, updatable = false, insertable = false)
+    private Boolean plausible;
+
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private LocalDateTime createdAt;
 
@@ -51,6 +54,8 @@ public class Mesure {
     public BigDecimal getValeur() { return valeur; }
 
     public String getIdentifiantCaisse() { return identifiantCaisse; }
+
+    public Boolean getPlausible() { return plausible; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }
