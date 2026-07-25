@@ -2,6 +2,7 @@ package com.projet.alerting.model;
 
 import com.projet.alerting.model.enums.Metrique;
 import com.projet.auth.model.Admin;
+import com.projet.measures.model.PointMesure;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,8 +11,8 @@ import java.util.UUID;
 /**
  * Module: alerting
  * SQL Table: seuil_absolu
- * 
- * 100% Java-managed entity (configured by Admin). Read by Python service 
+ *
+ * 100% Java-managed entity (configured by Admin). Read by Python service
  * in read-only mode during ingestion. Java has read/write privileges.
  */
 @Entity
@@ -26,6 +27,10 @@ public class SeuilAbsolu {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_admin", nullable = false)
     private Admin admin;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_point_mesure", nullable = false)
+    private PointMesure pointMesure;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -57,6 +62,9 @@ public class SeuilAbsolu {
 
     public Admin getAdmin() { return admin; }
     public void setAdmin(Admin admin) { this.admin = admin; }
+
+    public PointMesure getPointMesure() { return pointMesure; }
+    public void setPointMesure(PointMesure pointMesure) { this.pointMesure = pointMesure; }
 
     public Metrique getMetrique() { return metrique; }
     public void setMetrique(Metrique metrique) { this.metrique = metrique; }

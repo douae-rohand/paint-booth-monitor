@@ -2,6 +2,7 @@ package com.projet.alerting.model;
 
 import com.projet.alerting.model.enums.Metrique;
 import com.projet.auth.model.Admin;
+import com.projet.measures.model.PointMesure;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,15 +11,15 @@ import java.util.UUID;
 /**
  * Module: alerting
  * SQL Table: seuil_dynamique
- * 
+ *
  * HYBRID / SHARED ENTITY.
- * - Java Admin configures and modifies only the fields: "metrique", 
- *   "margeConfiguree", and soft-delete "deletedAt".
- * - Python-service calculates continuously the fields: "valeurMinCalculee", 
+ * - Java Admin configures and modifies only the fields: "metrique",
+ *   "margeConfiguree", "id_point_mesure", and soft-delete "deletedAt".
+ * - Python-service calculates continuously the fields: "valeurMinCalculee",
  *   "valeurMaxCalculee", and "dateCalcul".
- * 
- * IMPORTANT JAVADOC NOTE: Java code must refresh/reload this entity before 
- * saving, and must avoid setting/updating the Python-calculated fields to 
+ *
+ * IMPORTANT JAVADOC NOTE: Java code must refresh/reload this entity before
+ * saving, and must avoid setting/updating the Python-calculated fields to
  * avoid overwriting Python calculations.
  */
 @Entity
@@ -33,6 +34,10 @@ public class SeuilDynamique {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_admin", nullable = false)
     private Admin admin;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_point_mesure", nullable = false)
+    private PointMesure pointMesure;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -74,6 +79,9 @@ public class SeuilDynamique {
 
     public Admin getAdmin() { return admin; }
     public void setAdmin(Admin admin) { this.admin = admin; }
+
+    public PointMesure getPointMesure() { return pointMesure; }
+    public void setPointMesure(PointMesure pointMesure) { this.pointMesure = pointMesure; }
 
     public Metrique getMetrique() { return metrique; }
     public void setMetrique(Metrique metrique) { this.metrique = metrique; }

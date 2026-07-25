@@ -3,6 +3,7 @@ Module: plc
 SQLAlchemy 2.x ORM models for the plc module.
 
 This file defines:
+- PointMesure (physical measurement points - cabine + etuve zones)
 - Mesure (collected sensors metrics)
 - ConfigurationPLC (PLC configuration IP/rack/slot/polling interval)
 """
@@ -14,7 +15,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Boolean, Enum as SAEnum, Integer, Numeric, String, select, text
+from sqlalchemy import Boolean, Enum as SAEnum, Integer, Numeric, String, select, text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +29,50 @@ class Metrique(str, enum.Enum):
     """Metric types collected from PLC sensors."""
     TEMPERATURE = "TEMPERATURE"
     HUMIDITE = "HUMIDITE"
+
+
+class PointMesure(Base):
+    """
+    Module: plc
+    Table SQL: point_mesure
+
+    Représente un point de mesure physique (capteur) dans le système.
+    - 1 cabine (température + humidité)
+    - 5 zones d'étuve (température uniquement)
+
+    Écrit par Java (Admin active/désactive), lu par Python (pour associer nom_point_mesure lors de l'extraction/écriture).
+    Ne jamais appeler session.add()/commit() sur cette entité depuis python-service.
+    """
+
+    __tablename__ = "point_mesure"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+    nom: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+    type_emplacement: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+    actif: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+    )
+    date_creation: Mapped[datetime] = mapped_column(
+        nullable=False,
+        server_default=text("now()"),
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        nullable=True,
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        nullable=True,
+    )
 
 
 class Mesure(Base):
@@ -51,6 +96,10 @@ class Mesure(Base):
         UUID(as_uuid=True),
         primary_key=True,
         server_default=text("gen_random_uuid()"),
+    )
+    id_point_mesure: Mapped[int] = mapped_column(
+        ForeignKey("point_mesure.id"),
+        nullable=False,
     )
     metrique: Mapped[str] = mapped_column(
         SAEnum(Metrique, name="metrique_enum", create_type=False),

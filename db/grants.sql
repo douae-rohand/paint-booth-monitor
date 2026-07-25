@@ -76,7 +76,7 @@ GRANT SELECT, INSERT ON alerte TO python_service;
 GRANT SELECT, UPDATE (statut, updated_at, deleted_at) ON alerte TO java_service;
 
 -- SeuilDynamique : Java administre la config, Python écrit les valeurs calculées
-GRANT SELECT, INSERT, UPDATE (metrique, marge_configuree, deleted_at) ON seuil_dynamique TO java_service;
+GRANT SELECT, INSERT, UPDATE (metrique, marge_configuree, id_point_mesure, deleted_at) ON seuil_dynamique TO java_service;
 GRANT SELECT, UPDATE (valeur_min_calculee, valeur_max_calculee, date_calcul) ON seuil_dynamique TO python_service;
 
 -- ============================================================
@@ -91,6 +91,12 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO python_service;
 -- ============================================================
 GRANT SELECT, INSERT, UPDATE ON configuration_plc TO java_service;
 GRANT SELECT ON configuration_plc TO python_service;
+
+-- ============================================================
+-- Java gère les points de mesure (activation/désactivation, futur CRUD éventuel) et Python lit uniquement (pour associer nom_point_mesure lors de l'extraction/écriture)
+-- ============================================================
+GRANT SELECT, INSERT, UPDATE ON point_mesure TO java_service;
+GRANT SELECT ON point_mesure TO python_service;
 
 -- ============================================================
 -- 7. Vérification rapide (optionnel, à décommenter pour contrôler)

@@ -21,7 +21,7 @@ from sqlalchemy import select, and_, func
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.config import settings
-from app.plc.models import Mesure, ConfigurationPLC, Metrique, get_active_plc_config
+from app.plc.models import Mesure, ConfigurationPLC, PointMesure, Metrique, get_active_plc_config
 from app.plc.IConnecteurPLC import IConnecteurPLC
 from app.plc.connecteurs.snap7_connecteur import ConnecteurSnap7
 from app.plc.constants import (
@@ -80,6 +80,10 @@ class ServiceHistorisation:
         self._listen_consecutive_errors = 0
         self._max_listen_reconnect_delay = 60  # secondes
 
+        # Cache pour id_point_mesure (nom -> id) chargé au démarrage
+        self._point_mesure_cache: dict[str, int] = {}
+        self._seuils_manquants_logges: set[str] = set()  # Pour éviter les warnings répétés
+
     async def demarrer(self) -> None:
         """
         Démarre les tâches de polling, recalcul des seuils dynamiques et écoute des notifications.
@@ -90,6 +94,9 @@ class ServiceHistorisation:
 
         logger.info("Démarrage du service d'historisation PLC")
         self._running = True
+
+        # Charger le cache des points de mesure
+        await self._charger_point_mesure_cache()
 
         # Tâche de polling des mesures
         self._polling_task = asyncio.create_task(self._boucle_polling())
@@ -138,6 +145,24 @@ class ServiceHistorisation:
 
         logger.info("Service arrêté proprement")
 
+    async def _charger_point_mesure_cache(self) -> None:
+        """
+        Charge le cache des points de mesure actifs depuis la base de données.
+        """
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(PointMesure).where(
+                    and_(
+                        PointMesure.actif == True,
+                        PointMesure.deleted_at.is_(None),
+                    )
+                )
+            )
+            points = result.scalars().all()
+
+            self._point_mesure_cache = {p.nom: p.id for p in points}
+            logger.info(f"Cache chargé avec {len(self._point_mesure_cache)} points de mesure actifs")
+
     async def _boucle_polling(self) -> None:
         """
         Boucle principale de polling des mesures depuis le PLC.
@@ -152,17 +177,20 @@ class ServiceHistorisation:
                     self._lire_buffer_plc
                 )
 
-                # Extraction des mesures
-                donnees = extraire_mesures(buffer)
+                # Extraction des mesures (retourne une liste)
+                mesures = extraire_mesures(buffer)
 
-                # Écriture en base avec calcul des seuils
+                # Écriture en base avec calcul des seuils pour chaque mesure
                 async with self.session_factory() as session:
-                    await self._ecrire_mesure_avec_seuils(
-                        session,
-                        donnees["temperature"],
-                        donnees["humidite"],
-                        donnees["plausible"]
-                    )
+                    for mesure_data in mesures:
+                        try:
+                            await self._traiter_mesure(session, mesure_data)
+                        except Exception as e:
+                            logger.error(
+                                f"Erreur lors du traitement de la mesure "
+                                f"{mesure_data['nom_point_mesure']} - {mesure_data['metrique']}: {e}"
+                            )
+                            # Continuer avec les autres mesures
                     await session.commit()
 
                 # Réinitialiser le compteur d'erreurs après succès
@@ -203,148 +231,171 @@ class ServiceHistorisation:
 
         return self.connecteur.read_db(DB_NUMBER, START_OFFSET, READ_SIZE)
 
-    async def _ecrire_mesure_avec_seuils(
+    async def _traiter_mesure(
         self,
         session: AsyncSession,
-        temperature: float,
-        humidite: float,
-        plausible: bool,
+        mesure_data: dict,
     ) -> None:
         """
-        Écrit la mesure en base et crée les alertes si nécessaire (transaction unique).
-        
+        Traite une mesure individuelle : insertion en base et vérification des seuils.
+
         Args:
             session: Session SQLAlchemy async
-            temperature: Valeur de température mesurée
-            humidite: Valeur d'humidité mesurée
-            plausible: Flag indiquant si les valeurs sont physiquement plausibles
+            mesure_data: Dictionnaire contenant nom_point_mesure, metrique, valeur, plausible
         """
+        nom_point_mesure = mesure_data["nom_point_mesure"]
+        metrique_str = mesure_data["metrique"]
+        valeur = mesure_data["valeur"]
+        plausible = mesure_data["plausible"]
+
+        # Résoudre l'id_point_mesure depuis le cache
+        id_point_mesure = self._point_mesure_cache.get(nom_point_mesure)
+        if id_point_mesure is None:
+            logger.error(f"Point de mesure introuvable dans le cache: {nom_point_mesure}")
+            return
+
+        # Convertir la métrique string en enum
+        metrique = Metrique(metrique_str)
+
+        # Insertion de la mesure
         timestamp = datetime.now()
-
-        # Insertion des mesures (une par métrique)
-        mesure_temp = Mesure(
-            metrique=Metrique.TEMPERATURE,
-            valeur=temperature,
+        mesure = Mesure(
+            id_point_mesure=id_point_mesure,
+            metrique=metrique,
+            valeur=valeur,
             plausible=plausible,
             created_at=timestamp,
         )
-        mesure_humid = Mesure(
-            metrique=Metrique.HUMIDITE,
-            valeur=humidite,
-            plausible=plausible,
-            created_at=timestamp,
-        )
-
-        session.add(mesure_temp)
-        session.add(mesure_humid)
-        await session.flush()  # Pour obtenir les UUID
+        session.add(mesure)
+        await session.flush()  # Pour obtenir l'UUID
 
         # Si non plausible, pas de vérification de seuils
         if not plausible:
-            logger.warning(f"Mesure non plausible ignorée pour seuils: T={temperature}°C, H={humidite}%")
+            logger.warning(
+                f"Mesure non plausible ignorée pour seuils: "
+                f"{nom_point_mesure} - {metrique} = {valeur}"
+            )
             return
 
-        # Vérification et création d'alertes pour chaque métrique
-        await self._verifier_et_creer_alerte(
+        # Vérification des seuils absolu et dynamique
+        await self._verifier_seuil_absolu(
             session,
-            mesure_temp.id_mesure,
-            Metrique.TEMPERATURE,
-            temperature,
-            TypeAlerte.SEUIL_ABSOLU,
-            Severite.CRITIQUE,
+            mesure.id_mesure,
+            id_point_mesure,
+            metrique,
+            valeur,
         )
-        await self._verifier_et_creer_alerte(
+        await self._verifier_seuil_dynamique(
             session,
-            mesure_temp.id_mesure,
-            Metrique.TEMPERATURE,
-            temperature,
-            TypeAlerte.SEUIL_DYNAMIQUE,
-            Severite.MOYENNE,
-        )
-        await self._verifier_et_creer_alerte(
-            session,
-            mesure_humid.id_mesure,
-            Metrique.HUMIDITE,
-            humidite,
-            TypeAlerte.SEUIL_ABSOLU,
-            Severite.CRITIQUE,
-        )
-        await self._verifier_et_creer_alerte(
-            session,
-            mesure_humid.id_mesure,
-            Metrique.HUMIDITE,
-            humidite,
-            TypeAlerte.SEUIL_DYNAMIQUE,
-            Severite.MOYENNE,
+            mesure.id_mesure,
+            id_point_mesure,
+            metrique,
+            valeur,
         )
 
-    async def _verifier_et_creer_alerte(
+    async def _verifier_seuil_absolu(
         self,
         session: AsyncSession,
         id_mesure,
+        id_point_mesure: int,
         metrique: Metrique,
         valeur: float,
-        type_alerte: TypeAlerte,
-        severite: Severite,
     ) -> None:
         """
-        Vérifie si la valeur dépasse le seuil spécifié et crée une alerte si nécessaire.
-        
+        Vérifie si la valeur dépasse le seuil absolu pour ce point de mesure.
+
         Args:
             session: Session SQLAlchemy async
             id_mesure: UUID de la mesure associée
-            metrique: Type de métrique (TEMPERATURE ou HUMIDITE)
+            id_point_mesure: ID du point de mesure
+            metrique: Type de métrique
             valeur: Valeur mesurée
-            type_alerte: Type d'alerte (SEUIL_ABSOLU ou SEUIL_DYNAMIQUE)
-            severite: Sévérité de l'alerte
         """
-        if type_alerte == TypeAlerte.SEUIL_ABSOLU:
-            # Récupérer le seuil absolu actif
-            result = await session.execute(
-                select(SeuilAbsolu).where(
-                    and_(
-                        SeuilAbsolu.metrique == metrique,
-                        SeuilAbsolu.deleted_at.is_(None),
-                    )
+        # Clé unique pour éviter les warnings répétés
+        seuil_key = f"absolu_{id_point_mesure}_{metrique.value}"
+
+        result = await session.execute(
+            select(SeuilAbsolu).where(
+                and_(
+                    SeuilAbsolu.id_point_mesure == id_point_mesure,
+                    SeuilAbsolu.metrique == metrique,
+                    SeuilAbsolu.deleted_at.is_(None),
                 )
             )
-            seuil = result.scalar_one_or_none()
+        )
+        seuil = result.scalar_one_or_none()
 
-            if seuil and (valeur < seuil.valeur_min or valeur > seuil.valeur_max):
-                alerte = Alerte(
-                    id_mesure=id_mesure,
-                    metrique=metrique,
-                    type_alerte=type_alerte,
-                    severite=severite,
+        if seuil is None:
+            if seuil_key not in self._seuils_manquants_logges:
+                logger.warning(
+                    f"Aucun seuil absolu configuré pour {metrique.value} "
+                    f"au point de mesure {id_point_mesure}"
                 )
-                session.add(alerte)
-                await self._notifier_nouvelle_alerte(alerte.id_alerte)
+                self._seuils_manquants_logges.add(seuil_key)
+            return
 
-        elif type_alerte == TypeAlerte.SEUIL_DYNAMIQUE:
-            # Récupérer le dernier seuil dynamique calculé
-            result = await session.execute(
-                select(SeuilDynamique).where(
-                    and_(
-                        SeuilDynamique.metrique == metrique,
-                        SeuilDynamique.deleted_at.is_(None),
-                        SeuilDynamique.valeur_min_calculee.isnot(None),
-                        SeuilDynamique.valeur_max_calculee.isnot(None),
-                    )
-                ).order_by(SeuilDynamique.date_calcul.desc())
+        if valeur < seuil.valeur_min or valeur > seuil.valeur_max:
+            alerte = Alerte(
+                id_mesure=id_mesure,
+                metrique=metrique,
+                type_alerte=TypeAlerte.SEUIL_ABSOLU,
+                severite=Severite.CRITIQUE,
             )
-            seuil = result.scalar_one_or_none()
+            session.add(alerte)
+            await self._notifier_nouvelle_alerte(alerte.id_alerte)
 
-            if seuil and (
-                valeur < seuil.valeur_min_calculee or valeur > seuil.valeur_max_calculee
-            ):
-                alerte = Alerte(
-                    id_mesure=id_mesure,
-                    metrique=metrique,
-                    type_alerte=type_alerte,
-                    severite=severite,
+    async def _verifier_seuil_dynamique(
+        self,
+        session: AsyncSession,
+        id_mesure,
+        id_point_mesure: int,
+        metrique: Metrique,
+        valeur: float,
+    ) -> None:
+        """
+        Vérifie si la valeur dépasse le seuil dynamique pour ce point de mesure.
+
+        Args:
+            session: Session SQLAlchemy async
+            id_mesure: UUID de la mesure associée
+            id_point_mesure: ID du point de mesure
+            metrique: Type de métrique
+            valeur: Valeur mesurée
+        """
+        # Clé unique pour éviter les warnings répétés
+        seuil_key = f"dynamique_{id_point_mesure}_{metrique.value}"
+
+        result = await session.execute(
+            select(SeuilDynamique).where(
+                and_(
+                    SeuilDynamique.id_point_mesure == id_point_mesure,
+                    SeuilDynamique.metrique == metrique,
+                    SeuilDynamique.deleted_at.is_(None),
+                    SeuilDynamique.valeur_min_calculee.isnot(None),
+                    SeuilDynamique.valeur_max_calculee.isnot(None),
                 )
-                session.add(alerte)
-                await self._notifier_nouvelle_alerte(alerte.id_alerte)
+            ).order_by(SeuilDynamique.date_calcul.desc())
+        )
+        seuil = result.scalar_one_or_none()
+
+        if seuil is None:
+            if seuil_key not in self._seuils_manquants_logges:
+                logger.warning(
+                    f"Aucun seuil dynamique configuré pour {metrique.value} "
+                    f"au point de mesure {id_point_mesure}"
+                )
+                self._seuils_manquants_logges.add(seuil_key)
+            return
+
+        if valeur < seuil.valeur_min_calculee or valeur > seuil.valeur_max_calculee:
+            alerte = Alerte(
+                id_mesure=id_mesure,
+                metrique=metrique,
+                type_alerte=TypeAlerte.SEUIL_DYNAMIQUE,
+                severite=Severite.MOYENNE,
+            )
+            session.add(alerte)
+            await self._notifier_nouvelle_alerte(alerte.id_alerte)
 
     async def _boucle_recalcul_seuils_dynamiques(self) -> None:
         """
@@ -361,28 +412,60 @@ class ServiceHistorisation:
 
     async def _recalculer_seuils_dynamiques(self) -> None:
         """
-        Recalcule les seuils dynamiques pour chaque métrique.
+        Recalcule les seuils dynamiques pour chaque point de mesure actif et chaque métrique applicable.
         """
         async with self.session_factory() as session:
-            for metrique in [Metrique.TEMPERATURE, Metrique.HUMIDITE]:
-                await self._recalculer_seuil_dynamique(session, metrique)
+            # Récupérer tous les points de mesure actifs
+            result = await session.execute(
+                select(PointMesure).where(
+                    and_(
+                        PointMesure.actif == True,
+                        PointMesure.deleted_at.is_(None),
+                    )
+                )
+            )
+            points = result.scalars().all()
+
+            for point in points:
+                # Déterminer les métriques applicables à ce point de mesure
+                # La cabine a température + humidité, les zones d'étuve ont uniquement température
+                if point.type_emplacement == "CABINE":
+                    metriques = [Metrique.TEMPERATURE, Metrique.HUMIDITE]
+                else:  # ETUVE
+                    metriques = [Metrique.TEMPERATURE]
+
+                for metrique in metriques:
+                    try:
+                        await self._recalculer_seuil_dynamique(session, point.id, metrique)
+                    except Exception as e:
+                        logger.error(
+                            f"Erreur lors du recalcul du seuil dynamique pour "
+                            f"{point.nom} - {metrique}: {e}"
+                        )
+                        # Continuer avec les autres points/métriques
 
     async def _recalculer_seuil_dynamique(
         self,
         session: AsyncSession,
+        id_point_mesure: int,
         metrique: Metrique,
     ) -> None:
         """
-        Recalcule le seuil dynamique pour une métrique donnée.
-        
+        Recalcule le seuil dynamique pour un point de mesure et une métrique donnés.
+
         Args:
             session: Session SQLAlchemy async
+            id_point_mesure: ID du point de mesure
             metrique: Métrique à recalculer
         """
-        # Récupérer la configuration du seuil dynamique
+        # Clé unique pour éviter les warnings répétés
+        seuil_key = f"dynamique_{id_point_mesure}_{metrique.value}"
+
+        # Récupérer la configuration du seuil dynamique pour ce point de mesure
         result = await session.execute(
             select(SeuilDynamique).where(
                 and_(
+                    SeuilDynamique.id_point_mesure == id_point_mesure,
                     SeuilDynamique.metrique == metrique,
                     SeuilDynamique.deleted_at.is_(None),
                 )
@@ -391,18 +474,24 @@ class ServiceHistorisation:
         config = result.scalar_one_or_none()
 
         if not config:
-            logger.warning(f"Aucune configuration de seuil dynamique pour {metrique}")
+            if seuil_key not in self._seuils_manquants_logges:
+                logger.warning(
+                    f"Aucune configuration de seuil dynamique pour {metrique.value} "
+                    f"au point de mesure {id_point_mesure}"
+                )
+                self._seuils_manquants_logges.add(seuil_key)
             return
 
-        # Compter les mesures plausibles dans la fenêtre
+        # Compter les mesures plausibles dans la fenêtre pour CE point de mesure
         result_count = await session.execute(
             select(func.count())
             .select_from(Mesure)
             .where(
                 and_(
+                    Mesure.id_point_mesure == id_point_mesure,
                     Mesure.metrique == metrique,
                     Mesure.plausible == True,
-                    Mesure.created_at >= datetime.now() - 
+                    Mesure.created_at >= datetime.now() -
                     func.text(f"INTERVAL '{FENETRE_MOYENNE_MOBILE_HEURES} hours'"),
                 )
             )
@@ -411,20 +500,21 @@ class ServiceHistorisation:
 
         if nb_mesures < NB_MESURES_MIN_RECALCUL:
             logger.info(
-                f"Recalcul ignoré pour {metrique}: "
+                f"Recalcul ignoré pour {metrique.value} au point {id_point_mesure}: "
                 f"{nb_mesures}/{NB_MESURES_MIN_RECALCUL} mesures plausibles"
             )
             return
 
-        # Calculer la moyenne sur la fenêtre
+        # Calculer la moyenne sur la fenêtre pour CE point de mesure
         result_avg = await session.execute(
             select(func.avg(Mesure.valeur))
             .select_from(Mesure)
             .where(
                 and_(
+                    Mesure.id_point_mesure == id_point_mesure,
                     Mesure.metrique == metrique,
                     Mesure.plausible == True,
-                    Mesure.created_at >= datetime.now() - 
+                    Mesure.created_at >= datetime.now() -
                     func.text(f"INTERVAL '{FENETRE_MOYENNE_MOBILE_HEURES} hours'"),
                 )
             )
@@ -432,7 +522,7 @@ class ServiceHistorisation:
         moyenne = result_avg.scalar()
 
         if moyenne is None:
-            logger.warning(f"Moyenne None pour {metrique}")
+            logger.warning(f"Moyenne None pour {metrique.value} au point {id_point_mesure}")
             return
 
         # Appliquer la marge configurée
@@ -440,9 +530,10 @@ class ServiceHistorisation:
         valeur_min_calculee = float(moyenne) - float(marge)
         valeur_max_calculee = float(moyenne) + float(marge)
 
-        # Insérer une nouvelle ligne (historisation)
+        # Insérer une nouvelle ligne (historisation) avec id_point_mesure
         nouveau_seuil = SeuilDynamique(
             id_admin=config.id_admin,
+            id_point_mesure=id_point_mesure,
             metrique=metrique,
             marge_configuree=marge,
             valeur_min_calculee=valeur_min_calculee,
