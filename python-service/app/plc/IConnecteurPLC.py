@@ -1,9 +1,12 @@
 import abc
-from app.plc.schemas import MesureCapteur
+
 
 class IConnecteurPLC(abc.ABC):
     """
-    Interface abstraite définissant le contrat de communication avec un automate PLC.
+    Interface abstraite définissant le contrat minimal de communication avec un automate PLC.
+
+    Cette interface ne contient aucune connaissance métier (température, humidité, DB_NUMBER).
+    Elle se limite aux opérations de connexion et de lecture brute de données.
     """
 
     @abc.abstractmethod
@@ -14,15 +17,30 @@ class IConnecteurPLC(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def read_mesure(self) -> MesureCapteur:
+    def disconnect(self) -> None:
         """
-        Lit les données du PLC et retourne une mesure typée.
+        Ferme et libère la connexion avec l'automate.
         """
         pass
 
     @abc.abstractmethod
-    def disconnect(self) -> None:
+    def is_connected(self) -> bool:
         """
-        Ferme et libère la connexion avec l'automate.
+        Vérifie si la connexion est active.
+        """
+        pass
+
+    @abc.abstractmethod
+    def read_db(self, db_number: int, start: int, size: int) -> bytes:
+        """
+        Lit un bloc de données brut depuis un Data Block du PLC.
+
+        Args:
+            db_number: Numéro du Data Block
+            start: Offset de départ en octets
+            size: Nombre d'octets à lire
+
+        Returns:
+            Buffer brut (bytes) sans aucune transformation métier
         """
         pass

@@ -19,7 +19,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID as PythonUUID
 
-from sqlalchemy import Boolean, Enum as SAEnum, Numeric, text, update
+from sqlalchemy import Boolean, Enum as SAEnum, Numeric, text, update, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -82,6 +82,10 @@ class SeuilAbsolu(Base):
         UUID(as_uuid=True),
         nullable=False,
     )
+    id_point_mesure: Mapped[int] = mapped_column(
+        ForeignKey("point_mesure.id"),
+        nullable=False,
+    )
     metrique: Mapped[str] = mapped_column(
         SAEnum(Metrique, name="metrique_seuil_absolu_enum", create_type=False),
         nullable=False,
@@ -133,6 +137,10 @@ class SeuilDynamique(Base):
     )
     id_admin: Mapped[PythonUUID] = mapped_column(
         UUID(as_uuid=True),
+        nullable=False,
+    )
+    id_point_mesure: Mapped[int] = mapped_column(
+        ForeignKey("point_mesure.id"),
         nullable=False,
     )
     # Config field — owned by java-service. Python: read only.

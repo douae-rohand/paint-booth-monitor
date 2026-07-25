@@ -150,15 +150,15 @@ L'idée : faire tourner une chaîne complète et minimale (frontend → Java →
   - [ ] Documentation du contrat (OpenAPI/Swagger côté Python)
 - [ ] **Sécurisation de l'appel interne** : réseau Docker interne uniquement (pas de port publié) ou clé d'API interne partagée
 - [ ] **Timeout et gestion des erreurs** : comportement de Java si Python ne répond pas
-- [ ] **PostgreSQL LISTEN/NOTIFY** :
-  - [ ] Nom du canal NOTIFY (ex : `alert_created`)
-  - [ ] Format du payload NOTIFY (JSON : id d'alerte, sévérité, métrique)
-  - [ ] Client Java en écoute permanente (LISTEN), avec reconnexion automatique
-  - [ ] Gestion de l'idempotence (double traitement du même NOTIFY)
-- [ ] **Accès base de données partagée** :
-  - [ ] Définir qui écrit sur quelles tables (Python : mesures/alertes ; Java : utilisateurs/config seuils)
-  - [ ] Outil de migration unique (Flyway ou Alembic) pour éviter les conflits de schéma
-  - [ ] Pool de connexion et droits PostgreSQL différenciés par service
+- [x] **PostgreSQL LISTEN/NOTIFY** :
+  - [x] Nom du canal NOTIFY (ex : `alert_created`)
+  - [x] Format du payload NOTIFY (JSON : id d'alerte, sévérité, métrique)
+  - [x] Client Java en écoute permanente (LISTEN), avec reconnexion automatique
+  - [x] Gestion de l'idempotence (double traitement du même NOTIFY)
+- [x] **Accès base de données partagée** :
+  - [x] Définir qui écrit sur quelles tables (Python : mesures/alertes ; Java : utilisateurs/config seuils)
+  - [x] Outil de migration unique (Flyway ou Alembic) pour éviter les conflits de schéma
+  - [x] Pool de connexion et droits PostgreSQL différenciés par service
 
 ---
 

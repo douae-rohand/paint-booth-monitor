@@ -9,11 +9,11 @@ import java.util.UUID;
 /**
  * Module: measures
  * SQL Table: mesure
- * 
+ *
  * LECTURE SEULE (READ-ONLY) from Java-service.
  * This table is written to EXCLUSIVELY by the python-service PLC module.
- * 
- * IMPORTANT JAVADOC NOTE: NE JAMAIS APPELER save() OU ENREGISTRER CETTE ENTITE 
+ *
+ * IMPORTANT JAVADOC NOTE: NE JAMAIS APPELER save() OU ENREGISTRER CETTE ENTITE
  * DEPUIS JAVA under any circumstances. Writing is reserved for the Python service.
  */
 @Entity
@@ -25,6 +25,10 @@ public class Mesure {
     @Column(name = "id_mesure", updatable = false, insertable = false)
     private UUID idMesure;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_point_mesure", nullable = false, updatable = false, insertable = false)
+    private PointMesure pointMesure;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20, updatable = false, insertable = false)
     private Metrique metrique;
@@ -34,6 +38,9 @@ public class Mesure {
 
     @Column(name = "identifiant_caisse", length = 100, updatable = false, insertable = false)
     private String identifiantCaisse;
+
+    @Column(nullable = false, updatable = false, insertable = false)
+    private Boolean plausible;
 
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private LocalDateTime createdAt;
@@ -46,11 +53,15 @@ public class Mesure {
 
     public UUID getIdMesure() { return idMesure; }
 
+    public PointMesure getPointMesure() { return pointMesure; }
+
     public Metrique getMetrique() { return metrique; }
 
     public BigDecimal getValeur() { return valeur; }
 
     public String getIdentifiantCaisse() { return identifiantCaisse; }
+
+    public Boolean getPlausible() { return plausible; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

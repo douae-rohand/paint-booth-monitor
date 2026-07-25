@@ -38,6 +38,7 @@ Sert de référence pour la définition des rôles PostgreSQL (`app_java`, `app_
 | Entité | Écrit par | Lit par | Statut |
 |---|---|---|---|
 | SeuilAbsolu | Java (Admin configure) | Python (applique le seuil à l'ingestion) | ✅ Java écrit, Python lit — pas de conflit colonne |
+| PointMesure | Java (Admin active/désactive) | Python (associe nom_point_mesure lors de l'extraction/écriture) | ✅ Java écrit, Python lit — pas de conflit colonne |
 | ConfigurationDestinataire | Java | Java | ✅ interne à Java |
 | Notification | Java | Java | ✅ interne à Java — le message (titre/contenu), une ligne par événement |
 | EnvoiNotification | Java | Java | ✅ interne à Java — un envoi par (notification, superviseur, canal) |
@@ -68,16 +69,16 @@ GRANT SELECT, UPDATE (statut, updatedAt, deletedAt) ON alerte TO app_java;
 
 | Colonnes | Écrites par | Détail |
 |---|---|---|
-| `id_seuil_dynamique`, `metrique`, `marge_configuree` | **Java** | créées par l'Admin (config initiale) — `marge_configuree` = le facteur `k` du calcul `moyenne ± k × écart-type`, réglable par l'Admin (plus `k` est grand, plus le seuil est tolérant) |
+| `id_seuil_dynamique`, `metrique`, `marge_configuree`, `id_point_mesure` | **Java** | créées par l'Admin (config initiale) — `marge_configuree` = le facteur `k` du calcul `moyenne ± k × écart-type`, réglable par l'Admin (plus `k` est grand, plus le seuil est tolérant) ; `id_point_mesure` lie le seuil à un point de mesure physique (cabine ou zone d'étuve) |
 | `valeur_min_calculee`, `valeur_max_calculee`, `date_calcul` | **Python** | recalculées en continu (moyenne/écart-type glissants, en appliquant `marge_configuree`) |
 | `createdAt`, `updatedAt`, `deletedAt` | **Java** (création/désactivation) | |
 
 **GRANT nécessaire :**
 ```sql
 -- Java : crée et administre le seuil, mais ne touche jamais aux valeurs calculées
-GRANT SELECT, INSERT, UPDATE (metrique, marge_configuree, deletedAt) ON seuil_dynamique TO app_java;
+GRANT SELECT, INSERT, UPDATE (metrique, marge_configuree, id_point_mesure, deletedAt) ON seuil_dynamique TO app_java;
 
--- Python : lit la config (dont marge_configuree, pour l'appliquer), n'écrit QUE les colonnes calculées
+-- Python : lit la config (dont marge_configuree et id_point_mesure, pour l'appliquer), n'écrit QUE les colonnes calculées
 GRANT SELECT, UPDATE (valeur_min_calculee, valeur_max_calculee, date_calcul) ON seuil_dynamique TO app_python;
 ```
 
