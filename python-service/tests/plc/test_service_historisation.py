@@ -22,10 +22,11 @@ if __name__ == "__main__":
     automate_ip = "127.0.0.1"  # Utiliser 127.0.0.1 pour le simulateur local
     rack = 0
     slot = 0
+    port = 1102  # Port alternatif pour éviter restrictions admin sur port 102
 
-    print(f"Test de connexion PLC : {automate_ip}, rack={rack}, slot={slot}")
+    print(f"Test de connexion PLC : {automate_ip}, rack={rack}, slot={slot}, port={port}")
 
-    connecteur = ConnecteurSnap7(ip=automate_ip, rack=rack, slot=slot)
+    connecteur = ConnecteurSnap7(ip=automate_ip, rack=rack, slot=slot, port=port)
 
     try:
         # Connexion au PLC

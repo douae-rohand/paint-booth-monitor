@@ -19,7 +19,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID as PythonUUID
 
-from sqlalchemy import Boolean, Enum as SAEnum, Numeric, text, update, ForeignKey
+from sqlalchemy import Boolean, Numeric, String, text, update, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -87,7 +87,7 @@ class SeuilAbsolu(Base):
         nullable=False,
     )
     metrique: Mapped[str] = mapped_column(
-        SAEnum(Metrique, name="metrique_seuil_absolu_enum", create_type=False),
+        String(20),
         nullable=False,
     )
     valeur_min: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
@@ -145,7 +145,7 @@ class SeuilDynamique(Base):
     )
     # Config field — owned by java-service. Python: read only.
     metrique: Mapped[str] = mapped_column(
-        SAEnum(Metrique, name="metrique_seuil_dyn_enum", create_type=False),
+        String(20),
         nullable=False,
     )
     # Calculated by python-service (rolling stats).
@@ -196,20 +196,20 @@ class Alerte(Base):
         nullable=False,
     )
     metrique: Mapped[str] = mapped_column(
-        SAEnum(Metrique, name="metrique_alerte_enum", create_type=False),
+        String(20),
         nullable=False,
     )
     type_alerte: Mapped[str] = mapped_column(
-        SAEnum(TypeAlerte, name="type_alerte_enum", create_type=False),
+        String(20),
         nullable=False,
     )
     severite: Mapped[str] = mapped_column(
-        SAEnum(Severite, name="severite_enum", create_type=False),
+        String(10),
         nullable=False,
     )
     # Owned by java-service after creation. Python sets initial value at INSERT.
     statut: Mapped[str] = mapped_column(
-        SAEnum(StatutAlerte, name="statut_alerte_enum", create_type=False),
+        String(10),
         nullable=False,
         server_default=text("'ACTIVE'"),
     )

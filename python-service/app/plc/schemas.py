@@ -1,10 +1,12 @@
 from pydantic import BaseModel
 from datetime import datetime
+from app.plc.models import Metrique
 
-class MesureCapteur(BaseModel):
+class MesureSchema(BaseModel):
     """
-    Modèle Pydantic représentant une mesure de température et d'humidité à un instant donné.
+    Modèle Pydantic pour une mesure avec métrique validée.
     """
-    temperature: float
-    humidite: float
+    metrique: Metrique
+    valeur: float
+    plausible: bool
     timestamp: datetime
