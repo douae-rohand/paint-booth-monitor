@@ -15,7 +15,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Boolean, Enum as SAEnum, Integer, Numeric, String, select, text, ForeignKey
+from sqlalchemy import Boolean, Integer, Numeric, String, select, text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -102,7 +102,7 @@ class Mesure(Base):
         nullable=False,
     )
     metrique: Mapped[str] = mapped_column(
-        SAEnum(Metrique, name="metrique_enum", create_type=False),
+        String(20),
         nullable=False,
     )
     valeur: Mapped[Decimal] = mapped_column(

@@ -16,7 +16,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID as PythonUUID
 
-from sqlalchemy import Boolean, Enum as SAEnum, Numeric, text
+from sqlalchemy import Boolean, Numeric, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -60,7 +60,7 @@ class PredictionIA(Base):
         nullable=False,
     )
     modele_utilise: Mapped[str] = mapped_column(
-        SAEnum(ModeleIA, name="modele_ia_enum", create_type=False),
+        String(20),
         nullable=False,
     )
     valeur_predite: Mapped[Optional[Decimal]] = mapped_column(
