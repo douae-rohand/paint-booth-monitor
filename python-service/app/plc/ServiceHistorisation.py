@@ -342,6 +342,7 @@ class ServiceHistorisation:
                 severite=Severite.CRITIQUE,
             )
             session.add(alerte)
+            await session.flush()  # Génère l'UUID avant le NOTIFY
             await self._notifier_nouvelle_alerte(alerte.id_alerte)
 
     async def _verifier_seuil_dynamique(
@@ -395,6 +396,7 @@ class ServiceHistorisation:
                 severite=Severite.MOYENNE,
             )
             session.add(alerte)
+            await session.flush()  # Génère l'UUID avant le NOTIFY
             await self._notifier_nouvelle_alerte(alerte.id_alerte)
 
     async def _boucle_recalcul_seuils_dynamiques(self) -> None:
@@ -699,9 +701,12 @@ class ServiceHistorisation:
         try:
             # Utiliser une connexion temporaire pour le NOTIFY
             db_url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
-            async with asyncpg.connect(db_url) as conn:
+            conn = await asyncpg.connect(db_url)
+            try:
                 await conn.execute(f"NOTIFY nouvelle_alerte, '{id_alerte}'")
-            logger.info(f"NOTIFY envoyé pour alerte {id_alerte}")
+                logger.info(f"NOTIFY envoyé pour alerte {id_alerte}")
+            finally:
+                await conn.close()
         except Exception as e:
             # On ne veut pas échouer la transaction si le NOTIFY échoue
             logger.error(f"Erreur lors du NOTIFY nouvelle_alerte: {e}")

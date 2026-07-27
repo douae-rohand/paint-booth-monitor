@@ -1,5 +1,7 @@
 package com.projet.notifications.service;
 
+import java.util.UUID;
+
 /**
  * Service de dispatch des notifications d'alerte.
  * 
@@ -16,5 +18,5 @@ public interface NotificationDispatchService {
      * 
      * @param idAlerte Identifiant de l'alerte à dispatcher
      */
-    void dispatcherAlerte(Long idAlerte);
+    void dispatcherAlerte(UUID idAlerte);
 }

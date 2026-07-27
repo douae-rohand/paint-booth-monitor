@@ -3,7 +3,7 @@ server:
 
 spring:
   config:
-    import: optional:file:java-service/.env[.properties]
+    import: optional:file:java-service/.env[.properties],optional:file:.env[.properties]
   application:
     name: supervision-service
   datasource:
