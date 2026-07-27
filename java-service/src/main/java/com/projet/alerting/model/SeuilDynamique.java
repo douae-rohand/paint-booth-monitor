@@ -44,11 +44,11 @@ public class SeuilDynamique {
     private Metrique metrique;
 
     // Written only by Python service
-    @Column(name = "valeur_min_calculee", precision = 6, scale = 2)
+    @Column(name = "valeur_min_calculee", precision = 6, scale = 2, insertable = false, updatable = false)
     private BigDecimal valeurMinCalculee;
 
     // Written only by Python service
-    @Column(name = "valeur_max_calculee", precision = 6, scale = 2)
+    @Column(name = "valeur_max_calculee", precision = 6, scale = 2, insertable = false, updatable = false)
     private BigDecimal valeurMaxCalculee;
 
     // Configured by Java Admin
@@ -56,7 +56,7 @@ public class SeuilDynamique {
     private BigDecimal margeConfiguree;
 
     // Recalculated by Python service
-    @Column(name = "date_calcul")
+    @Column(name = "date_calcul", insertable = false, updatable = false)
     private LocalDateTime dateCalcul;
 
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -14,6 +14,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -157,10 +158,10 @@ public class PostgresNotificationListener {
         
         if (CHANNEL.equals(channel) && payload != null) {
             try {
-                Long idAlerte = Long.parseLong(payload.trim());
+                UUID idAlerte = UUID.fromString(payload.trim());
                 logger.info("Alerte {} reçue via NOTIFY, dispatch en cours", idAlerte);
                 notificationDispatchService.dispatcherAlerte(idAlerte);
-            } catch (NumberFormatException e) {
+            } catch (IllegalArgumentException e) {
                 logger.error("Payload invalide pour l'alerte: '{}'", payload, e);
             }
         }

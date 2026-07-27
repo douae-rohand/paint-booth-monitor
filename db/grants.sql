@@ -52,7 +52,7 @@ GRANT SELECT ON conversation_chatbot TO java_service;
 -- ============================================================
 
 -- SeuilAbsolu : Java écrit (config Admin), Python lit (application à l'ingestion)
-GRANT SELECT, INSERT, UPDATE, DELETE ON seuil_absolu TO java_service;
+GRANT SELECT, INSERT, UPDATE(actif, date_activation, date_desactivation) ON seuil_absolu TO java_service;
 GRANT SELECT ON seuil_absolu TO python_service;
 
 -- ConfigurationDestinataire : interne à Java
@@ -76,8 +76,8 @@ GRANT SELECT, INSERT ON alerte TO python_service;
 GRANT SELECT, UPDATE (statut, updated_at, deleted_at) ON alerte TO java_service;
 
 -- SeuilDynamique : Java administre la config, Python écrit les valeurs calculées
-GRANT SELECT, INSERT, UPDATE (metrique, marge_configuree, id_point_mesure, deleted_at) ON seuil_dynamique TO java_service;
-GRANT SELECT, UPDATE (valeur_min_calculee, valeur_max_calculee, date_calcul) ON seuil_dynamique TO python_service;
+GRANT SELECT, INSERT, UPDATE(marge_configuree) ON seuil_dynamique TO java_service;
+GRANT SELECT, UPDATE(valeur_min_calculee, valeur_max_calculee, date_calcul) ON seuil_dynamique TO python_service;
 
 -- ============================================================
 -- 6. Séquences (précaution, même si tout est en UUID ici)
