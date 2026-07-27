@@ -1,5 +1,6 @@
 package com.projet.notifications.service;
 
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
     private static final Logger logger = LoggerFactory.getLogger(NotificationDispatchServiceImpl.class);
 
     @Override
-    public void dispatcherAlerte(Long idAlerte) {
+    public void dispatcherAlerte(UUID idAlerte) {
         logger.info("Alerte {} reçue via NOTIFY, dispatch réel à implémenter", idAlerte);
     }
 }

@@ -45,11 +45,14 @@ public class SeuilAbsolu {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(name = "actif", nullable = false)
+    private boolean actif = true;
 
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    @Column(name = "date_activation")
+    private LocalDateTime dateActivation;
+
+    @Column(name = "date_desactivation")
+    private LocalDateTime dateDesactivation;
 
     // ── Constructors ──────────────────────────────────────────────────────────
 
@@ -78,9 +81,12 @@ public class SeuilAbsolu {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public boolean isActif() { return actif; }
+    public void setActif(boolean actif) { this.actif = actif; }
 
-    public LocalDateTime getDeletedAt() { return deletedAt; }
-    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public LocalDateTime getDateActivation() { return dateActivation; }
+    public void setDateActivation(LocalDateTime dateActivation) { this.dateActivation = dateActivation; }
+
+    public LocalDateTime getDateDesactivation() { return dateDesactivation; }
+    public void setDateDesactivation(LocalDateTime dateDesactivation) { this.dateDesactivation = dateDesactivation; }
 }
