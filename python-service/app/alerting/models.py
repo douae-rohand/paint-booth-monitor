@@ -6,8 +6,8 @@ Enums are defined inline at the top of this file (avoids a separate enums.py
 for a self-contained module with no enum reuse across files).
 
 Entities defined here:
-- SeuilAbsolu   → READ-ONLY from Python
-- SeuilDynamique → HYBRID (Python writes calculated fields only)
+- SeuilAbsolu   → READ-ONLY from Python (post-V30: historisation via actif/date_activation)
+- SeuilDynamique → HYBRID (Python writes valeur_min_calculee, valeur_max_calculee, date_calcul only)
 - Alerte         → HYBRID (Python inserts, Java updates statut)
 """
 
@@ -19,7 +19,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID as PythonUUID
 
-from sqlalchemy import Boolean, Numeric, String, text, update, ForeignKey
+from sqlalchemy import Boolean, Enum as SAEnum, Numeric, text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -63,12 +63,15 @@ class SeuilAbsolu(Base):
     Read BY: python-service (read-only — used at ingestion to check if a measured
              value exceeds the absolute min/max bounds for a given metrique).
 
+    Schéma post-V30 : le soft-delete (deleted_at/updated_at) a été remplacé par
+    une historisation par insertion. Il peut exister plusieurs lignes par
+    (id_point_mesure, metrique) — seule la ligne avec actif=true est la limite
+    courante. L'index UNIQUE idx_seuil_absolu_une_ligne_active garantit qu'il
+    n'y en a jamais plus d'une.
+
     IMPORTANT: NEVER call session.add() or session.commit() on this entity from
     python-service. This is a configuration table owned by java-service. Python
-    only SELECTs from it.
-
-    id_admin is stored as a plain UUID. No ORM relationship toward Superviseur/Admin
-    tables managed by java-service.
+    only SELECTs from it — specifically the row where actif=true.
     """
 
     __tablename__ = "seuil_absolu"
@@ -87,7 +90,7 @@ class SeuilAbsolu(Base):
         nullable=False,
     )
     metrique: Mapped[str] = mapped_column(
-        String(20),
+        SAEnum(Metrique, name="metrique_seuil_absolu_enum", create_type=False),
         nullable=False,
     )
     valeur_min: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
@@ -95,8 +98,12 @@ class SeuilAbsolu(Base):
     created_at: Mapped[datetime] = mapped_column(
         nullable=False, server_default=text("now()")
     )
-    updated_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    # Historisation post-V30 : remplace updated_at/deleted_at
+    actif: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    date_activation: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    date_desactivation: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
 
 class SeuilDynamique(Base):
@@ -107,9 +114,12 @@ class SeuilDynamique(Base):
     HYBRID entity — shared between java-service and python-service.
 
     Written BY java-service: 'metrique', 'marge_configuree' (Admin configuration),
-                              and soft-delete 'deleted_at'.
+                              soft-delete 'deleted_at', 'updated_at'.
     Written BY python-service: ONLY 'valeur_min_calculee', 'valeur_max_calculee',
-                               'date_calcul' (rolling mean/std recalculation).
+                               'date_calcul' (rolling mean recalculation).
+
+    Schéma post-V31 : contrainte UNIQUE (id_point_mesure, metrique) ajoutée — il
+    n'existe qu'une seule configuration de seuil dynamique par capteur/métrique.
 
     IMPORTANT: Python must NEVER overwrite 'metrique' or 'marge_configuree'.
     Always use a targeted UPDATE on the 3 calculated columns only (e.g., using
@@ -145,7 +155,7 @@ class SeuilDynamique(Base):
     )
     # Config field — owned by java-service. Python: read only.
     metrique: Mapped[str] = mapped_column(
-        String(20),
+        SAEnum(Metrique, name="metrique_seuil_dyn_enum", create_type=False),
         nullable=False,
     )
     # Calculated by python-service (rolling stats).
@@ -158,6 +168,7 @@ class SeuilDynamique(Base):
     created_at: Mapped[datetime] = mapped_column(
         nullable=False, server_default=text("now()")
     )
+    # Soft-delete géré par java-service. Python: read only.
     updated_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
@@ -196,20 +207,20 @@ class Alerte(Base):
         nullable=False,
     )
     metrique: Mapped[str] = mapped_column(
-        String(20),
+        SAEnum(Metrique, name="metrique_alerte_enum", create_type=False),
         nullable=False,
     )
     type_alerte: Mapped[str] = mapped_column(
-        String(20),
+        SAEnum(TypeAlerte, name="type_alerte_enum", create_type=False),
         nullable=False,
     )
     severite: Mapped[str] = mapped_column(
-        String(10),
+        SAEnum(Severite, name="severite_enum", create_type=False),
         nullable=False,
     )
     # Owned by java-service after creation. Python sets initial value at INSERT.
     statut: Mapped[str] = mapped_column(
-        String(10),
+        SAEnum(StatutAlerte, name="statut_alerte_enum", create_type=False),
         nullable=False,
         server_default=text("'ACTIVE'"),
     )

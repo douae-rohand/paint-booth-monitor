@@ -17,7 +17,7 @@ from typing import Optional
 
 import asyncpg
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.config import settings
@@ -319,7 +319,7 @@ class ServiceHistorisation:
                 and_(
                     SeuilAbsolu.id_point_mesure == id_point_mesure,
                     SeuilAbsolu.metrique == metrique,
-                    SeuilAbsolu.deleted_at.is_(None),
+                    SeuilAbsolu.actif == True,
                 )
             )
         )
@@ -374,7 +374,7 @@ class ServiceHistorisation:
                     SeuilDynamique.valeur_min_calculee.isnot(None),
                     SeuilDynamique.valeur_max_calculee.isnot(None),
                 )
-            ).order_by(SeuilDynamique.date_calcul.desc())
+            )
         )
         seuil = result.scalar_one_or_none()
 
@@ -530,17 +530,18 @@ class ServiceHistorisation:
         valeur_min_calculee = float(moyenne) - float(marge)
         valeur_max_calculee = float(moyenne) + float(marge)
 
-        # Insérer une nouvelle ligne (historisation) avec id_point_mesure
-        nouveau_seuil = SeuilDynamique(
-            id_admin=config.id_admin,
-            id_point_mesure=id_point_mesure,
-            metrique=metrique,
-            marge_configuree=marge,
-            valeur_min_calculee=valeur_min_calculee,
-            valeur_max_calculee=valeur_max_calculee,
-            date_calcul=datetime.now(),
+        # UPDATE ciblé sur les 3 colonnes calculées par Python uniquement.
+        # Ne jamais faire session.add() ici : la contrainte UNIQUE(id_point_mesure, metrique)
+        # ajoutée en V31 interdit toute nouvelle ligne — seul un UPDATE est autorisé.
+        await session.execute(
+            update(SeuilDynamique)
+            .where(SeuilDynamique.id_seuil_dynamique == config.id_seuil_dynamique)
+            .values(
+                valeur_min_calculee=valeur_min_calculee,
+                valeur_max_calculee=valeur_max_calculee,
+                date_calcul=datetime.now(),
+            )
         )
-        session.add(nouveau_seuil)
 
     async def _boucle_listen_config_change(self) -> None:
         """

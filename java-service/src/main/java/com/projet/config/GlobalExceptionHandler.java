@@ -49,6 +49,12 @@ public class GlobalExceptionHandler {
                 .body(new ApiErrorResponse(404, ex.getMessage()));
     }
 
+    @ExceptionHandler(com.projet.alerting.exception.BusinessException.class)
+    public ResponseEntity<ApiErrorResponse> handleBusinessException(com.projet.alerting.exception.BusinessException ex) {
+        return ResponseEntity.status(ex.getStatus())
+                .body(new ApiErrorResponse(ex.getStatus().value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
