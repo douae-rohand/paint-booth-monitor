@@ -494,7 +494,7 @@ class ServiceHistorisation:
                     Mesure.metrique == metrique,
                     Mesure.plausible == True,
                     Mesure.created_at >= datetime.now() -
-                    func.text(f"INTERVAL '{FENETRE_MOYENNE_MOBILE_HEURES} hours'"),
+                    timedelta(hours=FENETRE_MOYENNE_MOBILE_HEURES),
                 )
             )
         )
@@ -517,7 +517,7 @@ class ServiceHistorisation:
                     Mesure.metrique == metrique,
                     Mesure.plausible == True,
                     Mesure.created_at >= datetime.now() -
-                    func.text(f"INTERVAL '{FENETRE_MOYENNE_MOBILE_HEURES} hours'"),
+                    timedelta(hours=FENETRE_MOYENNE_MOBILE_HEURES),
                 )
             )
         )
