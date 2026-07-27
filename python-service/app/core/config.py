@@ -16,7 +16,7 @@ load_dotenv(_ENV_PATH, override=True)
 class Settings:
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "postgresql+asyncpg://python_service:douae@localhost:5432/supervision_db",
+        "postgresql+asyncpg://python_service:python12345@localhost:5432/supervision_db",
     )
     DATABASE_ECHO: bool = os.getenv("DATABASE_ECHO", "false").lower() == "true"
     DATABASE_POOL_SIZE: int = int(os.getenv("DATABASE_POOL_SIZE", "5"))
