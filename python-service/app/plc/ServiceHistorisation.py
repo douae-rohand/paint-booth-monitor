@@ -12,12 +12,12 @@ Ce module contient la logique de service principale pour :
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 import asyncpg
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, update
+from sqlalchemy import select, and_, func, update, text
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.config import settings
@@ -343,7 +343,7 @@ class ServiceHistorisation:
             )
             session.add(alerte)
             await session.flush()  # Génère l'UUID avant le NOTIFY
-            await self._notifier_nouvelle_alerte(alerte.id_alerte)
+            await self._notifier_nouvelle_alerte(session, alerte.id_alerte)
 
     async def _verifier_seuil_dynamique(
         self,
@@ -397,12 +397,18 @@ class ServiceHistorisation:
             )
             session.add(alerte)
             await session.flush()  # Génère l'UUID avant le NOTIFY
-            await self._notifier_nouvelle_alerte(alerte.id_alerte)
+            await self._notifier_nouvelle_alerte(session, alerte.id_alerte)
 
     async def _boucle_recalcul_seuils_dynamiques(self) -> None:
         """
         Boucle de recalcul périodique des seuils dynamiques (toutes les heures).
         """
+        # Premier recalcul immédiat au démarrage
+        try:
+            await self._recalculer_seuils_dynamiques()
+        except Exception as e:
+            logger.error(f"Erreur lors du recalcul initial des seuils dynamiques: {e}")
+
         while self._running:
             try:
                 await self._recalculer_seuils_dynamiques()
@@ -446,6 +452,9 @@ class ServiceHistorisation:
                         )
                         # Continuer avec les autres points/métriques
 
+            # Commit explicite des UPDATEs de seuil dynamique
+            await session.commit()
+
     async def _recalculer_seuil_dynamique(
         self,
         session: AsyncSession,
@@ -474,6 +483,11 @@ class ServiceHistorisation:
             )
         )
         config = result.scalar_one_or_none()
+
+        logger.info(
+            f"Recherche seuil dynamique pour point {id_point_mesure}, metrique {metrique.value}: "
+            f"config trouvée = {config is not None}"
+        )
 
         if not config:
             if seuil_key not in self._seuils_manquants_logges:
@@ -690,23 +704,20 @@ class ServiceHistorisation:
         delay = 5 * (2 ** (self._listen_consecutive_errors - 2))
         return min(delay, self._max_listen_reconnect_delay)
 
-    async def _notifier_nouvelle_alerte(self, id_alerte) -> None:
+    async def _notifier_nouvelle_alerte(self, session: AsyncSession, id_alerte) -> None:
         """
-        Envoie une notification PostgreSQL sur le canal nouvelle_alerte
-        pour informer le service Java de dispatcher l'alerte.
+        Empile un NOTIFY dans la transaction en cours de la session.
+        PostgreSQL ne délivre ce NOTIFY qu'au commit de cette transaction,
+        jamais en cas de rollback — garantit l'atomicité alerte/notification.
 
         Args:
+            session: Session SQLAlchemy async en cours
             id_alerte: UUID de l'alerte créée
         """
-        try:
-            # Utiliser une connexion temporaire pour le NOTIFY
-            db_url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
-            conn = await asyncpg.connect(db_url)
-            try:
-                await conn.execute(f"NOTIFY nouvelle_alerte, '{id_alerte}'")
-                logger.info(f"NOTIFY envoyé pour alerte {id_alerte}")
-            finally:
-                await conn.close()
-        except Exception as e:
-            # On ne veut pas échouer la transaction si le NOTIFY échoue
-            logger.error(f"Erreur lors du NOTIFY nouvelle_alerte: {e}")
+        await session.execute(
+            text("SELECT pg_notify(:channel, :payload)"),
+            {
+                "channel": "nouvelle_alerte",
+                "payload": str(id_alerte),
+            },
+        )

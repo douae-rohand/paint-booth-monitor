@@ -44,6 +44,9 @@ public class SeuilAbsoluController {
             @RequestBody SeuilAbsoluCreateDTO dto,
             Authentication authentication) {
         Superviseur superviseur = (Superviseur) authentication.getPrincipal();
+        if (superviseur.getAdmin() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         UUID adminId = superviseur.getAdmin().getIdAdmin();
         return ResponseEntity.status(HttpStatus.CREATED).body(seuilAbsoluService.creer(dto, adminId));
     }

@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedSeuilsRouteImport } from './routes/_authenticated/seuils'
 import { Route as AuthenticatedPlcRouteImport } from './routes/_authenticated/plc'
 import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -34,6 +35,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSeuilsRoute = AuthenticatedSeuilsRouteImport.update({
+  id: '/seuils',
+  path: '/seuils',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedPlcRoute = AuthenticatedPlcRouteImport.update({
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/plc': typeof AuthenticatedPlcRoute
+  '/seuils': typeof AuthenticatedSeuilsRoute
 }
 export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/plc': typeof AuthenticatedPlcRoute
+  '/seuils': typeof AuthenticatedSeuilsRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -76,14 +84,28 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
   '/_authenticated/plc': typeof AuthenticatedPlcRoute
+  '/_authenticated/seuils': typeof AuthenticatedSeuilsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/change-password' | '/login' | '/dashboard' | '/history' | '/plc'
+    | '/'
+    | '/change-password'
+    | '/login'
+    | '/dashboard'
+    | '/history'
+    | '/plc'
+    | '/seuils'
   fileRoutesByTo: FileRoutesByTo
-  to: '/change-password' | '/login' | '/dashboard' | '/history' | '/plc' | '/'
+  to:
+    | '/change-password'
+    | '/login'
+    | '/dashboard'
+    | '/history'
+    | '/plc'
+    | '/seuils'
+    | '/'
   id:
     | '__root__'
     | '/_authenticated'
@@ -92,6 +114,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/history'
     | '/_authenticated/plc'
+    | '/_authenticated/seuils'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +154,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/seuils': {
+      id: '/_authenticated/seuils'
+      path: '/seuils'
+      fullPath: '/seuils'
+      preLoaderRoute: typeof AuthenticatedSeuilsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/plc': {
       id: '/_authenticated/plc'
       path: '/plc'
@@ -159,6 +189,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedPlcRoute: typeof AuthenticatedPlcRoute
+  AuthenticatedSeuilsRoute: typeof AuthenticatedSeuilsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -166,6 +197,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedPlcRoute: AuthenticatedPlcRoute,
+  AuthenticatedSeuilsRoute: AuthenticatedSeuilsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

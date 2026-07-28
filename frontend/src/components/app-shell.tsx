@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Cpu, History, LayoutDashboard, Factory, LogOut } from "lucide-react";
+import { Cpu, History, LayoutDashboard, Factory, LogOut, AlertTriangle } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
   const nav = isAdmin
-    ? [...baseNav, { to: "/plc", label: "PLC", icon: Cpu }]
+    ? [...baseNav, { to: "/plc", label: "PLC", icon: Cpu }, { to: "/seuils", label: "Seuils", icon: AlertTriangle }]
     : baseNav;
   const today = new Date().toLocaleDateString("fr-FR", {
     weekday: "long",

@@ -49,3 +49,6 @@ export const updateThreshold = async (id: string, data: Partial<Threshold>): Pro
   const response = await apiClient.put<Threshold>(`/api/thresholds/${id}`, data);
   return response.data;
 };
+
+// ── Re-export from seuils.ts ─────────────────────────────────────────────────
+export * from './seuils';
