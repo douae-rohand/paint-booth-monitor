@@ -35,7 +35,7 @@ public class Superviseur implements UserDetails {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(name = "mot_de_passe_hash", nullable = false, length = 255)
+    @Column(name = "mot_de_passe_hash", nullable = true, length = 255)
     private String motDePasseHash;
 
     @Column(length = 30)
@@ -55,6 +55,9 @@ public class Superviseur implements UserDetails {
 
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword = false;
+
+    @Column(name = "compte_active", nullable = false)
+    private boolean compteActive = false;
 
     @OneToOne(mappedBy = "superviseur", fetch = FetchType.LAZY)
     private Admin admin;
@@ -97,6 +100,9 @@ public class Superviseur implements UserDetails {
 
     public boolean isMustChangePassword() { return mustChangePassword; }
     public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
+
+    public boolean isCompteActive() { return compteActive; }
+    public void setCompteActive(boolean compteActive) { this.compteActive = compteActive; }
 
     public Admin getAdmin() { return admin; }
     public void setAdmin(Admin admin) { this.admin = admin; }

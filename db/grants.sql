@@ -24,6 +24,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON superviseur TO java_service;
 GRANT SELECT, INSERT, UPDATE, DELETE ON admin TO java_service;
 GRANT SELECT, INSERT, UPDATE, DELETE ON refresh_token TO java_service;
 GRANT SELECT, INSERT, UPDATE, DELETE ON token_reinitialisation TO java_service;
+GRANT SELECT, INSERT, UPDATE, DELETE ON token_activation TO java_service;
 GRANT SELECT, INSERT ON log_audit TO java_service;
 
 -- ============================================================

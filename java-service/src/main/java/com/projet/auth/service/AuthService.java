@@ -40,8 +40,16 @@ public class AuthService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return superviseurRepository.findByEmail(username)
+        Superviseur superviseur = superviseurRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Superviseur not found with email: " + username));
+
+        // Vérifier compteActive avant de permettre l'authentification
+        if (!superviseur.isCompteActive()) {
+            throw new com.projet.auth.exception.CompteNonActiveException(
+                "Compte non activé - vérifiez votre email pour le lien d'activation");
+        }
+
+        return superviseur;
     }
 
     public String generateToken(Superviseur superviseur) {
