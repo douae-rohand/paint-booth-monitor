@@ -22,6 +22,7 @@ Sert de référence pour la définition des rôles PostgreSQL (`app_java`, `app_
 | Admin | Java | Java | ✅ pas d'accès Python nécessaire |
 | RefreshToken | Java | Java | ✅ interne à Java |
 | TokenReinitialisation | Java | Java | ✅ interne à Java |
+| TokenActivation | Java | Java | ✅ interne à Java |
 | LogAudit | Java | Java | ✅ actions métier/accès uniquement |
 
 ## Domaine Data & Intelligence (propriété Python)

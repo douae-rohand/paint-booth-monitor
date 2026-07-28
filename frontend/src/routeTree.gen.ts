@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
+import { Route as ActivationRouteImport } from './routes/activation'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedSuperviseursRouteImport } from './routes/_authenticated/superviseurs'
 import { Route as AuthenticatedSeuilsRouteImport } from './routes/_authenticated/seuils'
 import { Route as AuthenticatedPlcRouteImport } from './routes/_authenticated/plc'
 import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
@@ -28,6 +30,11 @@ const ChangePasswordRoute = ChangePasswordRouteImport.update({
   path: '/change-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActivationRoute = ActivationRouteImport.update({
+  id: '/activation',
+  path: '/activation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -37,6 +44,12 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedSuperviseursRoute =
+  AuthenticatedSuperviseursRouteImport.update({
+    id: '/superviseurs',
+    path: '/superviseurs',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedSeuilsRoute = AuthenticatedSeuilsRouteImport.update({
   id: '/seuils',
   path: '/seuils',
@@ -60,66 +73,79 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/activation': typeof ActivationRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/plc': typeof AuthenticatedPlcRoute
   '/seuils': typeof AuthenticatedSeuilsRoute
+  '/superviseurs': typeof AuthenticatedSuperviseursRoute
 }
 export interface FileRoutesByTo {
+  '/activation': typeof ActivationRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/plc': typeof AuthenticatedPlcRoute
   '/seuils': typeof AuthenticatedSeuilsRoute
+  '/superviseurs': typeof AuthenticatedSuperviseursRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/activation': typeof ActivationRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
   '/_authenticated/plc': typeof AuthenticatedPlcRoute
   '/_authenticated/seuils': typeof AuthenticatedSeuilsRoute
+  '/_authenticated/superviseurs': typeof AuthenticatedSuperviseursRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activation'
     | '/change-password'
     | '/login'
     | '/dashboard'
     | '/history'
     | '/plc'
     | '/seuils'
+    | '/superviseurs'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/activation'
     | '/change-password'
     | '/login'
     | '/dashboard'
     | '/history'
     | '/plc'
     | '/seuils'
+    | '/superviseurs'
     | '/'
   id:
     | '__root__'
     | '/_authenticated'
+    | '/activation'
     | '/change-password'
     | '/login'
     | '/_authenticated/dashboard'
     | '/_authenticated/history'
     | '/_authenticated/plc'
     | '/_authenticated/seuils'
+    | '/_authenticated/superviseurs'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  ActivationRoute: typeof ActivationRoute
   ChangePasswordRoute: typeof ChangePasswordRoute
   LoginRoute: typeof LoginRoute
 }
@@ -140,6 +166,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChangePasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/activation': {
+      id: '/activation'
+      path: '/activation'
+      fullPath: '/activation'
+      preLoaderRoute: typeof ActivationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -152,6 +185,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/superviseurs': {
+      id: '/_authenticated/superviseurs'
+      path: '/superviseurs'
+      fullPath: '/superviseurs'
+      preLoaderRoute: typeof AuthenticatedSuperviseursRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/seuils': {
@@ -190,6 +230,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedPlcRoute: typeof AuthenticatedPlcRoute
   AuthenticatedSeuilsRoute: typeof AuthenticatedSeuilsRoute
+  AuthenticatedSuperviseursRoute: typeof AuthenticatedSuperviseursRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -198,6 +239,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedPlcRoute: AuthenticatedPlcRoute,
   AuthenticatedSeuilsRoute: AuthenticatedSeuilsRoute,
+  AuthenticatedSuperviseursRoute: AuthenticatedSuperviseursRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
@@ -207,6 +249,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  ActivationRoute: ActivationRoute,
   ChangePasswordRoute: ChangePasswordRoute,
   LoginRoute: LoginRoute,
 }

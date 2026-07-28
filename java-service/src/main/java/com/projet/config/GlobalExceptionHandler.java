@@ -1,6 +1,11 @@
 package com.projet.config;
 
+import com.projet.auth.exception.EmailDejaUtiliseException;
 import com.projet.auth.exception.InvalidTokenException;
+import com.projet.auth.exception.MotsDePasseNeCorrespondentPasException;
+import com.projet.auth.exception.SuperviseurNonTrouveException;
+import com.projet.auth.exception.TokenInvalideOuExpireException;
+import com.projet.auth.exception.CompteNonActiveException;
 import com.projet.config.exception.ConfigurationPLCNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +36,12 @@ public class GlobalExceptionHandler {
                 .body(new ApiErrorResponse(401, ex.getMessage()));
     }
 
+    @ExceptionHandler(CompteNonActiveException.class)
+    public ResponseEntity<ApiErrorResponse> handleCompteNonActive(CompteNonActiveException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiErrorResponse(401, ex.getMessage()));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -41,6 +52,30 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleInvalidToken(InvalidTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ApiErrorResponse(401, ex.getMessage()));
+    }
+
+    @ExceptionHandler(TokenInvalideOuExpireException.class)
+    public ResponseEntity<ApiErrorResponse> handleTokenInvalideOuExpire(TokenInvalideOuExpireException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiErrorResponse(400, ex.getMessage()));
+    }
+
+    @ExceptionHandler(MotsDePasseNeCorrespondentPasException.class)
+    public ResponseEntity<ApiErrorResponse> handleMotsDePasseNeCorrespondentPas(MotsDePasseNeCorrespondentPasException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiErrorResponse(400, ex.getMessage()));
+    }
+
+    @ExceptionHandler(EmailDejaUtiliseException.class)
+    public ResponseEntity<ApiErrorResponse> handleEmailDejaUtilise(EmailDejaUtiliseException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(409, ex.getMessage()));
+    }
+
+    @ExceptionHandler(SuperviseurNonTrouveException.class)
+    public ResponseEntity<ApiErrorResponse> handleSuperviseurNonTrouve(SuperviseurNonTrouveException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse(404, ex.getMessage()));
     }
 
     @ExceptionHandler(ConfigurationPLCNotFoundException.class)
