@@ -58,7 +58,7 @@ public class SeuilAbsoluService {
                 .ifPresent(ancien -> {
                     ancien.setActif(false);
                     ancien.setDateDesactivation(LocalDateTime.now());
-                    seuilAbsoluRepository.save(ancien);
+                    seuilAbsoluRepository.saveAndFlush(ancien);
                 });
 
         // Créer le nouveau seuil
@@ -117,9 +117,9 @@ public class SeuilAbsoluService {
 
     @Transactional(readOnly = true)
     public SeuilAbsoluResponseDTO getActive(Long pointMesureId, Metrique metrique) {
-        SeuilAbsolu seuil = seuilAbsoluRepository.findByPointMesureIdAndMetriqueAndActifTrue(pointMesureId, metrique)
-                .orElseThrow(() -> new BusinessException("SEUIL_ABSOLU_NON_TROUVE", HttpStatus.NOT_FOUND));
-        return mapToResponseDTO(seuil);
+        return seuilAbsoluRepository.findByPointMesureIdAndMetriqueAndActifTrue(pointMesureId, metrique)
+                .map(this::mapToResponseDTO)
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)

@@ -76,9 +76,9 @@ public class SeuilDynamiqueService {
 
     @Transactional(readOnly = true)
     public SeuilDynamiqueResponseDTO get(Long pointMesureId, Metrique metrique) {
-        SeuilDynamique seuil = seuilDynamiqueRepository.findByPointMesureIdAndMetrique(pointMesureId, metrique)
-                .orElseThrow(() -> new BusinessException("SEUIL_DYNAMIQUE_NON_TROUVE", HttpStatus.NOT_FOUND));
-        return mapToResponseDTO(seuil);
+        return seuilDynamiqueRepository.findByPointMesureIdAndMetrique(pointMesureId, metrique)
+                .map(this::mapToResponseDTO)
+                .orElse(null);
     }
 
     private SeuilDynamiqueResponseDTO mapToResponseDTO(SeuilDynamique seuil) {

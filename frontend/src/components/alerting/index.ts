@@ -1,3 +1,4 @@
 // components/alerting/index.ts – exports for alerting UI components
-// TODO: add AlertList, AlertBadge, ThresholdConfig etc.
-export {};
+export { PointMesureMetriqueSelector } from './PointMesureMetriqueSelector';
+export { SeuilAbsoluSection } from './SeuilAbsoluSection';
+export { SeuilDynamiqueSection } from './SeuilDynamiqueSection';

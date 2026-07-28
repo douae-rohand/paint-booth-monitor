@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { createWebSocketConnection } from '../api/ws';
+import { createWebSocketConnection } from '../api/ws/index';
 
 type WebSocketMessage = string | object;
 type MessageHandler = (data: unknown) => void;
