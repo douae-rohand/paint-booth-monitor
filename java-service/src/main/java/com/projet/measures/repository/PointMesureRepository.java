@@ -34,4 +34,9 @@ public interface PointMesureRepository extends JpaRepository<PointMesure, Long> 
      * @return Optional contenant le point de mesure s'il existe
      */
     Optional<PointMesure> findByNom(String nom);
+
+    /**
+     * Compte le nombre total de points de mesure actifs non supprimés.
+     */
+    long countByActifTrueAndDeletedAtIsNull();
 }

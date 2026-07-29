@@ -1,6 +1,6 @@
 package com.projet.measures.model;
 
-import com.projet.measures.model.enums.Metrique;
+import com.projet.alerting.model.enums.Metrique;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
