@@ -11,5 +11,6 @@ import java.util.UUID;
 @Repository
 public interface SeuilDynamiqueRepository extends JpaRepository<SeuilDynamique, UUID> {
     Optional<SeuilDynamique> findByPointMesureIdAndMetrique(Long pointMesureId, Metrique metrique);
+    Optional<SeuilDynamique> findByPointMesureIdAndMetriqueAndDeletedAtIsNull(Long pointMesureId, Metrique metrique);
     boolean existsByPointMesureIdAndMetrique(Long pointMesureId, Metrique metrique);
 }
