@@ -6,41 +6,56 @@ import com.projet.alerting.repository.SeuilAbsoluRepository;
 import com.projet.measures.dto.MesureHistoriqueDTO;
 import com.projet.measures.dto.MesureHistoriqueResponseDTO;
 import com.projet.measures.exception.MetriqueNonApplicableAuPointException;
-import com.projet.measures.model.Mesure;
 import com.projet.measures.model.PointMesure;
+import com.projet.measures.model.enums.Granularite;
 import com.projet.measures.repository.MesureRepository;
 import com.projet.measures.repository.PointMesureRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- * Service pour l'historique des mesures.
+ * Service pour l'historique des mesures avec agrégation par granularité.
  * Module: measures
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MesureHistoriqueService {
 
     private final MesureRepository mesureRepository;
     private final PointMesureRepository pointMesureRepository;
     private final SeuilAbsoluRepository seuilAbsoluRepository;
+    private final EntityManager entityManager;
 
     /**
      * Récupère l'historique des mesures pour un point de mesure et une métrique sur une période.
      *
      * @param idPointMesure ID du point de mesure
      * @param metrique Métrique demandée
+     * @param periode Période prédéfinie (24h, 7j, 30j, 6mois, 1an, personnalise)
      * @param dateDebut Date de début de la période
      * @param dateFin Date de fin de la période
-     * @return MesureHistoriqueResponseDTO avec les points et le seuil absolu actif
+     * @param granulariteDemandee Granularité demandée (optionnel, uniquement utilisé pour periode=7j)
+     * @return MesureHistoriqueResponseDTO avec les points agrégés et le seuil absolu actif
      * @throws MetriqueNonApplicableAuPointException si la métrique n'est pas applicable au point
      */
-    public MesureHistoriqueResponseDTO getHistorique(Long idPointMesure, Metrique metrique, LocalDateTime dateDebut, LocalDateTime dateFin) {
+    public MesureHistoriqueResponseDTO getHistorique(
+            Long idPointMesure,
+            Metrique metrique,
+            String periode,
+            LocalDateTime dateDebut,
+            LocalDateTime dateFin,
+            Granularite granulariteDemandee) {
+
         // Valider que le PointMesure existe
         PointMesure pointMesure = pointMesureRepository.findById(idPointMesure)
                 .orElseThrow(() -> new IllegalArgumentException("Point de mesure non trouvé avec ID: " + idPointMesure));
@@ -48,14 +63,12 @@ public class MesureHistoriqueService {
         // Valider que la métrique est applicable au point
         validerMetriqueApplicable(pointMesure, metrique);
 
-        // Récupérer les mesures plausibles dans la période
-        List<Mesure> mesures = mesureRepository.findByIdPointMesureAndMetriqueAndCreatedAtBetweenAndPlausibleTrue(
-                idPointMesure, metrique, dateDebut, dateFin);
+        // Déterminer la granularité à appliquer
+        Granularite granulariteAppliquee = determinerGranularite(periode, dateDebut, dateFin, granulariteDemandee);
 
-        // Convertir en DTOs
-        List<MesureHistoriqueDTO> points = mesures.stream()
-                .map(m -> new MesureHistoriqueDTO(m.getCreatedAt(), m.getValeur()))
-                .collect(Collectors.toList());
+        // Exécuter la requête d'agrégation selon la granularité
+        List<MesureHistoriqueDTO> points = executerAggregation(
+                idPointMesure, metrique, dateDebut, dateFin, granulariteAppliquee);
 
         // Récupérer le seuil absolu actif pour ce point et cette métrique
         SeuilAbsolu seuilAbsolu = seuilAbsoluRepository
@@ -70,7 +83,158 @@ public class MesureHistoriqueService {
             );
         }
 
-        return new MesureHistoriqueResponseDTO(points, seuilAbsoluDTO);
+        return new MesureHistoriqueResponseDTO(points, seuilAbsoluDTO, granulariteAppliquee);
+    }
+
+    /**
+     * Détermine la granularité à appliquer selon la période et les règles métier.
+     *
+     * @param periode Période prédéfinie
+     * @param dateDebut Date de début
+     * @param dateFin Date de fin
+     * @param granulariteDemandee Granularité demandée (optionnel)
+     * @return Granularité à appliquer
+     */
+    private Granularite determinerGranularite(
+            String periode,
+            LocalDateTime dateDebut,
+            LocalDateTime dateFin,
+            Granularite granulariteDemandee) {
+
+        switch (periode) {
+            case "24h":
+                return Granularite.TRENTE_MIN;
+
+            case "7j":
+                // Utiliser la granularité demandée si fournie, sinon HORAIRE par défaut
+                if (granulariteDemandee != null) {
+                    if (granulariteDemandee == Granularite.HORAIRE || granulariteDemandee == Granularite.JOURNALIERE) {
+                        return granulariteDemandee;
+                    }
+                    log.warn("Granularité demandée invalide pour période 7j: {}, utilisation de HORAIRE par défaut", granulariteDemandee);
+                }
+                return Granularite.HORAIRE;
+
+            case "30j":
+                return Granularite.JOURNALIERE;
+
+            case "6mois":
+            case "1an":
+                return Granularite.MENSUELLE;
+
+            case "personnalise":
+                // Déduire automatiquement selon l'écart
+                long jours = ChronoUnit.DAYS.between(dateDebut, dateFin);
+                if (jours <= 1) {
+                    return Granularite.TRENTE_MIN;
+                } else if (jours <= 7) {
+                    return Granularite.HORAIRE;
+                } else if (jours <= 31) {
+                    return Granularite.JOURNALIERE;
+                } else {
+                    return Granularite.MENSUELLE;
+                }
+
+            default:
+                log.warn("Période inconnue: {}, utilisation de JOURNALIERE par défaut", periode);
+                return Granularite.JOURNALIERE;
+        }
+    }
+
+    /**
+     * Exécute la requête d'agrégation selon la granularité.
+     *
+     * @param idPointMesure ID du point de mesure
+     * @param metrique Métrique
+     * @param dateDebut Date de début
+     * @param dateFin Date de fin
+     * @param granularite Granularité à appliquer
+     * @return Liste des points agrégés
+     */
+    @SuppressWarnings("unchecked")
+    private List<MesureHistoriqueDTO> executerAggregation(
+            Long idPointMesure,
+            Metrique metrique,
+            LocalDateTime dateDebut,
+            LocalDateTime dateFin,
+            Granularite granularite) {
+
+        String sql;
+        switch (granularite) {
+            case TRENTE_MIN:
+                sql = """
+                    SELECT
+                      date_trunc('hour', created_at) + (INTERVAL '30 min' * FLOOR(EXTRACT(MINUTE FROM created_at) / 30)) AS bucket,
+                      AVG(valeur) AS valeur_moy
+                    FROM mesure
+                    WHERE id_point_mesure = :idPointMesure
+                      AND metrique = :metrique
+                      AND plausible = true
+                      AND created_at BETWEEN :dateDebut AND :dateFin
+                    GROUP BY bucket
+                    ORDER BY bucket
+                    """;
+                break;
+
+            case HORAIRE:
+                sql = """
+                    SELECT date_trunc('hour', created_at) AS bucket, AVG(valeur) AS valeur_moy
+                    FROM mesure
+                    WHERE id_point_mesure = :idPointMesure
+                      AND metrique = :metrique
+                      AND plausible = true
+                      AND created_at BETWEEN :dateDebut AND :dateFin
+                    GROUP BY bucket
+                    ORDER BY bucket
+                    """;
+                break;
+
+            case JOURNALIERE:
+                sql = """
+                    SELECT date_trunc('day', created_at) AS bucket, AVG(valeur) AS valeur_moy
+                    FROM mesure
+                    WHERE id_point_mesure = :idPointMesure
+                      AND metrique = :metrique
+                      AND plausible = true
+                      AND created_at BETWEEN :dateDebut AND :dateFin
+                    GROUP BY bucket
+                    ORDER BY bucket
+                    """;
+                break;
+
+            case MENSUELLE:
+                sql = """
+                    SELECT date_trunc('month', created_at) AS bucket, AVG(valeur) AS valeur_moy
+                    FROM mesure
+                    WHERE id_point_mesure = :idPointMesure
+                      AND metrique = :metrique
+                      AND plausible = true
+                      AND created_at BETWEEN :dateDebut AND :dateFin
+                    GROUP BY bucket
+                    ORDER BY bucket
+                    """;
+                break;
+
+            default:
+                throw new IllegalArgumentException("Granularité non supportée: " + granularite);
+        }
+
+        Query query = entityManager.createNativeQuery(sql);
+        query.setParameter("idPointMesure", idPointMesure);
+        query.setParameter("metrique", metrique.name());
+        query.setParameter("dateDebut", dateDebut);
+        query.setParameter("dateFin", dateFin);
+
+        List<Object[]> results = query.getResultList();
+        List<MesureHistoriqueDTO> points = new ArrayList<>();
+
+        for (Object[] row : results) {
+            LocalDateTime bucket = (LocalDateTime) row[0];
+            BigDecimal valeurMoy = (BigDecimal) row[1];
+            points.add(new MesureHistoriqueDTO(bucket, valeurMoy));
+        }
+
+        return points;
     }
 
     /**

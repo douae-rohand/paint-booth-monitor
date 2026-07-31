@@ -5,7 +5,7 @@ export const createWebSocketConnection = (
   onMessage: WebSocketMessageHandler,
   onError?: WebSocketErrorHandler
 ): WebSocket => {
-  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws';
+  const wsUrl = import.meta.env.VITE_WS_URL || 'http://localhost:8081/ws';
 
   // The backend sets the JWT in an HttpOnly cookie. For security and to avoid
   // exposing tokens to JavaScript, do not read token from localStorage. Rely on

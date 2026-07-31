@@ -8,17 +8,87 @@ interface PointMesureMetriqueSelectorProps {
   selectedMetrique: Metrique | null;
   onPointMesureChange: (point: PointMesure | null) => void;
   onMetriqueChange: (metrique: Metrique | null) => void;
+  variant?: 'card' | 'inline';
 }
-
-const METRIQUES: Metrique[] = ['TEMPERATURE', 'HUMIDITE'];
 
 export function PointMesureMetriqueSelector({
   selectedPointMesure,
   selectedMetrique,
   onPointMesureChange,
   onMetriqueChange,
+  variant = 'card',
 }: PointMesureMetriqueSelectorProps) {
   const { data: pointMesures, loading: loadingPoints } = usePointMesures();
+
+  // Filter metrics based on selected point type (ETUVE only has TEMPERATURE)
+  const availableMetriques: Metrique[] = selectedPointMesure?.typeEmplacement === 'ETUVE'
+    ? ['TEMPERATURE']
+    : ['TEMPERATURE', 'HUMIDITE'];
+
+  if (variant === 'inline') {
+    return (
+      <div className="neu-inset flex gap-1 rounded-2xl p-1 items-center h-9">
+        {/* Point de mesure selector */}
+        <Select
+          value={selectedPointMesure?.id.toString() ?? ''}
+          onValueChange={(value) => {
+            const point = pointMesures.find((p) => p.id.toString() === value);
+            onPointMesureChange(point ?? null);
+            if (point?.typeEmplacement === 'ETUVE' && selectedMetrique === 'HUMIDITE') {
+              onMetriqueChange('TEMPERATURE');
+            }
+          }}
+          disabled={loadingPoints}
+        >
+          <SelectTrigger className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 h-full text-xs font-semibold border-0 shadow-none bg-transparent hover:text-foreground text-muted-foreground focus:ring-0 focus:ring-offset-0 pointer-events-auto cursor-pointer">
+            {loadingPoints ? (
+              <div className="flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Chargement...</span>
+              </div>
+            ) : (
+              <span className="max-w-[120px] truncate">
+                {selectedPointMesure ? selectedPointMesure.nom : 'Sélectionner un point'}
+              </span>
+            )}
+          </SelectTrigger>
+          <SelectContent>
+            {pointMesures.map((point) => (
+              <SelectItem key={point.id} value={point.id.toString()}>
+                {point.nom}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <span className="self-center text-muted-foreground/30 text-xs select-none">|</span>
+
+        {/* Métrique selector */}
+        <Select
+          value={selectedMetrique ?? ''}
+          onValueChange={(value) => onMetriqueChange(value as Metrique)}
+          disabled={!selectedPointMesure}
+        >
+          <SelectTrigger className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 h-full text-xs font-semibold border-0 shadow-none bg-transparent hover:text-foreground text-muted-foreground focus:ring-0 focus:ring-offset-0 pointer-events-auto cursor-pointer">
+            <span className="max-w-[100px] truncate">
+              {selectedMetrique
+                ? selectedMetrique === 'TEMPERATURE'
+                  ? 'Température'
+                  : 'Humidité'
+                : 'Métrique'}
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            {availableMetriques.map((metrique) => (
+              <SelectItem key={metrique} value={metrique}>
+                {metrique === 'TEMPERATURE' ? 'Température' : 'Humidité'}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  }
 
   return (
     <div className="neu-card p-6">
@@ -33,6 +103,9 @@ export function PointMesureMetriqueSelector({
             onValueChange={(value) => {
               const point = pointMesures.find((p) => p.id.toString() === value);
               onPointMesureChange(point ?? null);
+              if (point?.typeEmplacement === 'ETUVE' && selectedMetrique === 'HUMIDITE') {
+                onMetriqueChange('TEMPERATURE');
+              }
             }}
             disabled={loadingPoints}
           >
@@ -70,7 +143,7 @@ export function PointMesureMetriqueSelector({
               <SelectValue placeholder="Sélectionner" />
             </SelectTrigger>
             <SelectContent>
-              {METRIQUES.map((metrique) => (
+              {availableMetriques.map((metrique) => (
                 <SelectItem key={metrique} value={metrique}>
                   {metrique === 'TEMPERATURE' ? 'Température' : 'Humidité'}
                 </SelectItem>

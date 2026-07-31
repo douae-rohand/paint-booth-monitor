@@ -9,7 +9,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * DTO pour un point de données d'historique de mesure.
+ * DTO pour un point de données d'historique de mesure agrégé.
+ * L'horodatage est tronqué/arrondi selon la granularité d'agrégation.
+ * La valeur est la moyenne agrégée des mesures dans le bucket temporel.
  */
 @Data
 @NoArgsConstructor
@@ -17,13 +19,14 @@ import java.time.LocalDateTime;
 public class MesureHistoriqueDTO {
 
     /**
-     * Timestamp de la mesure.
+     * Horodatage tronqué/arrondi selon la granularité d'agrégation.
+     * Représente le début du bucket temporel.
      */
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime timestamp;
+    private LocalDateTime horodatage;
 
     /**
-     * Valeur de la mesure.
+     * Valeur moyenne agrégée des mesures dans le bucket temporel.
      */
     private BigDecimal valeur;
 }

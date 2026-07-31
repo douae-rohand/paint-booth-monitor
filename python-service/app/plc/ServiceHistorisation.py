@@ -268,6 +268,9 @@ class ServiceHistorisation:
         )
         session.add(mesure)
         await session.flush()  # Pour obtenir l'UUID
+        
+        # Notifier la nouvelle mesure pour le WebSocket temps réel
+        await self._notifier_nouvelle_mesure(session, mesure.id_mesure)
 
         # Si non plausible, pas de vérification de seuils
         if not plausible:
@@ -719,5 +722,23 @@ class ServiceHistorisation:
             {
                 "channel": "nouvelle_alerte",
                 "payload": str(id_alerte),
+            },
+        )
+
+    async def _notifier_nouvelle_mesure(self, session: AsyncSession, id_mesure) -> None:
+        """
+        Empile un NOTIFY dans la transaction en cours de la session pour une nouvelle mesure.
+        PostgreSQL ne délivre ce NOTIFY qu'au commit de cette transaction,
+        jamais en cas de rollback — garantit l'atomicité mesure/notification.
+
+        Args:
+            session: Session SQLAlchemy async en cours
+            id_mesure: UUID de la mesure créée
+        """
+        await session.execute(
+            text("SELECT pg_notify(:channel, :payload)"),
+            {
+                "channel": "nouvelle_mesure",
+                "payload": str(id_mesure),
             },
         )
