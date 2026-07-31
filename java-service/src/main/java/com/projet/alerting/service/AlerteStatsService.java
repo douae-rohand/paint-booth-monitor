@@ -139,7 +139,7 @@ public class AlerteStatsService {
 
         for (int day = 1; day <= daysInMonth; day++) {
             long count = countByDay.getOrDefault(day, 0L);
-            result.add(new HeatmapJourDTO(day, count));
+            result.add(new HeatmapJourDTO(day, LocalDate.of(annee, mois, day), count));
         }
 
         return result;
@@ -150,21 +150,29 @@ public class AlerteStatsService {
      *
      * @param date Date du jour (format YYYY-MM-DD)
      * @param idPointMesure ID du point de mesure (optionnel)
+     * @param metrique Métrique (optionnel)
      * @return Détail des alertes du jour
      */
-    public DetailJourAlertesDTO getDetailJour(LocalDate date, Long idPointMesure) {
+    public DetailJourAlertesDTO getDetailJour(LocalDate date, Long idPointMesure, Metrique metrique) {
         LocalDateTime dateDebut = date.atStartOfDay();
         LocalDateTime dateFin = date.atTime(23, 59, 59);
 
         // Récupérer les alertes SEUIL_ABSOLU du jour
         List<Alerte> alertes = alerteRepository.findByTypeAlerteAndCreatedAtBetween(TypeAlerte.SEUIL_ABSOLU, dateDebut, dateFin);
 
-        // Filtrer par point de mesure si fourni
-        if (idPointMesure != null) {
+        // Filtrer par point de mesure et/ou métrique si fournis
+        if (idPointMesure != null || metrique != null) {
             alertes = alertes.stream()
                     .filter(a -> {
                         Mesure mesure = mesureRepository.findById(a.getIdMesure()).orElse(null);
-                        return mesure != null && mesure.getPointMesure().getId().equals(idPointMesure);
+                        if (mesure == null) return false;
+                        if (idPointMesure != null && !mesure.getPointMesure().getId().equals(idPointMesure)) {
+                            return false;
+                        }
+                        if (metrique != null && !a.getMetrique().equals(metrique)) {
+                            return false;
+                        }
+                        return true;
                     })
                     .collect(Collectors.toList());
         }

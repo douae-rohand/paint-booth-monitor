@@ -12,6 +12,7 @@ import { type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { AppShell } from "@/components/app-shell";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { WebSocketProvider } from "@/contexts/WebSocketContext";
 
 function NotFoundComponent() {
   return (
@@ -104,13 +105,15 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {isLoginPage ? (
-          <Outlet />
-        ) : (
-          <AppShell>
+        <WebSocketProvider>
+          {isLoginPage ? (
             <Outlet />
-          </AppShell>
-        )}
+          ) : (
+            <AppShell>
+              <Outlet />
+            </AppShell>
+          )}
+        </WebSocketProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

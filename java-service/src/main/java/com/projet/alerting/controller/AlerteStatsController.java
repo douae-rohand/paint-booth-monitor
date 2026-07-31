@@ -80,21 +80,23 @@ public class AlerteStatsController {
      *
      * @param date Date du jour (format YYYY-MM-DD)
      * @param pointMesureId ID du point de mesure (optionnel)
+     * @param metrique Métrique (optionnel)
      * @return Détail des alertes du jour
      */
     @GetMapping("/heatmap/jour")
     public ResponseEntity<DetailJourAlertesDTO> getDetailJour(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) Long pointMesureId) {
+            @RequestParam(required = false) Long pointMesureId,
+            @RequestParam(required = false) Metrique metrique) {
 
-        DetailJourAlertesDTO result = alerteStatsService.getDetailJour(date, pointMesureId);
+        DetailJourAlertesDTO result = alerteStatsService.getDetailJour(date, pointMesureId, metrique);
         return ResponseEntity.ok(result);
     }
 
     /**
      * Calcule la date de début selon la période prédéfinie.
      *
-     * @param periode Période ("24h", "7j", "30j", "3mois", "6mois", "1an")
+     * @param periode Période ("24h", "7j", "30j", "6mois", "1an")
      * @param now Date actuelle
      * @return Date de début calculée
      */
@@ -103,7 +105,6 @@ public class AlerteStatsController {
             case "24h" -> now.minusHours(24);
             case "7j" -> now.minusDays(7);
             case "30j" -> now.minusDays(30);
-            case "3mois" -> now.minusMonths(3);
             case "6mois" -> now.minusMonths(6);
             case "1an" -> now.minusYears(1);
             default -> now.minusHours(24);  // Défaut : 24h

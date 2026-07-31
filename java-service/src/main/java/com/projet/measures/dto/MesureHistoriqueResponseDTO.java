@@ -1,5 +1,6 @@
 package com.projet.measures.dto;
 
+import com.projet.measures.model.enums.Granularite;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,7 +17,7 @@ import java.util.List;
 public class MesureHistoriqueResponseDTO {
 
     /**
-     * Liste des points de données d'historique, triés par timestamp croissant.
+     * Liste des points de données d'historique, triés par horodatage croissant.
      */
     private List<MesureHistoriqueDTO> points;
 
@@ -25,6 +26,12 @@ public class MesureHistoriqueResponseDTO {
      * Null si aucun seuil n'est configuré.
      */
     private SeuilAbsoluDTO seuilAbsolu;
+
+    /**
+     * Granularité appliquée pour l'agrégation des données.
+     * Permet au frontend de connaître le format de l'axe des abscisses.
+     */
+    private Granularite granulariteAppliquee;
 
     /**
      * DTO imbriqué pour le seuil absolu.

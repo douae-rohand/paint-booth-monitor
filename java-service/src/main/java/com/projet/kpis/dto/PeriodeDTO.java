@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class PeriodeDTO {
 
     /**
-     * Période prédéfinie : "24h", "7j", "30j", "3mois", "6mois", "1an", "personnalise"
+     * Période prédéfinie : "24h", "7j", "30j", "6mois", "1an", "personnalise"
      * Si "personnalise", les champs dateDebut et dateFin doivent être fournis.
      */
     private String periode;

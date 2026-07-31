@@ -52,4 +52,10 @@ public interface MesureRepository extends JpaRepository<Mesure, UUID> {
         @Param("dateDebut") LocalDateTime dateDebut,
         @Param("dateFin") LocalDateTime dateFin
     );
+
+    /**
+     * Récupère une mesure avec son point de mesure chargé (JOIN FETCH) pour éviter LazyInitializationException.
+     */
+    @Query("SELECT m FROM Mesure m JOIN FETCH m.pointMesure WHERE m.id = :id")
+    Mesure findByIdWithPointMesure(@Param("id") UUID id);
 }

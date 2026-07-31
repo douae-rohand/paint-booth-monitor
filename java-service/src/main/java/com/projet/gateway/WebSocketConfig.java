@@ -1,18 +1,44 @@
 package com.projet.gateway;
 
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.config.annotation.EnableWebSocket;
-import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
-import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
+import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
+import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+/**
+ * Configuration WebSocket avec STOMP et SockJS fallback.
+ * 
+ * Topics disponibles :
+ * - /topic/statut-temps-reel : statut temps réel de tous les points de mesure
+ * - /topic/mesures/{idPointMesure}/{metrique} : dernières valeurs pour le graphe en direct
+ * - /topic/kpis : recalcul des KPI globaux
+ * - /topic/alertes : nouvelles alertes
+ */
 @Configuration
-@EnableWebSocket
-public class WebSocketConfig implements WebSocketConfigurer {
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final WebSocketHandshakeInterceptor handshakeInterceptor;
+
+    public WebSocketConfig(WebSocketHandshakeInterceptor handshakeInterceptor) {
+        this.handshakeInterceptor = handshakeInterceptor;
+    }
 
     @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        // Endpoint WebSocket expose par Java
-        registry.addHandler(new org.springframework.web.socket.handler.TextWebSocketHandler(), "/ws")
-                .setAllowedOrigins("*");
+    public void configureMessageBroker(MessageBrokerRegistry config) {
+        // Active un broker simple en mémoire pour les messages
+        config.enableSimpleBroker("/topic");
+        // Préfixe pour les messages envoyés par le client vers le serveur
+        config.setApplicationDestinationPrefixes("/app");
+    }
+
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Endpoint STOMP avec fallback SockJS et interceptor d'authentification
+        registry.addEndpoint("/ws")
+                .setAllowedOriginPatterns("*")
+                .addInterceptors(handshakeInterceptor)
+                .withSockJS();
     }
 }

@@ -25,4 +25,7 @@ export default defineConfig({
       "@": path.resolve(process.cwd(), "./src"),
     },
   },
+  define: {
+    global: 'globalThis',
+  },
 });

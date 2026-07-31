@@ -4,11 +4,15 @@ import com.projet.auth.model.Superviseur;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +34,8 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
+    private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -37,8 +43,19 @@ public class JwtUtil {
     @Value("${jwt.expiration:900000}")
     private long expiration;
 
+    @PostConstruct
+    public void init() {
+        if (secret == null || secret.isEmpty()) {
+            logger.error("JWT_SECRET non configuré ou vide !");
+        } else {
+            logger.info("JWT_SECRET chargé - Longueur: {} caractères (attendu: 86 pour base64 64 octets)", secret.length());
+        }
+    }
+
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        // Décoder le secret base64 pour cohérence avec WebSocketHandshakeInterceptor
+        byte[] keyBytes = Base64.getDecoder().decode(secret.getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     /**
