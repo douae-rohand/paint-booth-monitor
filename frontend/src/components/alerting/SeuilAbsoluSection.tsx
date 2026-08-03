@@ -463,9 +463,18 @@ export function SeuilAbsoluSection({ pointMesure, metrique, onRefresh }: SeuilAb
                                 <Wifi className="h-5 w-5 text-primary" />
                                 Confirmer l'activation
                               </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Ceci activera le seuil absolu pour{' '}
-                                <span className="font-semibold text-foreground">{seuil.nomPointMesure}</span> ({seuil.metrique}).
+                              <AlertDialogDescription asChild>
+                                <div className="text-sm text-muted-foreground space-y-2">
+                                  <p>
+                                    Ceci activera le seuil absolu pour{' '}
+                                    <span className="font-semibold text-foreground">{seuil.nomPointMesure}</span> ({seuil.metrique}).
+                                  </p>
+                                  {active && (
+                                    <p className="font-medium text-[color:var(--warning)]">
+                                      ⚠ Le seuil actif actuel sera automatiquement désactivé.
+                                    </p>
+                                  )}
+                                </div>
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

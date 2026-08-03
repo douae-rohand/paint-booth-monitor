@@ -1,51 +1,105 @@
 /**
  * useMeasures – real-time and historical temperature/humidity data
  */
-import { useState, useEffect } from 'react';
-import { getLatestMeasures, getHistoryMeasures } from '../api/measures/index';
-import type { HistoryParams, HistoryResponse } from '../api/measures/index';
-import type { Measure } from '../types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { getHistoriqueCabine, getHistoriqueEtuve } from '../api/measures/index';
+import type { HistoriqueCabineParams, HistoriqueEtuveParams, Page, MesureCabineDTO, MesureEtuveDTO } from '../api/measures/index';
 
-export const useLatestMeasures = () => {
-  const [data, setData] = useState<Measure | null>(null);
+/**
+ * Hook pour l'historique des mesures de la cabine.
+ * Gère la pagination et les filtres (date, seulement dépassements).
+ */
+export const useHistoriqueCabine = (params: HistoriqueCabineParams) => {
+  const [data, setData] = useState<Page<MesureCabineDTO> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const paramsRef = useRef(params);
 
+  // Mettre à jour la ref quand params change
   useEffect(() => {
-    const fetch = async () => {
-      try {
-        const result = await getLatestMeasures();
-        setData(result);
-      } catch (e) {
-        setError(e as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
+    paramsRef.current = params;
+  }, [params]);
+
+  const fetch = useCallback(async () => {
+    // Ne pas faire l'appel si size est 0 (indique que l'onglet n'est pas actif)
+    if (paramsRef.current.size === 0) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await getHistoriqueCabine(paramsRef.current);
+      setData(result);
+    } catch (e) {
+      setError(e as Error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { data, loading, error };
+  // Re-fetch automatique à chaque changement de page, taille ou filtre.
+  // On dépend des valeurs primitives de params, pas de l'objet entier (évite
+  // les boucles infinies dues à la re-création de l'objet à chaque render).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetch();
+  }, [
+    params.page,
+    params.size,
+    params.dateDebut,
+    params.dateFin,
+    params.seulementDepassements,
+  ]);
+
+  return { data, loading, error, refetch: fetch };
 };
 
-export const useHistoryMeasures = (params?: HistoryParams) => {
-  const [data, setData] = useState<HistoryResponse | null>(null);
+/**
+ * Hook pour l'historique des mesures de l'étuve.
+ * Gère la pagination et les filtres (zone, date, seulement dépassements).
+ */
+export const useHistoriqueEtuve = (params: HistoriqueEtuveParams) => {
+  const [data, setData] = useState<Page<MesureEtuveDTO> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const paramsRef = useRef(params);
 
+  // Mettre à jour la ref quand params change
   useEffect(() => {
-    const fetch = async () => {
-      try {
-        const result = await getHistoryMeasures(params);
-        setData(result);
-      } catch (e) {
-        setError(e as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
-  }, [JSON.stringify(params)]);
+    paramsRef.current = params;
+  }, [params]);
 
-  return { data, loading, error };
+  const fetch = useCallback(async () => {
+    // Ne pas faire l'appel si size est 0 (indique que l'onglet n'est pas actif)
+    if (paramsRef.current.size === 0) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await getHistoriqueEtuve(paramsRef.current);
+      setData(result);
+    } catch (e) {
+      setError(e as Error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Re-fetch automatique à chaque changement de page, taille, zone ou filtre.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetch();
+  }, [
+    params.page,
+    params.size,
+    params.dateDebut,
+    params.dateFin,
+    params.seulementDepassements,
+    params.zone,
+  ]);
+
+  return { data, loading, error, refetch: fetch };
 };

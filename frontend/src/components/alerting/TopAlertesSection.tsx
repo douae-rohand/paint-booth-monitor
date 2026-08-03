@@ -153,7 +153,7 @@ export function TopAlertesSection({ modeFiltre = 'independant', filtreGlobal }: 
                     </p>
                   </div>
                   <span className="text-sm font-bold text-[color:var(--danger)]">
-                    {a.nombreDepassements} dép.
+                    {a.nombreDepassements} {a.nombreDepassements <= 1 ? 'alerte' : 'alertes'}
                   </span>
                 </div>
                 <div className="neu-inset mt-2 h-2 overflow-hidden rounded-full">

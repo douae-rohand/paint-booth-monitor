@@ -163,10 +163,10 @@ export function HeatmapSection({ modeFiltre = 'independant', filtreGlobal }: Hea
       {/* Header */}
       <div>
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold">Heatmap des dépassements</h3>
+          <h3 className="text-base font-bold">Heatmap des alertes</h3>
           {connected && <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />}
         </div>
-        <p className="text-xs text-muted-foreground">Consulter et filtrer les anomalies mensuelles</p>
+        <p className="text-xs text-muted-foreground">Consulter et filtrer les alertes mensuelles</p>
       </div>
 
       {/* Controls */}
@@ -347,8 +347,8 @@ export function HeatmapSection({ modeFiltre = 'independant', filtreGlobal }: Hea
                 <p className="text-sm font-semibold text-foreground">
                   {selectedDayDetail.nombreTotalDepassements}{' '}
                   {selectedDayDetail.nombreTotalDepassements <= 1
-                    ? 'dépassement'
-                    : 'dépassements'}
+                    ? 'alerte'
+                    : 'alertes'}
                 </p>
                 <div className="space-y-2">
                   {selectedDayDetail.details.map((det, idx) => (
@@ -361,7 +361,7 @@ export function HeatmapSection({ modeFiltre = 'independant', filtreGlobal }: Hea
                           {det.nomPointMesure} -{' '}
                           {det.metrique === 'TEMPERATURE' ? 'Température' : 'Humidité'}
                         </span>
-                        <span className="text-[color:var(--danger)] font-bold">{det.nombreDepassements} dép.</span>
+                        <span className="text-[color:var(--danger)] font-bold">{det.nombreDepassements} {det.nombreDepassements <= 1 ? 'alerte' : 'alertes'}</span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
                         <span>Valeur max: {det.valeurMaxAtteinte}</span>

@@ -81,17 +81,15 @@ public class SeuilAbsoluService {
         SeuilAbsolu seuil = seuilAbsoluRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("SEUIL_ABSOLU_NON_TROUVE", HttpStatus.NOT_FOUND));
 
-        if (!seuil.isActif()) {
-            // Désactiver l'ancien seuil actif pour le même point de mesure et métrique
-            seuilAbsoluRepository.findByPointMesureIdAndMetriqueAndActifTrue(seuil.getPointMesure().getId(), seuil.getMetrique())
-                    .ifPresent(ancien -> {
-                        if (!ancien.getIdSeuilAbsolu().equals(id)) {
-                            ancien.setActif(false);
-                            ancien.setDateDesactivation(LocalDateTime.now());
-                            seuilAbsoluRepository.save(ancien);
-                        }
-                    });
+        if (seuil.getPointMesure() == null) {
+            throw new BusinessException("SEUIL_SANS_POINT_MESURE", HttpStatus.BAD_REQUEST);
+        }
 
+        if (!seuil.isActif()) {
+            // D'abord désactiver tous les seuils actifs pour le même point de mesure et métrique (requête directe pour éviter la contrainte unique)
+            seuilAbsoluRepository.deactivateAllActiveForPointMesureAndMetrique(seuil.getPointMesure().getId(), seuil.getMetrique());
+
+            // Ensuite activer le nouveau seuil
             seuil.setActif(true);
             seuil.setDateActivation(LocalDateTime.now());
             seuil.setDateDesactivation(null);

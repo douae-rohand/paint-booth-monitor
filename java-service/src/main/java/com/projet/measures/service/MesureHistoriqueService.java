@@ -3,6 +3,8 @@ package com.projet.measures.service;
 import com.projet.alerting.model.SeuilAbsolu;
 import com.projet.alerting.model.enums.Metrique;
 import com.projet.alerting.repository.SeuilAbsoluRepository;
+import com.projet.measures.dto.MesureCabineDTO;
+import com.projet.measures.dto.MesureEtuveDTO;
 import com.projet.measures.dto.MesureHistoriqueDTO;
 import com.projet.measures.dto.MesureHistoriqueResponseDTO;
 import com.projet.measures.exception.MetriqueNonApplicableAuPointException;
@@ -12,6 +14,9 @@ import com.projet.measures.repository.MesureRepository;
 import com.projet.measures.repository.PointMesureRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import jakarta.persistence.EntityManager;
@@ -21,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Service pour l'historique des mesures avec agrégation par granularité.
@@ -255,5 +261,153 @@ public class MesureHistoriqueService {
                             metrique, pointMesure.getNom(), typeEmplacement)
             );
         }
+    }
+
+    /**
+     * Récupère l'historique des mesures de la cabine avec pivot température/humidité par cycle.
+     *
+     * @param dateDebut Date de début de la période (optionnel)
+     * @param dateFin Date de fin de la période (optionnel)
+     * @param seulementDepassements Si true, ne retourne que les lignes avec au moins un dépassement
+     * @param pageable Pagination
+     * @return Page de MesureCabineDTO
+     */
+    public Page<MesureCabineDTO> getHistoriqueCabine(
+            LocalDateTime dateDebut,
+            LocalDateTime dateFin,
+            boolean seulementDepassements,
+            Pageable pageable) {
+
+        // Résoudre l'ID du PointMesure cabine (type_emplacement = 'CABINE', actif = true)
+        List<PointMesure> cabines = pointMesureRepository.findByTypeEmplacement("CABINE");
+        if (cabines.isEmpty()) {
+            log.warn("Aucun point de mesure de type CABINE trouvé");
+            return new PageImpl<>(List.of(), pageable, 0);
+        }
+
+        // Prendre le premier point de mesure cabine actif
+        PointMesure cabine = cabines.stream()
+                .filter(PointMesure::isActif)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Aucun point de mesure cabine actif trouvé"));
+
+        log.info("Récupération historique cabine: idPointMesure={}, dateDebut={}, dateFin={}, seulementDepassements={}",
+                cabine.getId(), dateDebut, dateFin, seulementDepassements);
+
+        // Exécuter la requête de comptage
+        long total = mesureRepository.countHistoriqueCabine(
+                cabine.getId(), dateDebut, dateFin, seulementDepassements);
+
+        // Exécuter la requête de données
+        int limit = pageable.getPageSize();
+        int offset = (int) pageable.getOffset();
+        List<Object[]> results = mesureRepository.findHistoriqueCabine(
+                cabine.getId(), dateDebut, dateFin, seulementDepassements, limit, offset);
+
+        // Mapper les résultats vers MesureCabineDTO
+        List<MesureCabineDTO> dtos = new ArrayList<>();
+        for (Object[] row : results) {
+            LocalDateTime timestampCycle = (LocalDateTime) row[0];
+            String caisseId = (String) row[1];
+            BigDecimal temperature = row[2] != null ? (BigDecimal) row[2] : null;
+            BigDecimal humidite = row[3] != null ? (BigDecimal) row[3] : null;
+            boolean depassementTemperature = row[4] != null && ((Boolean) row[4]);
+            boolean depassementHumidite = row[5] != null && ((Boolean) row[5]);
+
+            dtos.add(new MesureCabineDTO(
+                    timestampCycle,
+                    caisseId,
+                    temperature,
+                    humidite,
+                    depassementTemperature,
+                    depassementHumidite
+            ));
+        }
+
+        log.info("Historique cabine récupéré: {} enregistrements sur {} total", dtos.size(), total);
+        return new PageImpl<>(dtos, pageable, total);
+    }
+
+    /**
+     * Récupère l'historique des mesures de l'étuve par zone.
+     *
+     * @param zone Nom de la zone (optionnel, "ZONE_1".."ZONE_5" ou null pour toutes zones)
+     * @param dateDebut Date de début de la période (optionnel)
+     * @param dateFin Date de fin de la période (optionnel)
+     * @param seulementDepassements Si true, ne retourne que les lignes avec dépassement
+     * @param pageable Pagination
+     * @return Page de MesureEtuveDTO
+     */
+    public Page<MesureEtuveDTO> getHistoriqueEtuve(
+            String zone,
+            LocalDateTime dateDebut,
+            LocalDateTime dateFin,
+            boolean seulementDepassements,
+            Pageable pageable) {
+
+        // Résoudre les IDs des points de mesure étuve
+        List<Long> idsZones = null;
+        if (zone != null && !zone.trim().isEmpty()) {
+            // Zone spécifique demandée
+            PointMesure pointMesure = pointMesureRepository.findByNom(zone)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Point de mesure non trouvé pour la zone: " + zone));
+
+            if (!"ETUVE".equalsIgnoreCase(pointMesure.getTypeEmplacement())) {
+                throw new IllegalArgumentException(
+                        "Le point de mesure " + zone + " n'est pas de type ETUVE");
+            }
+
+            idsZones = List.of(pointMesure.getId());
+            log.info("Récupération historique étuve zone spécifique: zone={}, idPointMesure={}", zone, pointMesure.getId());
+        } else {
+            // Toutes les zones étuve
+            List<PointMesure> etuves = pointMesureRepository.findByTypeEmplacement("ETUVE");
+            idsZones = etuves.stream()
+                    .filter(PointMesure::isActif)
+                    .map(PointMesure::getId)
+                    .toList();
+
+            if (idsZones.isEmpty()) {
+                log.warn("Aucun point de mesure de type ETUVE actif trouvé");
+                return new PageImpl<>(List.of(), pageable, 0);
+            }
+
+            log.info("Récupération historique étuve toutes zones: {} zones", idsZones.size());
+        }
+
+        log.info("Récupération historique étuve: dateDebut={}, dateFin={}, seulementDepassements={}",
+                dateDebut, dateFin, seulementDepassements);
+
+        // Exécuter la requête de comptage
+        long total = mesureRepository.countHistoriqueEtuve(
+                idsZones != null ? idsZones.toArray(new Long[0]) : null, dateDebut, dateFin, seulementDepassements);
+
+        // Exécuter la requête de données
+        int limit = pageable.getPageSize();
+        int offset = (int) pageable.getOffset();
+        List<Object[]> results = mesureRepository.findHistoriqueEtuve(
+                idsZones != null ? idsZones.toArray(new Long[0]) : null, dateDebut, dateFin, seulementDepassements, limit, offset);
+
+        // Mapper les résultats vers MesureEtuveDTO
+        List<MesureEtuveDTO> dtos = new ArrayList<>();
+        for (Object[] row : results) {
+            UUID idMesure = (UUID) row[0];
+            LocalDateTime dateMesure = (LocalDateTime) row[1];
+            String zoneNom = (String) row[2];
+            BigDecimal temperature = row[3] != null ? (BigDecimal) row[3] : null;
+            boolean depassement = row[4] != null && ((Boolean) row[4]);
+
+            dtos.add(new MesureEtuveDTO(
+                    idMesure,
+                    dateMesure,
+                    zoneNom,
+                    temperature,
+                    depassement
+            ));
+        }
+
+        log.info("Historique étuve récupéré: {} enregistrements sur {} total", dtos.size(), total);
+        return new PageImpl<>(dtos, pageable, total);
     }
 }

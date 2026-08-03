@@ -92,6 +92,93 @@ export interface HistoriqueParams {
   granularite?: Granularite;
 }
 
+// ── Types Historique Cabine/Étuve (pagination) ───────────────────────────────────
+
+/**
+ * Miroir de MesureCabineDTO.java.
+ * `timestampCycle` : format "yyyy-MM-dd'T'HH:mm:ss" (LocalDateTime Java).
+ * `caisseId` : null pour l'instant (champ réservé).
+ * `temperature` / `humidite` : BigDecimal Java → number | null.
+ */
+export interface MesureCabineDTO {
+  /** Format ISO-8601 */
+  timestampCycle: string;
+  caisseId: string | null;
+  temperature: number | null;
+  humidite: number | null;
+  depassementTemperature: boolean;
+  depassementHumidite: boolean;
+}
+
+/**
+ * Miroir de MesureEtuveDTO.java.
+ * `idMesure` : UUID Java → string.
+ * `dateMesure` : format "yyyy-MM-dd'T'HH:mm:ss" (LocalDateTime Java).
+ * `zone` : nom du PointMesure (ex "Zone 1").
+ * `temperature` : BigDecimal Java → number | null.
+ */
+export interface MesureEtuveDTO {
+  idMesure: string;
+  /** Format ISO-8601 */
+  dateMesure: string;
+  zone: string;
+  temperature: number | null;
+  depassement: boolean;
+}
+
+/**
+ * Wrapper de pagination Spring Data (Page<T>).
+ * Utilisé pour les réponses paginées des endpoints /cabine et /etuve.
+ */
+export interface Page<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+}
+
+export interface HistoriqueCabineParams {
+  /** Format ISO-8601 (optionnel) */
+  dateDebut?: string;
+  /** Format ISO-8601 (optionnel) */
+  dateFin?: string;
+  seulementDepassements?: boolean;
+  page?: number;
+  size?: number;
+}
+
+export interface HistoriqueEtuveParams {
+  zone?: string;
+  /** Format ISO-8601 (optionnel) */
+  dateDebut?: string;
+  /** Format ISO-8601 (optionnel) */
+  dateFin?: string;
+  seulementDepassements?: boolean;
+  page?: number;
+  size?: number;
+}
+
+// ── Types Export ───────────────────────────────────────────────────────────────
+
+export interface ExportParams {
+  format: 'csv' | 'pdf';
+  /** Format ISO-8601 (optionnel) */
+  dateDebut?: string;
+  /** Format ISO-8601 (optionnel) */
+  dateFin?: string;
+  seulementDepassements?: boolean;
+}
+
+export interface ExportCabineParams extends ExportParams {}
+
+export interface ExportEtuveParams extends ExportParams {
+  zone?: string;
+}
+
 // ── Types PointMesure (liste) ─────────────────────────────────────────────────
 
 /**
@@ -133,11 +220,71 @@ export const getMesuresHistorique = async (params: HistoriqueParams): Promise<Me
 };
 
 /**
+ * GET /api/mesures/historique/cabine
+ * Récupère l'historique des mesures de la cabine avec pivot température/humidité par cycle.
+ * Les paramètres dateDebut/dateFin sont optionnels (sans valeur par défaut).
+ */
+export const getHistoriqueCabine = async (params: HistoriqueCabineParams): Promise<Page<MesureCabineDTO>> => {
+  // Filtrer les paramètres undefined/null pour ne pas les envoyer dans l'URL
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(([_, value]) => value !== undefined && value !== null)
+  );
+  const response = await apiClient.get<Page<MesureCabineDTO>>('/api/mesures/historique/cabine', { params: filteredParams });
+  return response.data;
+};
+
+/**
+ * GET /api/mesures/historique/etuve
+ * Récupère l'historique des mesures de l'étuve par zone.
+ * Les paramètres zone/dateDebut/dateFin sont optionnels (sans valeur par défaut).
+ */
+export const getHistoriqueEtuve = async (params: HistoriqueEtuveParams): Promise<Page<MesureEtuveDTO>> => {
+  // Filtrer les paramètres undefined/null pour ne pas les envoyer dans l'URL
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(([_, value]) => value !== undefined && value !== null)
+  );
+  const response = await apiClient.get<Page<MesureEtuveDTO>>('/api/mesures/historique/etuve', { params: filteredParams });
+  return response.data;
+};
+
+/**
  * GET /api/point-mesures
  * Retourne tous les points de mesure actifs avec leurs métriques applicables.
  * Note : endpoint listé sous /api/point-mesures (pas /api/point-mesure/{id}).
  */
 export const getPointMesures = async (): Promise<PointMesureResponse[]> => {
   const response = await apiClient.get<PointMesureResponse[]>('/api/point-mesures');
+  return response.data;
+};
+
+/**
+ * GET /api/mesures/historique/cabine/export
+ * Exporte l'historique des mesures de la cabine en CSV ou PDF.
+ * Retourne un Blob pour le téléchargement.
+ */
+export const exportHistoriqueCabine = async (params: ExportCabineParams): Promise<Blob> => {
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(([_, value]) => value !== undefined && value !== null)
+  );
+  const response = await apiClient.get('/api/mesures/historique/cabine/export', {
+    params: filteredParams,
+    responseType: 'blob'
+  });
+  return response.data;
+};
+
+/**
+ * GET /api/mesures/historique/etuve/export
+ * Exporte l'historique des mesures de l'étuve en CSV ou PDF.
+ * Retourne un Blob pour le téléchargement.
+ */
+export const exportHistoriqueEtuve = async (params: ExportEtuveParams): Promise<Blob> => {
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(([_, value]) => value !== undefined && value !== null)
+  );
+  const response = await apiClient.get('/api/mesures/historique/etuve/export', {
+    params: filteredParams,
+    responseType: 'blob'
+  });
   return response.data;
 };
