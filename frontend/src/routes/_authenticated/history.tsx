@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { HistoryTabContent } from "@/components/measures/HistoryTabContent";
-import { generateCabineHistory, generateEtuveHistory } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/history")({
@@ -16,9 +15,6 @@ export const Route = createFileRoute("/_authenticated/history")({
 
 function HistoryPage() {
   const [activeTab, setActiveTab] = useState<"CABINE" | "ETUVE">("CABINE");
-
-  const cabineData = useMemo(() => generateCabineHistory(180), []);
-  const etuveData = useMemo(() => generateEtuveHistory(180), []);
 
   return (
     <div className="h-full flex flex-col">
@@ -60,12 +56,12 @@ function HistoryPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="h-full animate-in fade-in slide-in-from-bottom-2 duration-300">
             {activeTab === "CABINE" ? (
-              <HistoryTabContent data={cabineData} typePoint="CABINE" showZoneFilter={false} />
+              <HistoryTabContent typePoint="CABINE" showZoneFilter={false} />
             ) : (
-              <HistoryTabContent data={etuveData} typePoint="ETUVE" showZoneFilter={true} />
+              <HistoryTabContent typePoint="ETUVE" showZoneFilter={true} />
             )}
           </div>
         </div>

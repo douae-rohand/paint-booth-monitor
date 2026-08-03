@@ -7,7 +7,10 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
-import type { Zone } from "@/lib/mock-data";
+
+export type Zone = "Zone 1" | "Zone 2" | "Zone 3" | "Zone 4" | "Zone 5";
+
+export const ZONES: Zone[] = ["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5"];
 
 export interface HistoryFiltersProps {
   searchQuery: string;
@@ -105,7 +108,7 @@ export function HistoryFiltersBar({
                   : "Choisir une date"
                 : dateRange?.from
                   ? dateRange.to
-                    ? `${format(dateRange.from, "d MMM", { locale: fr })} — ${format(dateRange.to, "d MMM yyyy", { locale: fr })}`
+                    ? `${format(dateRange.from, "d MMM", { locale: fr })} - ${format(dateRange.to, "d MMM yyyy", { locale: fr })}`
                     : format(dateRange.from, "d MMM yyyy", { locale: fr })
                   : "Choisir une plage"}
             </button>

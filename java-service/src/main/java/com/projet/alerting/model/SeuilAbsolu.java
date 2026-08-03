@@ -28,7 +28,7 @@ public class SeuilAbsolu {
     @JoinColumn(name = "id_admin", nullable = false)
     private Admin admin;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_point_mesure", nullable = false)
     private PointMesure pointMesure;
 

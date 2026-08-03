@@ -171,6 +171,9 @@ class ServiceHistorisation:
 
         while self._running:
             try:
+                # Générer un timestamp unique pour tout le cycle de lecture
+                timestamp_cycle = datetime.now()
+
                 # Lecture synchrone via executor (Snap7 est bloquant)
                 buffer = await loop.run_in_executor(
                     None,
@@ -178,7 +181,7 @@ class ServiceHistorisation:
                 )
 
                 # Extraction des mesures (retourne une liste)
-                mesures = extraire_mesures(buffer)
+                mesures = extraire_mesures(buffer, timestamp_cycle)
 
                 # Écriture en base avec calcul des seuils pour chaque mesure
                 async with self.session_factory() as session:
@@ -241,12 +244,13 @@ class ServiceHistorisation:
 
         Args:
             session: Session SQLAlchemy async
-            mesure_data: Dictionnaire contenant nom_point_mesure, metrique, valeur, plausible
+            mesure_data: Dictionnaire contenant nom_point_mesure, metrique, valeur, plausible, timestamp
         """
         nom_point_mesure = mesure_data["nom_point_mesure"]
         metrique_str = mesure_data["metrique"]
         valeur = mesure_data["valeur"]
         plausible = mesure_data["plausible"]
+        timestamp = mesure_data["timestamp"]
 
         # Résoudre l'id_point_mesure depuis le cache
         id_point_mesure = self._point_mesure_cache.get(nom_point_mesure)
@@ -257,8 +261,7 @@ class ServiceHistorisation:
         # Convertir la métrique string en enum
         metrique = Metrique(metrique_str)
 
-        # Insertion de la mesure
-        timestamp = datetime.now()
+        # Insertion de la mesure avec le timestamp du cycle (pas datetime.now())
         mesure = Mesure(
             id_point_mesure=id_point_mesure,
             metrique=metrique,
@@ -337,7 +340,24 @@ class ServiceHistorisation:
                 self._seuils_manquants_logges.add(seuil_key)
             return
 
-        if valeur < seuil.valeur_min or valeur > seuil.valeur_max:
+        # Recherche d'une alerte ACTIVE existante de type SEUIL_ABSOLU pour ce point de mesure + métrique
+        result_alerte_active = await session.execute(
+            select(Alerte)
+            .join(Mesure, Alerte.id_mesure == Mesure.id_mesure)
+            .where(
+                and_(
+                    Mesure.id_point_mesure == id_point_mesure,
+                    Alerte.metrique == metrique,
+                    Alerte.type_alerte == TypeAlerte.SEUIL_ABSOLU,
+                    Alerte.statut == "ACTIVE",
+                )
+            )
+        )
+        alerte_active = result_alerte_active.scalar_one_or_none()
+
+        hors_bornes = valeur < seuil.valeur_min or valeur > seuil.valeur_max
+
+        if hors_bornes and alerte_active is None:
             alerte = Alerte(
                 id_mesure=id_mesure,
                 metrique=metrique,
@@ -347,6 +367,13 @@ class ServiceHistorisation:
             session.add(alerte)
             await session.flush()  # Génère l'UUID avant le NOTIFY
             await self._notifier_nouvelle_alerte(session, alerte.id_alerte)
+        elif hors_bornes and alerte_active is not None:
+            pass  # incident déjà tracké, ne rien faire
+        elif not hors_bornes and alerte_active is not None:
+            alerte_active.statut = "RESOLUE"
+            alerte_active.updated_at = datetime.now()
+            session.add(alerte_active)
+            await session.flush()
 
     async def _verifier_seuil_dynamique(
         self,
@@ -391,7 +418,24 @@ class ServiceHistorisation:
                 self._seuils_manquants_logges.add(seuil_key)
             return
 
-        if valeur < seuil.valeur_min_calculee or valeur > seuil.valeur_max_calculee:
+        # Recherche d'une alerte ACTIVE existante de type SEUIL_DYNAMIQUE pour ce point de mesure + métrique
+        result_alerte_active = await session.execute(
+            select(Alerte)
+            .join(Mesure, Alerte.id_mesure == Mesure.id_mesure)
+            .where(
+                and_(
+                    Mesure.id_point_mesure == id_point_mesure,
+                    Alerte.metrique == metrique,
+                    Alerte.type_alerte == TypeAlerte.SEUIL_DYNAMIQUE,
+                    Alerte.statut == "ACTIVE",
+                )
+            )
+        )
+        alerte_active = result_alerte_active.scalar_one_or_none()
+
+        hors_bornes = valeur < seuil.valeur_min_calculee or valeur > seuil.valeur_max_calculee
+
+        if hors_bornes and alerte_active is None:
             alerte = Alerte(
                 id_mesure=id_mesure,
                 metrique=metrique,
@@ -401,6 +445,13 @@ class ServiceHistorisation:
             session.add(alerte)
             await session.flush()  # Génère l'UUID avant le NOTIFY
             await self._notifier_nouvelle_alerte(session, alerte.id_alerte)
+        elif hors_bornes and alerte_active is not None:
+            pass  # incident déjà tracké, ne rien faire
+        elif not hors_bornes and alerte_active is not None:
+            alerte_active.statut = "RESOLUE"
+            alerte_active.updated_at = datetime.now()
+            session.add(alerte_active)
+            await session.flush()
 
     async def _boucle_recalcul_seuils_dynamiques(self) -> None:
         """

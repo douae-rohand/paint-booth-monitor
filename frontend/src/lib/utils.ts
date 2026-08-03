@@ -55,3 +55,14 @@ export function formatAxeGraphique(horodatage: string, granularite: 'TRENTE_MIN'
       return format(date, 'dd/MM HH:mm', { locale: fr });
   }
 }
+
+/**
+ * Formate un horodatage (string ou Date) en heure avec secondes et millisecondes (HH:mm:ss.SSS).
+ * 
+ * @param horodatage - Horodatage à formater
+ * @returns Horodatage formaté au format HH:mm:ss.SSS
+ */
+export function formatHeureAvecMillisecondes(horodatage: string | Date): string {
+  const date = typeof horodatage === 'string' ? new Date(horodatage) : horodatage;
+  return format(date, 'HH:mm:ss.SSS');
+}
