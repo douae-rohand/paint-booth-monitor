@@ -165,7 +165,7 @@ export interface HistoriqueEtuveParams {
 // ── Types Export ───────────────────────────────────────────────────────────────
 
 export interface ExportParams {
-  format: 'csv' | 'pdf';
+  format: 'csv' | 'pdf' | 'xlsx';
   /** Format ISO-8601 (optionnel) */
   dateDebut?: string;
   /** Format ISO-8601 (optionnel) */
@@ -259,7 +259,7 @@ export const getPointMesures = async (): Promise<PointMesureResponse[]> => {
 
 /**
  * GET /api/mesures/historique/cabine/export
- * Exporte l'historique des mesures de la cabine en CSV ou PDF.
+ * Exporte l'historique des mesures de la cabine en CSV, PDF ou Excel.
  * Retourne un Blob pour le téléchargement.
  */
 export const exportHistoriqueCabine = async (params: ExportCabineParams): Promise<Blob> => {
@@ -275,7 +275,7 @@ export const exportHistoriqueCabine = async (params: ExportCabineParams): Promis
 
 /**
  * GET /api/mesures/historique/etuve/export
- * Exporte l'historique des mesures de l'étuve en CSV ou PDF.
+ * Exporte l'historique des mesures de l'étuve en CSV, PDF ou Excel.
  * Retourne un Blob pour le téléchargement.
  */
 export const exportHistoriqueEtuve = async (params: ExportEtuveParams): Promise<Blob> => {

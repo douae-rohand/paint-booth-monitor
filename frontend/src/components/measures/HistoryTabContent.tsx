@@ -225,19 +225,17 @@ export function HistoryTabContent({ typePoint, showZoneFilter = false }: History
         </div>
       )}
 
-      <div className="flex flex-col">
-        <div className="min-h-[400px] overflow-hidden rounded-2xl border border-border">
-          <HistoryTable
-            data={data}
-            typePoint={typePoint}
-            loading={loading}
-            error={error}
-            pageSize={pageSize}
-            currentPage={page}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-          />
-        </div>
+      <div className="flex flex-col min-h-[450px]">
+        <HistoryTable
+          data={data}
+          typePoint={typePoint}
+          loading={loading}
+          error={error}
+          pageSize={pageSize}
+          currentPage={page}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </div>
 
       <ExportDialog

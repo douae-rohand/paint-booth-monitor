@@ -9,6 +9,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -330,6 +334,197 @@ public class MesureExportService {
         } catch (Exception e) {
             log.error("Erreur lors de l'export PDF étuve", e);
             throw new RuntimeException("Erreur lors de l'export PDF", e);
+        }
+    }
+
+    /**
+     * Exporte l'historique des mesures de la cabine en Excel (.xlsx).
+     *
+     * @param dateDebut Date de début de la période (optionnel)
+     * @param dateFin Date de fin de la période (optionnel)
+     * @param seulementDepassements Si true, ne retourne que les lignes avec au moins un dépassement
+     * @return ByteArray contenant le fichier Excel
+     */
+    public byte[] exportCabineExcel(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+        List<MesureCabineDTO> mesures = getAllHistoriqueCabine(dateDebut, dateFin, seulementDepassements);
+        
+        if (mesures.isEmpty()) {
+            log.info("Aucune mesure cabine à exporter");
+            return new byte[0];
+        }
+
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+             XSSFWorkbook workbook = new XSSFWorkbook()) {
+            
+            Sheet sheet = workbook.createSheet("Mesures Cabine");
+            
+            // Style pour l'en-tête
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setFontHeightInPoints((short) 11);
+            
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.ORANGE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            headerStyle.setBorderTop(BorderStyle.THIN);
+            headerStyle.setBorderLeft(BorderStyle.THIN);
+            headerStyle.setBorderRight(BorderStyle.THIN);
+            
+            // Style pour les données
+            CellStyle dataStyle = workbook.createCellStyle();
+            dataStyle.setBorderBottom(BorderStyle.THIN);
+            dataStyle.setBorderTop(BorderStyle.THIN);
+            dataStyle.setBorderLeft(BorderStyle.THIN);
+            dataStyle.setBorderRight(BorderStyle.THIN);
+            
+            // Créer l'en-tête
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"Date", "Heure", "Température", "Humidité"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            
+            // Remplir les données
+            for (int i = 0; i < mesures.size(); i++) {
+                MesureCabineDTO mesure = mesures.get(i);
+                Row row = sheet.createRow(i + 1);
+                
+                Cell dateCell = row.createCell(0);
+                dateCell.setCellValue(mesure.timestampCycle().format(DATE_FORMATTER));
+                dateCell.setCellStyle(dataStyle);
+                
+                Cell heureCell = row.createCell(1);
+                heureCell.setCellValue(mesure.timestampCycle().format(TIME_FORMATTER));
+                heureCell.setCellStyle(dataStyle);
+                
+                Cell tempCell = row.createCell(2);
+                tempCell.setCellValue(formatDecimal(mesure.temperature()));
+                tempCell.setCellStyle(dataStyle);
+                
+                Cell humidCell = row.createCell(3);
+                humidCell.setCellValue(formatDecimal(mesure.humidite()));
+                humidCell.setCellStyle(dataStyle);
+            }
+            
+            // Ajuster automatiquement les colonnes
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            
+            // Activer les filtres
+            sheet.setAutoFilter(new CellRangeAddress(0, mesures.size(), 0, headers.length - 1));
+            
+            // Gel de la première ligne
+            sheet.createFreezePane(0, 1);
+            
+            workbook.write(outputStream);
+            log.info("Export Excel cabine terminé: {} enregistrements", mesures.size());
+            return outputStream.toByteArray();
+            
+        } catch (IOException e) {
+            log.error("Erreur lors de l'export Excel cabine", e);
+            throw new RuntimeException("Erreur lors de l'export Excel", e);
+        }
+    }
+
+    /**
+     * Exporte l'historique des mesures de l'étuve en Excel (.xlsx).
+     *
+     * @param zone Nom de la zone (optionnel)
+     * @param dateDebut Date de début de la période (optionnel)
+     * @param dateFin Date de fin de la période (optionnel)
+     * @param seulementDepassements Si true, ne retourne que les lignes avec dépassement
+     * @return ByteArray contenant le fichier Excel
+     */
+    public byte[] exportEtuveExcel(String zone, LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+        List<MesureEtuveDTO> mesures = getAllHistoriqueEtuve(zone, dateDebut, dateFin, seulementDepassements);
+        
+        if (mesures.isEmpty()) {
+            log.info("Aucune mesure étuve à exporter");
+            return new byte[0];
+        }
+
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+             XSSFWorkbook workbook = new XSSFWorkbook()) {
+            
+            Sheet sheet = workbook.createSheet("Mesures Étuve");
+            
+            // Style pour l'en-tête
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setFontHeightInPoints((short) 11);
+            
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.ORANGE.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            headerStyle.setBorderTop(BorderStyle.THIN);
+            headerStyle.setBorderLeft(BorderStyle.THIN);
+            headerStyle.setBorderRight(BorderStyle.THIN);
+            
+            // Style pour les données
+            CellStyle dataStyle = workbook.createCellStyle();
+            dataStyle.setBorderBottom(BorderStyle.THIN);
+            dataStyle.setBorderTop(BorderStyle.THIN);
+            dataStyle.setBorderLeft(BorderStyle.THIN);
+            dataStyle.setBorderRight(BorderStyle.THIN);
+            
+            // Créer l'en-tête
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"Date", "Heure", "Zone", "Température"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            
+            // Remplir les données
+            for (int i = 0; i < mesures.size(); i++) {
+                MesureEtuveDTO mesure = mesures.get(i);
+                Row row = sheet.createRow(i + 1);
+                
+                Cell dateCell = row.createCell(0);
+                dateCell.setCellValue(mesure.dateMesure().format(DATE_FORMATTER));
+                dateCell.setCellStyle(dataStyle);
+                
+                Cell heureCell = row.createCell(1);
+                heureCell.setCellValue(mesure.dateMesure().format(TIME_FORMATTER));
+                heureCell.setCellStyle(dataStyle);
+                
+                Cell zoneCell = row.createCell(2);
+                zoneCell.setCellValue(mesure.zone());
+                zoneCell.setCellStyle(dataStyle);
+                
+                Cell tempCell = row.createCell(3);
+                tempCell.setCellValue(formatDecimal(mesure.temperature()));
+                tempCell.setCellStyle(dataStyle);
+            }
+            
+            // Ajuster automatiquement les colonnes
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            
+            // Activer les filtres
+            sheet.setAutoFilter(new CellRangeAddress(0, mesures.size(), 0, headers.length - 1));
+            
+            // Gel de la première ligne
+            sheet.createFreezePane(0, 1);
+            
+            workbook.write(outputStream);
+            log.info("Export Excel étuve terminé: {} enregistrements", mesures.size());
+            return outputStream.toByteArray();
+            
+        } catch (IOException e) {
+            log.error("Erreur lors de l'export Excel étuve", e);
+            throw new RuntimeException("Erreur lors de l'export Excel", e);
         }
     }
 
