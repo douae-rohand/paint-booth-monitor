@@ -1,18 +1,42 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Cpu, History, LayoutDashboard, Factory, LogOut, AlertTriangle, Users } from "lucide-react";
-import type { ReactNode } from "react";
+import { Cpu, History, LayoutDashboard, Factory, LogOut, AlertTriangle, Users, Bell } from "lucide-react";
+import { type ReactNode, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { getAlertesActives } from "@/api/alerting";
+import { useDashboardWebSocket } from "@/hooks/useDashboardWebSocket";
 
 const baseNav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/history", label: "Historique", icon: History },
+  { to: "/alertes", label: "Alertes", icon: Bell },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
+  const [activeAlertsCount, setActiveAlertsCount] = useState<number>(0);
+  const { subscribeToAlertes } = useDashboardWebSocket();
+
+  useEffect(() => {
+    const fetchAlertesActives = async () => {
+      try {
+        const data = await getAlertesActives();
+        setActiveAlertsCount(data.length);
+      } catch (e) {
+        console.error("Erreur fetch count alertes actives:", e);
+      }
+    };
+
+    fetchAlertesActives();
+
+    const unsubscribe = subscribeToAlertes(() => {
+      fetchAlertesActives();
+    });
+
+    return unsubscribe;
+  }, [subscribeToAlertes]);
   const nav = isAdmin
     ? [...baseNav, { to: "/plc", label: "PLC", icon: Cpu }, { to: "/seuils", label: "Seuils", icon: AlertTriangle }, { to: "/superviseurs", label: "Superviseurs", icon: Users }]
     : baseNav;
@@ -46,13 +70,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 to={item.to}
                 title={item.label}
                 className={
-                  "flex h-11 w-11 items-center justify-center rounded-2xl transition-all " +
+                  "flex h-11 w-11 items-center justify-center rounded-2xl transition-all relative " +
                   (active
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary")
                 }
               >
                 <Icon className="h-5 w-5" />
+                {item.to === "/alertes" && activeAlertsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 border-2 border-white dark:border-background animate-in zoom-in duration-200">
+                    {activeAlertsCount}
+                  </span>
+                )}
               </Link>
             );
           })}

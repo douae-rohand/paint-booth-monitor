@@ -10,6 +10,7 @@ com\projet\alerting\dto\SeuilAbsoluResponseDTO.class
 com\projet\alerting\dto\DetailJourAlertesDTO$SeuilConfigureDTO.class
 com\projet\auth\dto\AuthResponse.class
 com\projet\reports\model\RapportPDF.class
+com\projet\alerting\controller\AlerteConsultationController.class
 com\projet\alerting\model\enums\Severite.class
 com\projet\notifications\dto\NotificationDto.class
 com\projet\audit\model\enums\ActionAudit.class
@@ -37,6 +38,7 @@ com\projet\alerting\exception\BusinessException.class
 com\projet\auth\controller\ActivationController.class
 com\projet\auth\controller\AuthController.class
 com\projet\auth\exception\MotsDePasseNeCorrespondentPasException.class
+com\projet\alerting\dto\AlerteDTO.class
 com\projet\auth\AdminSeeder.class
 com\projet\measures\repository\MesureRepository.class
 com\projet\notifications\service\StubEmailService.class
@@ -53,6 +55,7 @@ com\projet\measures\controller\StatutTempsReelController.class
 com\projet\measures\dto\PointMesureStatutDTO.class
 com\projet\notifications\model\EnvoiNotification.class
 com\projet\reports\model\enums\TypeRapport.class
+com\projet\alerting\service\AlerteConsultationService.class
 com\projet\notifications\model\ConfigurationDestinataire.class
 com\projet\auth\service\JwtFilter.class
 com\projet\notifications\model\enums\TypeEvenement.class

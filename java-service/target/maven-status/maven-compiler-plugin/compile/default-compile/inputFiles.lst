@@ -1,6 +1,8 @@
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\controller\AlerteConsultationController.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\controller\AlerteStatsController.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\controller\SeuilAbsoluController.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\controller\SeuilDynamiqueController.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\dto\AlerteDTO.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\dto\DetailJourAlertesDTO.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\dto\HeatmapJourDTO.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\dto\SeuilAbsoluCreateDTO.java
@@ -20,6 +22,7 @@ C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\model\
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\repository\AlerteRepository.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\repository\SeuilAbsoluRepository.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\repository\SeuilDynamiqueRepository.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\service\AlerteConsultationService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\service\AlerteStatsService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\service\SeuilAbsoluService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\service\SeuilDynamiqueService.java

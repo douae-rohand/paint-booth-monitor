@@ -121,11 +121,11 @@ public class MesureHistoriqueController {
     /**
      * Exporte l'historique des mesures de la cabine.
      *
-     * @param format Format d'export (csv ou pdf)
+     * @param format Format d'export (csv, pdf ou xlsx)
      * @param dateDebut Date de début de la période (optionnel)
      * @param dateFin Date de fin de la période (optionnel)
      * @param seulementDepassements Si true, ne retourne que les lignes avec au moins un dépassement
-     * @return Fichier CSV ou PDF
+     * @return Fichier CSV, PDF ou Excel
      */
     @GetMapping("/cabine/export")
     public ResponseEntity<byte[]> exportHistoriqueCabine(
@@ -149,8 +149,12 @@ public class MesureHistoriqueController {
             data = mesureExportService.exportCabinePDF(dateDebut, dateFin, seulementDepassements);
             filename = "mesures_cabine_" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) + ".pdf";
             contentType = "application/pdf";
+        } else if ("xlsx".equalsIgnoreCase(format)) {
+            data = mesureExportService.exportCabineExcel(dateDebut, dateFin, seulementDepassements);
+            filename = "mesures_cabine_" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) + ".xlsx";
+            contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         } else {
-            throw new IllegalArgumentException("Format non supporté: " + format + ". Utilisez 'csv' ou 'pdf'.");
+            throw new IllegalArgumentException("Format non supporté: " + format + ". Utilisez 'csv', 'pdf' ou 'xlsx'.");
         }
 
         if (data.length == 0) {
@@ -169,12 +173,12 @@ public class MesureHistoriqueController {
     /**
      * Exporte l'historique des mesures de l'étuve.
      *
-     * @param format Format d'export (csv ou pdf)
+     * @param format Format d'export (csv, pdf ou xlsx)
      * @param zone Nom de la zone (optionnel)
      * @param dateDebut Date de début de la période (optionnel)
      * @param dateFin Date de fin de la période (optionnel)
      * @param seulementDepassements Si true, ne retourne que les lignes avec dépassement
-     * @return Fichier CSV ou PDF
+     * @return Fichier CSV, PDF ou Excel
      */
     @GetMapping("/etuve/export")
     public ResponseEntity<byte[]> exportHistoriqueEtuve(
@@ -199,8 +203,12 @@ public class MesureHistoriqueController {
             data = mesureExportService.exportEtuvePDF(zone, dateDebut, dateFin, seulementDepassements);
             filename = "mesures_etuve_" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) + ".pdf";
             contentType = "application/pdf";
+        } else if ("xlsx".equalsIgnoreCase(format)) {
+            data = mesureExportService.exportEtuveExcel(zone, dateDebut, dateFin, seulementDepassements);
+            filename = "mesures_etuve_" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) + ".xlsx";
+            contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         } else {
-            throw new IllegalArgumentException("Format non supporté: " + format + ". Utilisez 'csv' ou 'pdf'.");
+            throw new IllegalArgumentException("Format non supporté: " + format + ". Utilisez 'csv', 'pdf' ou 'xlsx'.");
         }
 
         if (data.length == 0) {

@@ -19,6 +19,7 @@ import { Route as AuthenticatedSeuilsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedPlcRouteImport } from './routes/_authenticated/plc'
 import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedAlertesRouteImport } from './routes/_authenticated/alertes'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -70,12 +71,18 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAlertesRoute = AuthenticatedAlertesRouteImport.update({
+  id: '/alertes',
+  path: '/alertes',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/activation': typeof ActivationRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/alertes': typeof AuthenticatedAlertesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/plc': typeof AuthenticatedPlcRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/activation': typeof ActivationRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/alertes': typeof AuthenticatedAlertesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/plc': typeof AuthenticatedPlcRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   '/activation': typeof ActivationRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/_authenticated/alertes': typeof AuthenticatedAlertesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
   '/_authenticated/plc': typeof AuthenticatedPlcRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/activation'
     | '/change-password'
     | '/login'
+    | '/alertes'
     | '/dashboard'
     | '/history'
     | '/plc'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
     | '/activation'
     | '/change-password'
     | '/login'
+    | '/alertes'
     | '/dashboard'
     | '/history'
     | '/plc'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/activation'
     | '/change-password'
     | '/login'
+    | '/_authenticated/alertes'
     | '/_authenticated/dashboard'
     | '/_authenticated/history'
     | '/_authenticated/plc'
@@ -222,10 +234,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/alertes': {
+      id: '/_authenticated/alertes'
+      path: '/alertes'
+      fullPath: '/alertes'
+      preLoaderRoute: typeof AuthenticatedAlertesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAlertesRoute: typeof AuthenticatedAlertesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedPlcRoute: typeof AuthenticatedPlcRoute
@@ -235,6 +255,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAlertesRoute: AuthenticatedAlertesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedPlcRoute: AuthenticatedPlcRoute,

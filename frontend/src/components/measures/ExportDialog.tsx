@@ -18,7 +18,7 @@ interface ExportDialogProps {
 }
 
 export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: ExportDialogProps) => {
-  const [format, setFormat] = useState<"csv" | "pdf">("csv");
+  const [format, setFormat] = useState<"csv" | "pdf" | "xlsx">("csv");
   const [scope, setScope] = useState<"all" | "period">("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [loading, setLoading] = useState(false);
@@ -95,7 +95,7 @@ export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: Ex
           {/* Format */}
           <div className="space-y-3">
             <Label className="text-base font-medium">Format</Label>
-            <RadioGroup value={format} onValueChange={(value) => setFormat(value as "csv" | "pdf")}>
+            <RadioGroup value={format} onValueChange={(value) => setFormat(value as "csv" | "pdf" | "xlsx")}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="csv" id="csv" />
                 <Label htmlFor="csv" className="cursor-pointer">CSV</Label>
@@ -103,6 +103,10 @@ export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: Ex
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="pdf" id="pdf" />
                 <Label htmlFor="pdf" className="cursor-pointer">PDF</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="xlsx" id="xlsx" />
+                <Label htmlFor="xlsx" className="cursor-pointer">Excel (.xlsx)</Label>
               </div>
             </RadioGroup>
           </div>

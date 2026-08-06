@@ -1,52 +1,65 @@
 /**
  * ALERTING API – active/history alerts, seuils absolus & dynamiques
- * Consumes: GET /api/alerts, POST /api/alerts/:id/acknowledge, GET/POST/PUT /api/thresholds
+ * Consumes: GET /api/alertes, GET /api/alertes/actives, GET/POST/PUT /api/seuils
  */
 import apiClient from '../../lib/axios';
-import type { Alert } from '../../types';
 
-export interface AlertsParams {
+// ── Types Alertes (backend Java) ───────────────────────────────────────────────
+
+export interface AlerteDTO {
+  idAlerte: string;
+  dateCreation: string;
+  dateResolution: string | null;
+  pointMesureNom: string;
+  metrique: string;
+  typeAlerte: string;
+  severite: string;
+  statut: string;
+  dureeMinutes: number;
+}
+
+export interface AlertesParams {
+  statut?: string;
+  typeAlerte?: string;
+  severite?: string;
+  idPointMesure?: number;
+  dateDebut?: string;
+  dateFin?: string;
   page?: number;
-  limit?: number;
-  acknowledged?: boolean;
-  severity?: string;
-  startDate?: string;
-  endDate?: string;
+  size?: number;
 }
 
-export interface AlertsResponse {
-  alerts: Alert[];
-  total: number;
-  page: number;
-  limit: number;
+export interface AlertesPage {
+  content: AlerteDTO[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
 }
 
-export const getAlerts = async (params?: AlertsParams): Promise<AlertsResponse> => {
-  const response = await apiClient.get<AlertsResponse>('/api/alerts', { params });
+// ── Alertes Consultation ───────────────────────────────────────────────────────
+
+/**
+ * GET /api/alertes/actives
+ * Récupère toutes les alertes actives (sans pagination).
+ */
+export const getAlertesActives = async (): Promise<AlerteDTO[]> => {
+  const response = await apiClient.get<AlerteDTO[]>('/api/alertes/actives');
   return response.data;
 };
 
-export const acknowledgeAlert = async (alertId: string): Promise<Alert> => {
-  const response = await apiClient.post<Alert>(`/api/alerts/${alertId}/acknowledge`);
-  return response.data;
-};
-
-// ── Thresholds (admin only) ────────────────────────────────────────────────
-export interface Threshold {
-  id?: string;
-  metric: 'temperature' | 'humidity';
-  type: 'absolute' | 'dynamic';
-  minValue?: number;
-  maxValue?: number;
-}
-
-export const getThresholds = async (): Promise<Threshold[]> => {
-  const response = await apiClient.get<Threshold[]>('/api/thresholds');
-  return response.data;
-};
-
-export const updateThreshold = async (id: string, data: Partial<Threshold>): Promise<Threshold> => {
-  const response = await apiClient.put<Threshold>(`/api/thresholds/${id}`, data);
+/**
+ * GET /api/alertes
+ * Récupère l'historique des alertes avec filtres optionnels et pagination.
+ */
+export const getHistoriqueAlertes = async (params?: AlertesParams): Promise<AlertesPage> => {
+  const filteredParams = Object.fromEntries(
+    Object.entries(params || {}).filter(([_, value]) => value !== undefined && value !== null)
+  );
+  const response = await apiClient.get<AlertesPage>('/api/alertes', { params: filteredParams });
   return response.data;
 };
 
