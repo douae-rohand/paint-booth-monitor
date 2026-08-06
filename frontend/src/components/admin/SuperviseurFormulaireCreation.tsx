@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, AlertTriangle, Plus, X, User, Mail, Phone, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Plus, X, User, Mail, Phone, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { useSuperviseurActions } from '@/hooks/useSuperviseurs';
 import type { SuperviseurCreateDTO } from '@/api/admin/superviseurs';
 
@@ -51,7 +51,7 @@ export function SuperviseurFormulaireCreation({ onSuccess, onCancel }: Supervise
       id: 'nom',
       label: 'Nom',
       type: 'text',
-      placeholder: 'Dupont',
+      placeholder: 'Nom',
       required: true,
       icon: <User className="h-4 w-4" />,
     },
@@ -59,7 +59,7 @@ export function SuperviseurFormulaireCreation({ onSuccess, onCancel }: Supervise
       id: 'prenom',
       label: 'Prénom',
       type: 'text',
-      placeholder: 'Jean',
+      placeholder: 'Prénom',
       required: true,
       icon: <User className="h-4 w-4" />,
     },
@@ -67,7 +67,7 @@ export function SuperviseurFormulaireCreation({ onSuccess, onCancel }: Supervise
       id: 'email',
       label: 'Email professionnel',
       type: 'email',
-      placeholder: 'jean.dupont@exemple.com',
+      placeholder: 'Nom.Prénom@exemple.com',
       required: true,
       icon: <Mail className="h-4 w-4" />,
       hint: 'Un lien d\'activation sera envoyé à cette adresse.',
@@ -76,7 +76,7 @@ export function SuperviseurFormulaireCreation({ onSuccess, onCancel }: Supervise
       id: 'telephone',
       label: 'Téléphone',
       type: 'tel',
-      placeholder: '+33 6 12 34 56 78',
+      placeholder: '+212 6 00 00 00 00',
       required: false,
       icon: <Phone className="h-4 w-4" />,
     },
@@ -113,36 +113,21 @@ export function SuperviseurFormulaireCreation({ onSuccess, onCancel }: Supervise
   }, [error]);
 
   return (
-    <div className="neu-card flex h-full flex-col overflow-hidden">
-      {/* ── Header ── */}
-      <div className="shrink-0 border-b border-border bg-gradient-to-br from-primary/8 via-transparent to-transparent px-5 py-5">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">
-              <Plus className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold">Nouveau superviseur</h3>
-              <p className="text-xs text-muted-foreground">
-                Remplissez les informations ci-dessous.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-xl p-2 text-muted-foreground hover:bg-muted transition-colors"
-            aria-label="Fermer"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-
+    <div className="flex h-full flex-col">
       {/* ── Scrollable Form ── */}
       <div className="flex-1 overflow-auto">
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-0">
-          <div className="flex flex-col gap-4 p-5">
+          <div className="flex flex-col gap-4 p-6">
+            {/* Back button */}
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors w-fit"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Retour
+            </button>
+
             {serverError && <ErrorBanner message={serverError} />}
 
             {/* Step indicator */}
@@ -151,6 +136,19 @@ export function SuperviseurFormulaireCreation({ onSuccess, onCancel }: Supervise
               <p className="text-xs text-primary font-medium">
                 Un email d'activation sera automatiquement envoyé au superviseur après création.
               </p>
+            </div>
+
+            {/* Form Title */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
+                <Plus className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Nouveau superviseur</h3>
+                <p className="text-xs text-muted-foreground">
+                  Remplissez les informations ci-dessous.
+                </p>
+              </div>
             </div>
 
             {/* Fields – stacked vertically */}
@@ -196,7 +194,7 @@ export function SuperviseurFormulaireCreation({ onSuccess, onCancel }: Supervise
           </div>
 
           {/* ── Footer Actions ── */}
-          <div className="shrink-0 border-t border-border px-5 py-4 flex items-center justify-end gap-3 bg-muted/10">
+          <div className="shrink-0 border-t border-border px-6 py-4 flex items-center justify-end gap-3 bg-muted/10">
             <button
               type="button"
               onClick={onCancel}
