@@ -1,10 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
-import { ShieldAlert, Users, PlusCircle } from 'lucide-react';
+import { ShieldAlert, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { SuperviseurListe } from '@/components/admin/SuperviseurListe';
 import { SuperviseurFormulaireCreation } from '@/components/admin/SuperviseurFormulaireCreation';
 import { SuperviseurDetail } from '@/components/admin/SuperviseurDetail';
+import { SidePanel } from '@/components/ui/SidePanel';
 
 export const Route = createFileRoute('/_authenticated/superviseurs')({
   component: SuperviseursPage,
@@ -80,14 +81,10 @@ function SuperviseursPage() {
         </div>
       </div>
 
-      {/* ── Content – Split View ── */}
-      <div className="flex flex-1 gap-4 overflow-visible p-1.5 min-h-0">
-        {/* Left Panel – List */}
-        <div
-          className={`flex flex-col transition-all duration-300 ${
-            rightPanelOpen ? 'w-[52%]' : 'w-full'
-          }`}
-        >
+      {/* ── Content – Full Width List with Overlay Panel ── */}
+      <div className="flex flex-1 min-h-0 p-1.5 relative">
+        {/* List – Always Full Width */}
+        <div className="w-full h-full">
           <SuperviseurListe
             key={refreshKey}
             refreshKey={refreshKey}
@@ -98,25 +95,30 @@ function SuperviseursPage() {
           />
         </div>
 
-        {/* Right Panel – Detail OR Create Form (never both) */}
-        {rightPanelOpen && (
-          <div className="flex w-[48%] flex-col animate-in slide-in-from-right duration-300">
-            {showCreate && (
-              <SuperviseurFormulaireCreation
-                onSuccess={handleCreateSuccess}
-                onCancel={handleCancelCreate}
-              />
-            )}
-            {selectedId && !showCreate && (
-              <SuperviseurDetail
-                id={selectedId}
-                onBack={handleCloseDetail}
-                onRefresh={handleRefresh}
-                refreshKey={refreshKey}
-              />
-            )}
-          </div>
-        )}
+        {/* Side Panel – Overlay */}
+        <SidePanel
+          open={rightPanelOpen}
+          onClose={() => {
+            setShowCreate(false);
+            setSelectedId(null);
+          }}
+          width="500px"
+        >
+          {showCreate && (
+            <SuperviseurFormulaireCreation
+              onSuccess={handleCreateSuccess}
+              onCancel={handleCancelCreate}
+            />
+          )}
+          {selectedId && !showCreate && (
+            <SuperviseurDetail
+              id={selectedId}
+              onBack={handleCloseDetail}
+              onRefresh={handleRefresh}
+              refreshKey={refreshKey}
+            />
+          )}
+        </SidePanel>
       </div>
     </div>
   );

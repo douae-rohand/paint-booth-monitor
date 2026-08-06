@@ -172,44 +172,42 @@ export function SuperviseurDetail({ id, onBack, onRefresh, refreshKey }: Supervi
   };
 
   return (
-    <div className="neu-card flex h-full flex-col overflow-hidden">
-      {/* ── Profile Header ── */}
-      <div className="relative shrink-0 border-b border-border bg-gradient-to-br from-primary/8 via-transparent to-transparent px-5 py-5">
-        {/* Back button */}
-        <button
-          onClick={onBack}
-          className="absolute left-4 top-4 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Retour
-        </button>
-
-        <div className="flex flex-col items-center gap-3 pt-7">
-          {/* Avatar */}
-          <div className="relative">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/20 text-xl font-extrabold text-primary ring-4 ring-primary/10">
-              {initials || <User className="h-7 w-7" />}
-            </div>
-          </div>
-
-          <div className="text-center">
-            <h2 className="text-xl font-bold tracking-tight">
-              {data.prenom} {data.nom}
-            </h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">{data.email}</p>
-          </div>
-
-          {/* Status pills */}
-          <div className="flex items-center gap-2">
-            <StatusBadgeSingle actif={data.actif} compteActive={data.compteActive} />
-          </div>
-        </div>
-      </div>
-
+    <div className="flex h-full flex-col">
       {/* ── Scrollable Content ── */}
       <div className="flex-1 overflow-auto">
-        <div className="flex flex-col gap-4 p-5">
+        <div className="flex flex-col gap-4 p-6">
+          {/* Back button */}
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors w-fit"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Retour
+          </button>
+
           {serverError && <ErrorBanner message={serverError} />}
+
+          {/* ── Profile Header ── */}
+          <div className="flex flex-col items-center gap-3 pt-2">
+            {/* Avatar */}
+            <div className="relative">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/20 text-xl font-extrabold text-primary ring-4 ring-primary/10">
+                {initials || <User className="h-7 w-7" />}
+              </div>
+            </div>
+
+            <div className="text-center">
+              <h2 className="text-xl font-bold tracking-tight">
+                {data.prenom} {data.nom}
+              </h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">{data.email}</p>
+            </div>
+
+            {/* Status pills */}
+            <div className="flex items-center gap-2">
+              <StatusBadgeSingle actif={data.actif} compteActive={data.compteActive} />
+            </div>
+          </div>
 
           {/* ── Info Fields / Edit Form ── */}
           {isEditing ? (

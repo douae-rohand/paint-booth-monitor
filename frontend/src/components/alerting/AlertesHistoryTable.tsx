@@ -189,12 +189,12 @@ export function AlertesHistoryTable() {
   return (
     <div className="flex flex-col min-h-full gap-5 animate-in fade-in duration-300">
       {/* Filters */}
-      <div className="shrink-0 space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Statut */}
           <div className="neu-inset rounded-2xl px-1">
             <Select value={statut} onValueChange={setStatut}>
-              <SelectTrigger className="h-10 w-[140px] border-0 bg-transparent shadow-none focus:ring-0">
+              <SelectTrigger className="h-10 w-[120px] border-0 bg-transparent shadow-none focus:ring-0">
                 <SelectValue placeholder="Statut" />
               </SelectTrigger>
               <SelectContent>
@@ -208,7 +208,7 @@ export function AlertesHistoryTable() {
           {/* Type */}
           <div className="neu-inset rounded-2xl px-1">
             <Select value={typeAlerte} onValueChange={setTypeAlerte}>
-              <SelectTrigger className="h-10 w-[140px] border-0 bg-transparent shadow-none focus:ring-0">
+              <SelectTrigger className="h-10 w-[120px] border-0 bg-transparent shadow-none focus:ring-0">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -223,7 +223,7 @@ export function AlertesHistoryTable() {
           {/* Sévérité */}
           <div className="neu-inset rounded-2xl px-1">
             <Select value={severite} onValueChange={setSeverite}>
-              <SelectTrigger className="h-10 w-[140px] border-0 bg-transparent shadow-none focus:ring-0">
+              <SelectTrigger className="h-10 w-[120px] border-0 bg-transparent shadow-none focus:ring-0">
                 <SelectValue placeholder="Sévérité" />
               </SelectTrigger>
               <SelectContent>
@@ -237,7 +237,7 @@ export function AlertesHistoryTable() {
           {/* Point de mesure */}
           <div className="neu-inset rounded-2xl px-1">
             <Select value={idPointMesure?.toString()} onValueChange={(v) => setIdPointMesure(v ? Number(v) : undefined)}>
-              <SelectTrigger className="h-10 w-[200px] border-0 bg-transparent shadow-none focus:ring-0">
+              <SelectTrigger className="h-10 w-[160px] border-0 bg-transparent shadow-none focus:ring-0">
                 <SelectValue placeholder="Point de mesure" />
               </SelectTrigger>
               <SelectContent>
@@ -251,80 +251,82 @@ export function AlertesHistoryTable() {
             </Select>
           </div>
 
-          {/* Date mode toggle */}
-          <div className="neu-inset flex gap-1 rounded-2xl p-1 h-10 items-center">
-            <button
-              onClick={() => setDateMode('exact')}
-              className={cn(
-                'rounded-xl px-3 py-1.5 text-xs font-semibold transition-all h-8 flex items-center',
-                dateMode === 'exact'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              Date exacte
-            </button>
-            <button
-              onClick={() => setDateMode('range')}
-              className={cn(
-                'rounded-xl px-3 py-1.5 text-xs font-semibold transition-all h-8 flex items-center',
-                dateMode === 'range'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              Plage
-            </button>
-          </div>
-
-          {/* Date picker */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="neu-pressable flex h-10 items-center gap-2 rounded-2xl px-4 text-sm bg-[color:var(--surface)] border border-border/50 hover:bg-muted/40 transition-colors">
-                <CalendarIcon className="h-4 w-4 text-primary" />
-                {dateMode === 'exact'
-                  ? exactDate
-                    ? format(exactDate, 'd MMM yyyy', { locale: fr })
-                    : 'Choisir une date'
-                  : dateRange?.from
-                    ? dateRange.to
-                      ? `${format(dateRange.from, 'd MMM', { locale: fr })} - ${format(dateRange.to, 'd MMM yyyy', { locale: fr })}`
-                      : format(dateRange.from, 'd MMM yyyy', { locale: fr })
-                    : 'Choisir une plage'}
+          {/* Date mode + picker — grouped on one line */}
+          <div className="flex items-center gap-2">
+            <div className="neu-inset flex gap-1 rounded-2xl p-1 h-10 items-center">
+              <button
+                onClick={() => setDateMode('exact')}
+                className={cn(
+                  'rounded-xl px-3 py-1.5 text-xs font-semibold transition-all h-8 flex items-center',
+                  dateMode === 'exact'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Date exacte
               </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              {dateMode === 'exact' ? (
-                <Calendar
-                  mode="single"
-                  selected={exactDate}
-                  onSelect={setExactDate}
-                  locale={fr}
-                  className={cn('p-3 pointer-events-auto')}
-                />
-              ) : (
-                <Calendar
-                  mode="range"
-                  selected={dateRange}
-                  onSelect={setDateRange}
-                  locale={fr}
-                  numberOfMonths={2}
-                  className={cn('p-3 pointer-events-auto')}
-                />
-              )}
-            </PopoverContent>
-          </Popover>
+              <button
+                onClick={() => setDateMode('range')}
+                className={cn(
+                  'rounded-xl px-3 py-1.5 text-xs font-semibold transition-all h-8 flex items-center',
+                  dateMode === 'range'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Plage
+              </button>
+            </div>
 
-          {(exactDate || dateRange) && (
-            <button
-              onClick={resetDateFilter}
-              className="text-xs font-semibold text-muted-foreground underline-offset-4 hover:underline"
-            >
-              Réinitialiser
-            </button>
-          )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="neu-pressable flex h-10 items-center gap-2 rounded-2xl px-4 text-sm bg-[color:var(--surface)] border border-border/50 hover:bg-muted/40 transition-colors whitespace-nowrap">
+                  <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
+                  {dateMode === 'exact'
+                    ? exactDate
+                      ? format(exactDate, 'd MMM yyyy', { locale: fr })
+                      : 'Choisir une date'
+                    : dateRange?.from
+                      ? dateRange.to
+                        ? `${format(dateRange.from, 'd MMM', { locale: fr })} - ${format(dateRange.to, 'd MMM yyyy', { locale: fr })}`
+                        : format(dateRange.from, 'd MMM yyyy', { locale: fr })
+                      : 'Choisir une plage'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                {dateMode === 'exact' ? (
+                  <Calendar
+                    mode="single"
+                    selected={exactDate}
+                    onSelect={setExactDate}
+                    locale={fr}
+                    className={cn('p-3 pointer-events-auto')}
+                  />
+                ) : (
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    locale={fr}
+                    numberOfMonths={2}
+                    className={cn('p-3 pointer-events-auto')}
+                  />
+                )}
+              </PopoverContent>
+            </Popover>
+
+            {(exactDate || dateRange) && (
+              <button
+                onClick={resetDateFilter}
+                className="text-xs font-semibold text-muted-foreground underline-offset-4 hover:underline"
+              >
+                Réinitialiser
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
 
       {/* Table */}
       <div className="flex flex-col">

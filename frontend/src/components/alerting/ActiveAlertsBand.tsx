@@ -130,7 +130,7 @@ export function ActiveAlertsBand({ alerts: propAlerts, loading: propLoading, err
   }
 
   return (
-    <div className="neu-card p-6 mb-6">
+    <div className="mb-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold">
           Alertes actives ({alertes.length})
@@ -148,7 +148,10 @@ export function ActiveAlertsBand({ alerts: propAlerts, loading: propLoading, err
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {alertes.map((alerte) => (
-            <div key={alerte.idAlerte} className="neu-inset p-4 rounded-xl">
+            <div
+              key={alerte.idAlerte}
+              className="rounded-2xl border border-border/60 bg-[color:var(--surface)] p-4 shadow-[5px_5px_15px_rgba(174,174,192,0.18),-5px_-5px_15px_rgba(255,255,255,0.7)] transition-shadow hover:shadow-[7px_7px_20px_rgba(174,174,192,0.25),-7px_-7px_20px_rgba(255,255,255,0.85)]"
+            >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
                   <p className="text-sm font-semibold">{alerte.pointMesureNom}</p>
