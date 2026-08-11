@@ -24,6 +24,16 @@ spring:
 python-service:
   url: ${PYTHON_SERVICE_URL:http://localhost:8000}
 
+sendgrid:
+  api-key: ${SENDGRID_API_KEY}
+  sender-email: ${SENDGRID_SENDER_EMAIL}
+
+email:
+  worker:
+    batch-size: ${EMAIL_WORKER_BATCH_SIZE:20}
+    max-tentatives: ${EMAIL_WORKER_MAX_TENTATIVES:5}
+    cron: ${EMAIL_WORKER_CRON:*/5 * * * * *}
+
 
 jwt:
   secret: ${JWT_SECRET}

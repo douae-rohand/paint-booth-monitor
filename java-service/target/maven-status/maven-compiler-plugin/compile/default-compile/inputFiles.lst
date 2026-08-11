@@ -73,6 +73,7 @@ C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\GlobalEx
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\model\ConfigurationPLC.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\repository\ConfigurationPLCRepository.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\SecurityConfig.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\SendGridConfig.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\service\ConfigurationPLCService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\gateway\dto\AlerteMessage.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\gateway\dto\KpiMessage.java
@@ -117,11 +118,14 @@ C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\m
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\model\enums\TypeEvenement.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\model\EnvoiNotification.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\model\Notification.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\repository\EnvoiNotificationRepository.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\repository\NotificationRepository.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\service\EmailService.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\service\EmailWorkerService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\service\NotificationDispatchService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\service\NotificationDispatchServiceImpl.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\service\NotificationService.java
-C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\service\StubEmailService.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\service\SendGridEmailService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\controller\ReportController.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\model\enums\StatutGeneration.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\model\enums\TypeRapport.java

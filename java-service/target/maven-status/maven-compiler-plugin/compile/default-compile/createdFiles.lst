@@ -27,13 +27,16 @@ com\projet\auth\dto\LoginRequest.class
 com\projet\chatbot\model\ConversationChatbot.class
 com\projet\auth\service\MustChangePasswordFilter.class
 com\projet\auth\exception\InvalidTokenException.class
+com\projet\notifications\service\SendGridEmailService.class
 com\projet\config\repository\ConfigurationPLCRepository.class
 com\projet\measures\dto\PointMesureStatutDTO$StatutMesure.class
 com\projet\auth\repository\AdminRepository.class
 com\projet\config\dto\ConfigurationPLCRequest.class
 com\projet\gateway\WebSocketConfig.class
+com\projet\notifications\repository\EnvoiNotificationRepository.class
 com\projet\alerting\model\Alerte.class
 com\projet\auth\exception\CompteNonActiveException.class
+com\projet\notifications\repository\NotificationRepository.class
 com\projet\alerting\exception\BusinessException.class
 com\projet\auth\controller\ActivationController.class
 com\projet\auth\controller\AuthController.class
@@ -41,7 +44,6 @@ com\projet\auth\exception\MotsDePasseNeCorrespondentPasException.class
 com\projet\alerting\dto\AlerteDTO.class
 com\projet\auth\AdminSeeder.class
 com\projet\measures\repository\MesureRepository.class
-com\projet\notifications\service\StubEmailService.class
 com\projet\config\controller\ConfigurationPLCController.class
 com\projet\gateway\dto\AlerteMessage.class
 com\projet\measures\controller\MesureHistoriqueController.class
@@ -69,6 +71,7 @@ com\projet\auth\model\RefreshToken.class
 com\projet\measures\model\PointMesure.class
 com\projet\auth\repository\TokenActivationRepository.class
 com\projet\measures\service\MesureHistoriqueService$1.class
+com\projet\config\SendGridConfig.class
 com\projet\measures\service\StatutTempsReelService.class
 com\projet\auth\dto\ChangePasswordRequest.class
 com\projet\auth\model\Admin.class
@@ -88,6 +91,7 @@ com\projet\gateway\listener\MesureNotificationListener.class
 com\projet\notifications\listener\PostgresNotificationListener.class
 com\projet\notifications\model\enums\Severite.class
 com\projet\config\exception\ConfigurationPLCNotFoundException.class
+com\projet\notifications\service\EmailWorkerService.class
 com\projet\auth\repository\SuperviseurRepository.class
 com\projet\auth\service\AuthService.class
 com\projet\alerting\dto\DetailJourAlertesDTO.class
@@ -105,6 +109,7 @@ com\projet\alerting\dto\TopAlerteDTO.class
 com\projet\auth\service\JwtUtil.class
 com\projet\config\GlobalExceptionHandler.class
 com\projet\auth\service\SuperviseurAdminService.class
+com\projet\notifications\service\SendGridEmailService$SendGridResult.class
 com\projet\config\dto\ConfigurationPLCResponse.class
 com\projet\config\CsrfOriginFilter.class
 com\projet\notifications\controller\NotificationController.class
