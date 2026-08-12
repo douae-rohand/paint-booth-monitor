@@ -11,6 +11,9 @@ import com.projet.auth.repository.RefreshTokenRepository;
 import com.projet.auth.repository.SuperviseurRepository;
 import com.projet.auth.repository.TokenActivationRepository;
 import com.projet.notifications.service.EmailService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,23 +28,34 @@ import java.util.UUID;
 @Service
 public class SuperviseurAdminService {
 
+    private static final Logger logger = LoggerFactory.getLogger(SuperviseurAdminService.class);
+
     private final SuperviseurRepository superviseurRepository;
     private final TokenActivationRepository tokenActivationRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final MotDePasseValidator motDePasseValidator;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    @Value("${app.auth.activation-token-expiration-hours}")
+    private int activationTokenExpirationHours;
 
     public SuperviseurAdminService(
             SuperviseurRepository superviseurRepository,
             TokenActivationRepository tokenActivationRepository,
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
-            EmailService emailService) {
+            EmailService emailService,
+            MotDePasseValidator motDePasseValidator) {
         this.superviseurRepository = superviseurRepository;
         this.tokenActivationRepository = tokenActivationRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.motDePasseValidator = motDePasseValidator;
     }
 
     @Transactional
@@ -74,16 +88,19 @@ public class SuperviseurAdminService {
         tokenActivation.setSuperviseur(superviseur);
         tokenActivation.setTokenHash(tokenHash);
         tokenActivation.setUtilise(false);
-        tokenActivation.setDateExpiration(LocalDateTime.now().plusHours(48));
+        tokenActivation.setDateExpiration(LocalDateTime.now().plusHours(activationTokenExpirationHours));
         tokenActivation.setCreatedAt(LocalDateTime.now());
         tokenActivationRepository.save(tokenActivation);
 
         // Construire le lien d'activation
-        // TODO: Récupérer l'URL frontend depuis la configuration
-        String lienActivation = "https://<frontend>/activation?token=" + rawToken;
+        String lienActivation = frontendUrl + "/activation?token=" + rawToken;
 
-        // Envoyer l'email (stub pour l'instant)
-        emailService.envoyerLienActivation(dto.getEmail(), lienActivation);
+        // Envoyer l'email
+        EmailService.EmailResult result = emailService.envoyerLienActivation(dto.getEmail(), lienActivation);
+        if (!result.isSucces()) {
+            logger.warn("[ACTIVATION] Échec de l'envoi de l'email d'activation à {} — statut={} — erreur={}",
+                    dto.getEmail(), result.statut(), result.erreur());
+        }
 
         return mapToResponseDTO(superviseur);
     }
@@ -101,10 +118,8 @@ public class SuperviseurAdminService {
             throw new MotsDePasseNeCorrespondentPasException("Les mots de passe ne correspondent pas");
         }
 
-        // Valider la politique de mot de passe (au moins 8 caractères)
-        if (dto.getNouveauMotDePasse().length() < 8) {
-            throw new IllegalArgumentException("Le mot de passe doit contenir au moins 8 caractères");
-        }
+        // Valider la robustesse du mot de passe (règles centralisées)
+        motDePasseValidator.valider(dto.getNouveauMotDePasse());
 
         // Hasher et définir le mot de passe
         Superviseur superviseur = tokenActivation.getSuperviseur();
@@ -116,6 +131,20 @@ public class SuperviseurAdminService {
         // Marquer le token comme utilisé
         tokenActivation.setUtilise(true);
         tokenActivationRepository.save(tokenActivation);
+
+        // Envoyer l'email de bienvenue (sans faire échouer le flow d'activation si échec)
+        try {
+            EmailService.EmailResult result = emailService.envoyerEmailBienvenue(superviseur.getEmail(), superviseur.getPrenom());
+            if (!result.isSucces()) {
+                logger.warn("[ADMIN_SERVICE] Échec envoi email bienvenue à {} — statut={} — {}", 
+                        superviseur.getEmail(), result.statut(), result.erreur());
+            } else {
+                logger.info("[ADMIN_SERVICE] Email de bienvenue envoyé avec succès à {}", superviseur.getEmail());
+            }
+        } catch (Exception e) {
+            logger.error("[ADMIN_SERVICE] Erreur inattendue lors de l'envoi de l'email de bienvenue à {} — {}", 
+                    superviseur.getEmail(), e.getMessage(), e);
+        }
     }
 
     public Page<SuperviseurListItemDTO> lister(Boolean filtreActif, Boolean filtreCompteActive, Pageable pageable) {
@@ -201,6 +230,20 @@ public class SuperviseurAdminService {
                     token.setRevoque(true);
                     refreshTokenRepository.save(token);
                 });
+
+        // Envoyer notification par email de désactivation (sans faire échouer le flow si échec)
+        try {
+            EmailService.EmailResult result = emailService.envoyerNotificationDesactivation(superviseur.getEmail(), superviseur.getPrenom());
+            if (!result.isSucces()) {
+                logger.warn("[ADMIN_SERVICE] Échec envoi email désactivation à {} — statut={} — {}", 
+                        superviseur.getEmail(), result.statut(), result.erreur());
+            } else {
+                logger.info("[ADMIN_SERVICE] Email de notification de désactivation envoyé à {}", superviseur.getEmail());
+            }
+        } catch (Exception e) {
+            logger.error("[ADMIN_SERVICE] Erreur inattendue lors de l'envoi de l'email de désactivation à {} — {}", 
+                    superviseur.getEmail(), e.getMessage(), e);
+        }
     }
 
     @Transactional

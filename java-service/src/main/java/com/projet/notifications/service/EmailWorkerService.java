@@ -19,16 +19,17 @@ import java.util.List;
  * Worker de traitement de la file d'envoi email (pattern outbox).
  *
  * Tourne dans le thread du scheduler Spring (@Scheduled), complètement découplé
- * du thread d'écoute LISTEN PostgreSQL. SendGrid n'est jamais appelé depuis ce dernier.
+ * du thread d'écoute LISTEN PostgreSQL. Le fournisseur d'email n'est jamais appelé
+ * depuis ce dernier.
  *
- * Cycle de traitement :
- *  1. Sélectionne les lignes EnvoiNotification WHERE canal=EMAIL AND statut=EN_ATTENTE (batch limité).
- *  2. Pour chaque ligne, appelle SendGrid via SendGridEmailService.
- *  3. Succès → ENVOYE + date_envoi.
- *  4. Échec 429 → reste EN_ATTENTE (retry au prochain cycle, compteur non incrémenté).
- *  5. Échec 401/403 → ECHEC immédiat (retry inutile sans intervention manuelle).
- *  6. Autre échec → incrémente tentatives + enregistre l'erreur dans derniere_erreur.
- *     Si tentatives >= maxTentatives → ECHEC définitif.
+ * Ce service dépend uniquement de l'interface {@link EmailService} — il ne connaît
+ * pas SendGrid. Pour changer de fournisseur, aucune modification n'est nécessaire ici.
+ *
+ * Logique de retry basée sur {@link EmailService.EmailResult#statut()} :
+ *   SUCCES           → statut_envoi = ENVOYE
+ *   ECHEC_TEMPORAIRE → reste EN_ATTENTE (retry au prochain cycle, tentatives non incrémentées
+ *                      pour les rate limits ; incrémentées pour les autres erreurs transitoires)
+ *   ECHEC_DEFINITIF  → statut_envoi = ECHEC immédiatement, sans attendre maxTentatives
  *
  * Configuration via application.yml :
  *   email.worker.batch-size       (défaut : 20)
@@ -41,7 +42,7 @@ public class EmailWorkerService {
     private static final Logger logger = LoggerFactory.getLogger(EmailWorkerService.class);
 
     private final EnvoiNotificationRepository envoiNotificationRepository;
-    private final SendGridEmailService sendGridEmailService;
+    private final EmailService emailService;
 
     @Value("${email.worker.batch-size:20}")
     private int batchSize;
@@ -51,16 +52,15 @@ public class EmailWorkerService {
 
     public EmailWorkerService(
             EnvoiNotificationRepository envoiNotificationRepository,
-            SendGridEmailService sendGridEmailService
+            EmailService emailService
     ) {
         this.envoiNotificationRepository = envoiNotificationRepository;
-        this.sendGridEmailService = sendGridEmailService;
+        this.emailService = emailService;
     }
 
     /**
      * Cycle principal du worker.
-     * Cadence configurable via email.worker.cron (défaut : toutes les 5 secondes).
-     * fixedDelay serait une alternative simple, mais cron offre plus de flexibilité en config.
+     * Cadence configurable via email.worker.cron.
      */
     @Scheduled(cron = "${email.worker.cron:*/5 * * * * *}")
     @Transactional
@@ -72,7 +72,7 @@ public class EmailWorkerService {
         );
 
         if (batch.isEmpty()) {
-            return; // Rien à traiter — ne pas polluer les logs
+            return;
         }
 
         logger.info("[EMAIL WORKER] Traitement de {} envoi(s) en attente", batch.size());
@@ -89,45 +89,40 @@ public class EmailWorkerService {
         String titre = envoi.getNotification().getTitre();
         String contenu = envoi.getNotification().getContenu();
 
-        // Appel SDK SendGrid — jamais dans le thread LISTEN
-        SendGridEmailService.SendGridResult result =
-                sendGridEmailService.envoyerNotificationAlerte(emailDestinataire, titre, contenu);
+        EmailService.EmailResult result = emailService.envoyerNotification(emailDestinataire, titre, contenu);
 
-        if (result.isSucces()) {
-            marquerEnvoye(envoi);
-            logger.info("[EMAIL WORKER] id_envoi={} → ENVOYE (code={})",
-                    envoi.getIdEnvoi(), result.statusCode());
+        switch (result.statut()) {
 
-        } else if (result.isRateLimit()) {
-            // 429 : ne pas incrémenter tentatives, laisser EN_ATTENTE pour retry
-            logger.warn("[EMAIL WORKER] id_envoi={} → rate limit SendGrid (429), retry au prochain cycle",
-                    envoi.getIdEnvoi());
-            // Pas de modification de statut — le prochain @Scheduled reprendra cette ligne
+            case SUCCES -> {
+                marquerEnvoye(envoi);
+                logger.info("[EMAIL WORKER] id_envoi={} → ENVOYE", envoi.getIdEnvoi());
+            }
 
-        } else if (result.isEchecAuthConfiguration()) {
-            // 401/403 : clé API invalide ou sender non vérifié → ECHEC immédiat
-            marquerEchecDefinitif(envoi,
-                    String.format("Erreur de configuration SendGrid (%d) — intervention manuelle requise : %s",
-                            result.statusCode(), result.messageErreur()));
-            logger.error("[EMAIL WORKER] id_envoi={} → ECHEC AUTH/CONFIG (code={}) — intervention requise",
-                    envoi.getIdEnvoi(), result.statusCode());
+            case ECHEC_TEMPORAIRE -> {
+                // Erreur transitoire (réseau, rate limit, 5xx) : incrémenter tentatives
+                // et rester EN_ATTENTE pour retry, sauf si maxTentatives atteint.
+                int nouvellesTentatives = envoi.getTentatives() + 1;
+                envoi.setTentatives(nouvellesTentatives);
+                envoi.setDerniereErreur(result.erreur());
+                envoi.setUpdatedAt(LocalDateTime.now());
 
-        } else {
-            // Autre erreur réseau ou 4xx/5xx
-            int nouvellesTentatives = envoi.getTentatives() + 1;
-            envoi.setTentatives(nouvellesTentatives);
-            envoi.setDerniereErreur(result.messageErreur());
-            envoi.setUpdatedAt(LocalDateTime.now());
+                if (nouvellesTentatives >= maxTentatives) {
+                    marquerEchecDefinitif(envoi, result.erreur());
+                    logger.error("[EMAIL WORKER] id_envoi={} → ECHEC définitif après {} tentative(s) (temporaire épuisé)",
+                            envoi.getIdEnvoi(), nouvellesTentatives);
+                } else {
+                    envoiNotificationRepository.save(envoi);
+                    logger.warn("[EMAIL WORKER] id_envoi={} → tentative {}/{} — ECHEC_TEMPORAIRE, retry programmé",
+                            envoi.getIdEnvoi(), nouvellesTentatives, maxTentatives);
+                }
+            }
 
-            if (nouvellesTentatives >= maxTentatives) {
-                marquerEchecDefinitif(envoi, result.messageErreur());
-                logger.error("[EMAIL WORKER] id_envoi={} → ECHEC définitif après {} tentatives (code={})",
-                        envoi.getIdEnvoi(), nouvellesTentatives, result.statusCode());
-            } else {
-                // Reste EN_ATTENTE pour retry au prochain cycle
-                envoiNotificationRepository.save(envoi);
-                logger.warn("[EMAIL WORKER] id_envoi={} → tentative {}/{} échouée (code={}), retry programmé",
-                        envoi.getIdEnvoi(), nouvellesTentatives, maxTentatives, result.statusCode());
+            case ECHEC_DEFINITIF -> {
+                // Erreur permanente (auth, config, adresse invalide) : ECHEC immédiat,
+                // un retry ne servirait à rien sans intervention manuelle.
+                marquerEchecDefinitif(envoi, result.erreur());
+                logger.error("[EMAIL WORKER] id_envoi={} → ECHEC définitif immédiat (ECHEC_DEFINITIF)",
+                        envoi.getIdEnvoi());
             }
         }
     }

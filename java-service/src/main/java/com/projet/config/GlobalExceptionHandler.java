@@ -2,6 +2,7 @@ package com.projet.config;
 
 import com.projet.auth.exception.EmailDejaUtiliseException;
 import com.projet.auth.exception.InvalidTokenException;
+import com.projet.auth.exception.MotDePasseTropFaibleException;
 import com.projet.auth.exception.MotsDePasseNeCorrespondentPasException;
 import com.projet.auth.exception.SuperviseurNonTrouveException;
 import com.projet.auth.exception.TokenInvalideOuExpireException;
@@ -58,6 +59,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleTokenInvalideOuExpire(TokenInvalideOuExpireException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiErrorResponse(400, ex.getMessage()));
+    }
+
+    @ExceptionHandler(MotDePasseTropFaibleException.class)
+    public ResponseEntity<ApiErrorResponse> handleMotDePasseTropFaible(MotDePasseTropFaibleException ex) {
+        // Retourner chaque violation dans le message, séparées par un saut de ligne
+        String message = String.join("\n", ex.getViolations());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiErrorResponse(400, message));
     }
 
     @ExceptionHandler(MotsDePasseNeCorrespondentPasException.class)

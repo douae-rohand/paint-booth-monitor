@@ -123,12 +123,12 @@ L'idée : faire tourner une chaîne complète et minimale (frontend → Java →
   - [x] Gestion du refresh token / expiration et redirection vers login si 401
 - [x] **Gestion des rôles côté frontend** : routes protégées (Utilisateur vs Admin), affichage conditionnel des menus admin
 - [x] **Gestion des erreurs uniformisée** : format d'erreur standard renvoyé par Java (code, message)
-- [ ] **Pagination / filtrage** : convention commune pour les requêtes d'historique (dates, identifiant de caisse)
-- [ ] **WebSocket** (peut arriver en fin de P1, une fois l'auth HTTP stable) :
-  - [ ] Endpoint WebSocket exposé par Java (`/ws`)
-  - [ ] Authentification du WebSocket (JWT à la connexion)
-  - [ ] Reconnexion automatique côté client
-  - [ ] Format des messages poussés (schéma JSON commun)
+- [x] **Pagination / filtrage** : convention commune pour les requêtes d'historique (dates, identifiant de caisse)
+- [x] **WebSocket** (peut arriver en fin de P1, une fois l'auth HTTP stable) :
+  - [x] Endpoint WebSocket exposé par Java (`/ws`)
+  - [x] Authentification du WebSocket (JWT à la connexion)
+  - [x] Reconnexion automatique côté client
+  - [x] Format des messages poussés (schéma JSON commun)
 
 ---
 

@@ -14,11 +14,11 @@ com\projet\alerting\controller\AlerteConsultationController.class
 com\projet\alerting\model\enums\Severite.class
 com\projet\notifications\dto\NotificationDto.class
 com\projet\audit\model\enums\ActionAudit.class
-com\projet\notifications\service\EmailService.class
 com\projet\alerting\dto\SeuilDynamiqueResponseDTO.class
 com\projet\config\service\ConfigurationPLCService.class
 com\projet\alerting\controller\SeuilDynamiqueController.class
 com\projet\config\CorsConfig.class
+com\projet\auth\dto\DemandeReinitialisationDTO.class
 com\projet\config\model\ConfigurationPLC.class
 com\projet\gateway\dto\MesureMessage.class
 com\projet\alerting\dto\DetailJourAlertesDTO$DetailAlerteDTO.class
@@ -27,7 +27,6 @@ com\projet\auth\dto\LoginRequest.class
 com\projet\chatbot\model\ConversationChatbot.class
 com\projet\auth\service\MustChangePasswordFilter.class
 com\projet\auth\exception\InvalidTokenException.class
-com\projet\notifications\service\SendGridEmailService.class
 com\projet\config\repository\ConfigurationPLCRepository.class
 com\projet\measures\dto\PointMesureStatutDTO$StatutMesure.class
 com\projet\auth\repository\AdminRepository.class
@@ -38,11 +37,11 @@ com\projet\alerting\model\Alerte.class
 com\projet\auth\exception\CompteNonActiveException.class
 com\projet\notifications\repository\NotificationRepository.class
 com\projet\alerting\exception\BusinessException.class
-com\projet\auth\controller\ActivationController.class
 com\projet\auth\controller\AuthController.class
 com\projet\auth\exception\MotsDePasseNeCorrespondentPasException.class
 com\projet\alerting\dto\AlerteDTO.class
 com\projet\auth\AdminSeeder.class
+com\projet\auth\dto\ReinitialisationMotDePasseDTO.class
 com\projet\measures\repository\MesureRepository.class
 com\projet\config\controller\ConfigurationPLCController.class
 com\projet\gateway\dto\AlerteMessage.class
@@ -90,11 +89,12 @@ com\projet\measures\model\PredictionIA.class
 com\projet\gateway\listener\MesureNotificationListener.class
 com\projet\notifications\listener\PostgresNotificationListener.class
 com\projet\notifications\model\enums\Severite.class
+com\projet\auth\service\MotDePasseValidator.class
 com\projet\config\exception\ConfigurationPLCNotFoundException.class
-com\projet\notifications\service\EmailWorkerService.class
 com\projet\auth\repository\SuperviseurRepository.class
 com\projet\auth\service\AuthService.class
 com\projet\alerting\dto\DetailJourAlertesDTO.class
+com\projet\auth\exception\MotDePasseTropFaibleException.class
 com\projet\gateway\PythonProxyController.class
 com\projet\notifications\service\NotificationDispatchServiceImpl.class
 com\projet\notifications\model\enums\StatutEnvoi.class
@@ -108,8 +108,6 @@ com\projet\measures\model\enums\Granularite.class
 com\projet\alerting\dto\TopAlerteDTO.class
 com\projet\auth\service\JwtUtil.class
 com\projet\config\GlobalExceptionHandler.class
-com\projet\auth\service\SuperviseurAdminService.class
-com\projet\notifications\service\SendGridEmailService$SendGridResult.class
 com\projet\config\dto\ConfigurationPLCResponse.class
 com\projet\config\CsrfOriginFilter.class
 com\projet\notifications\controller\NotificationController.class
@@ -129,6 +127,7 @@ com\projet\alerting\model\enums\StatutAlerte.class
 com\projet\notifications\service\NotificationService.class
 com\projet\alerting\service\SeuilAbsoluService.class
 com\projet\auth\model\TokenActivation.class
+com\projet\auth\repository\TokenReinitialisationRepository.class
 com\projet\auth\dto\SuperviseurListItemDTO.class
 com\projet\alerting\dto\HeatmapJourDTO.class
 com\projet\measures\dto\MesureHistoriqueResponseDTO$SeuilAbsoluDTO.class
@@ -137,6 +136,6 @@ com\projet\alerting\controller\AlerteStatsController.class
 com\projet\auth\dto\SuperviseurCreateDTO.class
 com\projet\auth\dto\SuperviseurUpdateDTO.class
 com\projet\auth\exception\PasswordChangeRequiredException.class
-com\projet\auth\controller\SuperviseurAdminController.class
 com\projet\auth\exception\SuperviseurNonTrouveException.class
 com\projet\alerting\service\AlerteStatsService.class
+com\projet\notifications\service\EmailWorkerService$1.class

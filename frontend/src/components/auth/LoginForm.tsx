@@ -6,6 +6,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../lib/utils';
+import MotDePasseOublieModal from './MotDePasseOublieModal';
 
 // Carousel slides data
 const SLIDES = [
@@ -51,6 +52,7 @@ const LoginForm: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMotDePasseOublieOpen, setIsMotDePasseOublieOpen] = useState(false);
 
   // Auto-slide every 4.5 seconds
   const nextSlide = useCallback(() => {
@@ -79,7 +81,7 @@ const LoginForm: React.FC = () => {
     }
   };
 
-  return (
+  return (<>
     <div className="min-h-screen flex bg-[#0f172a] overflow-hidden">
       {/* Left Panel - Carousel (Hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 text-white relative overflow-hidden">
@@ -209,6 +211,7 @@ const LoginForm: React.FC = () => {
             <div className="flex justify-end">
               <button
                 type="button"
+                onClick={() => setIsMotDePasseOublieOpen(true)}
                 className="text-sm font-medium hover:opacity-80 transition-opacity"
                 style={{ color: 'var(--primary)' }}
               >
@@ -238,7 +241,11 @@ const LoginForm: React.FC = () => {
         </div>
       </div>
     </div>
-  );
+    <MotDePasseOublieModal
+      isOpen={isMotDePasseOublieOpen}
+      onClose={() => setIsMotDePasseOublieOpen(false)}
+    />
+  </>);
 };
 
 export default LoginForm;

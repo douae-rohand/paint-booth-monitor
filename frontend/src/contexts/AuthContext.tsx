@@ -72,7 +72,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     registerAuthFailureHandler(async () => {
       await logout();
-      navigate({ to: '/login' });
+      const publicPaths = ['/login', '/activation', '/reinitialiser-mot-de-passe'];
+      if (!publicPaths.includes(window.location.pathname)) {
+        navigate({ to: '/login' });
+      }
     });
 
     return () => {

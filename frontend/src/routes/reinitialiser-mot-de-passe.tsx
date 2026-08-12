@@ -4,20 +4,20 @@ import { Eye, EyeOff, Lock, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { activerCompte, type ActivationCompteDTO } from '../api/admin/superviseurs';
+import { reinitialiserMotDePasse } from '../api/auth/mot-de-passe-oublie';
 import { isPasswordValid } from '../lib/password-rules';
 import PasswordStrengthIndicator from '../components/auth/PasswordStrengthIndicator';
 
-export const Route = createFileRoute('/activation')({
+export const Route = createFileRoute('/reinitialiser-mot-de-passe')({
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === 'string' ? search.token : undefined,
   }),
-  component: ActivationPage,
+  component: ReinitialiserMotDePassePage,
 });
 
-function ActivationPage() {
+function ReinitialiserMotDePassePage() {
   const navigate = useNavigate();
-  const search = useSearch({ from: '/activation' });
+  const search = useSearch({ from: '/reinitialiser-mot-de-passe' });
   const token = search.token as string | undefined;
 
   const [nouveauMotDePasse, setNouveauMotDePasse] = useState('');
@@ -28,26 +28,38 @@ function ActivationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
+  const [countdown, setCountdown] = useState(5);
   const [showIndicator, setShowIndicator] = useState(false);
 
+  // Validation immédiate de la présence du token dans l'URL
   useEffect(() => {
-    if (!token) {
+    if (!token || token.trim() === '') {
       setTokenValid(false);
-      setError('Token manquant. Veuillez utiliser le lien d\'activation complet.');
     } else {
       setTokenValid(true);
     }
   }, [token]);
 
+  // Countdown et redirection automatique après succès
+  useEffect(() => {
+    if (!success) return;
+    if (countdown <= 0) {
+      navigate({ to: '/login' });
+      return;
+    }
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [success, countdown, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    // Validations côté client — mêmes règles que activation.tsx
     if (!nouveauMotDePasse || !confirmationMotDePasse) {
       setError('Veuillez remplir tous les champs.');
       return;
     }
-
     if (nouveauMotDePasse !== confirmationMotDePasse) {
       setError('Les mots de passe ne correspondent pas.');
       return;
@@ -55,28 +67,35 @@ function ActivationPage() {
 
     setIsSubmitting(true);
     try {
-      const data: ActivationCompteDTO = {
-        token: token || '',
+      await reinitialiserMotDePasse({
+        token: token!,
         nouveauMotDePasse,
         confirmationMotDePasse,
-      };
-      await activerCompte(data);
+      });
       setSuccess(true);
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        navigate({ to: '/login' });
-      }, 3000);
     } catch (err) {
-      const errorResponse = err as { response?: { data?: { message?: string } } };
-      setError(
-        errorResponse.response?.data?.message ||
-        'Ce lien d\'activation n\'est plus valide. Contactez votre administrateur.'
-      );
+      const errorResponse = err as { response?: { data?: { message?: string }; status?: number } };
+      const status = errorResponse.response?.status;
+      const serverMessage = errorResponse.response?.data?.message;
+
+      // Messages explicites selon le cas d'erreur renvoyé par le backend
+      if (status === 400) {
+        if (serverMessage?.toLowerCase().includes('expir')) {
+          setError('Ce lien de réinitialisation a expiré (validité 15 minutes). Faites une nouvelle demande.');
+        } else if (serverMessage?.toLowerCase().includes('utilis') || serverMessage?.toLowerCase().includes('invalid')) {
+          setError('Ce lien de réinitialisation a déjà été utilisé ou est invalide. Faites une nouvelle demande.');
+        } else {
+          setError(serverMessage || 'Le lien de réinitialisation est invalide ou expiré.');
+        }
+      } else {
+        setError('Une erreur est survenue. Veuillez réessayer dans quelques instants.');
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // ── État : token absent de l'URL ──────────────────────────────────────────
   if (tokenValid === false) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'var(--background)' }}>
@@ -86,20 +105,22 @@ function ActivationPage() {
           </div>
           <h2 className="text-xl font-bold text-foreground">Lien invalide</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {error || 'Ce lien d\'activation n\'est plus valide. Contactez votre administrateur.'}
+            Ce lien de réinitialisation est invalide ou incomplet.
+            Veuillez refaire une demande de réinitialisation.
           </p>
           <Button
             onClick={() => navigate({ to: '/login' })}
             className="mt-6"
             style={{ boxShadow: 'var(--shadow-glow)' }}
           >
-            Aller à la page de connexion
+            Retour à la connexion
           </Button>
         </div>
       </div>
     );
   }
 
+  // ── État : succès ──────────────────────────────────────────────────────────
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'var(--background)' }}>
@@ -107,31 +128,43 @@ function ActivationPage() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--success)]/15">
             <CheckCircle2 className="h-7 w-7 text-[color:var(--success)]" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">Compte activé avec succès</h2>
+          <h2 className="text-xl font-bold text-foreground">Mot de passe réinitialisé</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.
+            Votre mot de passe a été mis à jour avec succès.
           </p>
           <p className="mt-4 text-xs text-muted-foreground">
-            Redirection vers la page de connexion...
+            Redirection dans <span className="font-semibold text-foreground">{countdown}</span> seconde{countdown > 1 ? 's' : ''}...
           </p>
+          <Button
+            onClick={() => navigate({ to: '/login' })}
+            className="mt-6 w-full"
+            style={{ boxShadow: 'var(--shadow-glow)' }}
+          >
+            Se connecter maintenant
+          </Button>
         </div>
       </div>
     );
   }
 
+  // ── État : chargement initial (token pas encore vérifié) ──────────────────
+  if (tokenValid === null) return null;
+
+  // ── État : formulaire ──────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'var(--background)' }}>
       <div className="w-full max-w-md neu-card p-8 sm:p-10">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-3" style={{ color: 'var(--foreground)' }}>
-            Activation du compte
+            Nouveau mot de passe
           </h1>
           <p className="text-muted-foreground">
-            Définissez votre mot de passe pour activer votre compte superviseur
+            Choisissez un mot de passe sécurisé pour votre compte
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Nouveau mot de passe */}
           <div className="space-y-2">
             <Label htmlFor="nouveauMotDePasse" className="text-base">Nouveau mot de passe</Label>
             <div className="relative">
@@ -146,6 +179,7 @@ function ActivationPage() {
                 className="pl-14 pr-14 h-14 neu-inset border-0 focus-visible:ring-2 text-base placeholder:text-muted-foreground/70"
                 required
                 disabled={isSubmitting}
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -159,6 +193,7 @@ function ActivationPage() {
             <PasswordStrengthIndicator password={nouveauMotDePasse} show={showIndicator} />
           </div>
 
+          {/* Confirmation */}
           <div className="space-y-2">
             <Label htmlFor="confirmationMotDePasse" className="text-base">Confirmation du mot de passe</Label>
             <div className="relative">
@@ -172,6 +207,7 @@ function ActivationPage() {
                 className="pl-14 pr-14 h-14 neu-inset border-0 focus-visible:ring-2 text-base placeholder:text-muted-foreground/70"
                 required
                 disabled={isSubmitting}
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -184,13 +220,13 @@ function ActivationPage() {
             </div>
           </div>
 
-          {/* Error Message */}
+          {/* Message d'erreur */}
           {error && (
-            <div className="p-4 rounded-xl text-center text-sm flex items-center justify-center gap-2" style={{ 
-              background: 'var(--danger-soft)',
-              color: 'var(--destructive)'
-            }}>
-              <AlertTriangle className="w-4 h-4" />
+            <div
+              className="p-4 rounded-xl text-center text-sm flex items-center justify-center gap-2"
+              style={{ background: 'var(--danger-soft)', color: 'var(--destructive)' }}
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0" />
               {error}
             </div>
           )}
@@ -204,10 +240,10 @@ function ActivationPage() {
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Activation en cours...
+                Réinitialisation en cours...
               </>
             ) : (
-              'Activer mon compte'
+              'Réinitialiser le mot de passe'
             )}
           </Button>
         </form>

@@ -31,11 +31,14 @@ C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\audit\model\Log
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\AdminSeeder.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\controller\ActivationController.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\controller\AuthController.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\controller\MotDePasseOublieController.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\controller\SuperviseurAdminController.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\dto\ActivationCompteDTO.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\dto\AuthResponse.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\dto\ChangePasswordRequest.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\dto\DemandeReinitialisationDTO.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\dto\LoginRequest.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\dto\ReinitialisationMotDePasseDTO.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\dto\SuperviseurCreateDTO.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\dto\SuperviseurListItemDTO.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\dto\SuperviseurResponseDTO.java
@@ -43,6 +46,7 @@ C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\dto\Superv
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\exception\CompteNonActiveException.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\exception\EmailDejaUtiliseException.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\exception\InvalidTokenException.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\exception\MotDePasseTropFaibleException.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\exception\MotsDePasseNeCorrespondentPasException.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\exception\PasswordChangeRequiredException.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\exception\SuperviseurNonTrouveException.java
@@ -56,9 +60,12 @@ C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\repository
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\repository\RefreshTokenRepository.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\repository\SuperviseurRepository.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\repository\TokenActivationRepository.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\repository\TokenReinitialisationRepository.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\service\AuthService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\service\JwtFilter.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\service\JwtUtil.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\service\MotDePasseOublieService.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\service\MotDePasseValidator.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\service\MustChangePasswordFilter.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\service\SuperviseurAdminService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\chatbot\model\ConversationChatbot.java
