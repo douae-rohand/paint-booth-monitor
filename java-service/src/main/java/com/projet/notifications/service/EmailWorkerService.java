@@ -1,5 +1,9 @@
 package com.projet.notifications.service;
 
+import com.projet.alerting.model.Alerte;
+import com.projet.measures.model.Mesure;
+import com.projet.measures.model.PointMesure;
+import com.projet.measures.repository.MesureRepository;
 import com.projet.notifications.model.EnvoiNotification;
 import com.projet.notifications.model.enums.Canal;
 import com.projet.notifications.model.enums.StatutEnvoi;
@@ -13,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -43,6 +48,7 @@ public class EmailWorkerService {
 
     private final EnvoiNotificationRepository envoiNotificationRepository;
     private final EmailService emailService;
+    private final MesureRepository mesureRepository;
 
     @Value("${email.worker.batch-size:20}")
     private int batchSize;
@@ -50,12 +56,20 @@ public class EmailWorkerService {
     @Value("${email.worker.max-tentatives:5}")
     private int maxTentatives;
 
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
+    private static final DateTimeFormatter DATE_FORMATTER =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss.SSSSSS");
+
     public EmailWorkerService(
             EnvoiNotificationRepository envoiNotificationRepository,
-            EmailService emailService
+            EmailService emailService,
+            MesureRepository mesureRepository
     ) {
         this.envoiNotificationRepository = envoiNotificationRepository;
         this.emailService = emailService;
+        this.mesureRepository = mesureRepository;
     }
 
     /**
@@ -86,10 +100,9 @@ public class EmailWorkerService {
 
     private void traiterEnvoi(EnvoiNotification envoi) {
         String emailDestinataire = envoi.getSuperviseur().getEmail();
-        String titre = envoi.getNotification().getTitre();
-        String contenu = envoi.getNotification().getContenu();
+        String sujet = envoi.getNotification().getTitre();
 
-        EmailService.EmailResult result = emailService.envoyerNotification(emailDestinataire, titre, contenu);
+        EmailService.EmailResult result = construireEtEnvoyer(envoi, emailDestinataire, sujet);
 
         switch (result.statut()) {
 
@@ -112,7 +125,7 @@ public class EmailWorkerService {
                             envoi.getIdEnvoi(), nouvellesTentatives);
                 } else {
                     envoiNotificationRepository.save(envoi);
-                    logger.warn("[EMAIL WORKER] id_envoi={} → tentative {}/{} — ECHEC_TEMPORAIRE, retry programmé",
+                    logger.warn("[EMAIL WORKER] id_envoi={} → tentative {}/{} - ECHEC_TEMPORAIRE, retry programmé",
                             envoi.getIdEnvoi(), nouvellesTentatives, maxTentatives);
                 }
             }
@@ -127,7 +140,61 @@ public class EmailWorkerService {
         }
     }
 
+    // ── Construction et envoi ──────────────────────────────────────────────────
+
+    /**
+     * Choisit la méthode d'envoi adaptée :
+     *  - Si la notification est liée à une Alerte → email HTML riche (template commun + bouton dashboard)
+     *  - Sinon (alerte supprimée ou autre type d'événement) → texte brut de secours
+     */
+    private EmailService.EmailResult construireEtEnvoyer(EnvoiNotification envoi, String emailDestinataire, String sujet) {
+        Alerte alerte = envoi.getNotification().getAlerte();
+
+        if (alerte != null) {
+            String dateHeure = alerte.getCreatedAt() != null
+                    ? alerte.getCreatedAt().format(DATE_FORMATTER)
+                    : "-";
+            String urlDashboard = frontendUrl + "/alertes";
+
+            String emplacement = "l'équipement";
+            String pointMesureNom = "Inconnu";
+
+            try {
+                Mesure mesure = mesureRepository.findByIdWithPointMesure(alerte.getIdMesure());
+                if (mesure != null && mesure.getPointMesure() != null) {
+                    PointMesure pm = mesure.getPointMesure();
+                    emplacement = pm.getTypeEmplacement();
+                    pointMesureNom = pm.getNom();
+                }
+            } catch (Exception e) {
+                logger.error("[EMAIL WORKER] Impossible de charger le point de mesure pour l'alerte {}", alerte.getIdAlerte(), e);
+            }
+
+            return emailService.envoyerNotificationAlerte(
+                    emailDestinataire,
+                    sujet,
+                    alerte.getMetrique().name(),
+                    alerte.getTypeAlerte().name(),
+                    alerte.getSeverite().name(),
+                    dateHeure,
+                    alerte.getIdAlerte().toString(),
+                    urlDashboard,
+                    emplacement,
+                    pointMesureNom
+            );
+        }
+
+        // Fallback texte brut si l'alerte a été supprimée (ON DELETE SET NULL)
+        logger.warn("[EMAIL WORKER] id_envoi={} - alerte introuvable (SET NULL), envoi texte brut", envoi.getIdEnvoi());
+        return emailService.envoyerNotification(
+                emailDestinataire,
+                sujet,
+                envoi.getNotification().getContenu()
+        );
+    }
+
     // ── Helpers de transition d'état ──────────────────────────────────────────
+
 
     private void marquerEnvoye(EnvoiNotification envoi) {
         envoi.setStatutEnvoi(StatutEnvoi.ENVOYE);

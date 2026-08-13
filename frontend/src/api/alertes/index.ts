@@ -25,16 +25,18 @@ export interface TopAlerteDTO {
 }
 
 /**
- * Miroir de HeatmapJourDTO.java (après correction).
+ * Miroir de HeatmapJourDTO.java.
  * `jour`  : numéro du jour du mois (1-31), conservé pour compatibilité.
  * `date`  : date complète au format "yyyy-MM-dd" — champ canonique pour le frontend.
- * `nombreDepassements` : Long Java → number TS.
+ * `nombreAlertesCritiques` : Long Java → number TS.
+ *   Ne compte que les alertes SEUIL_ABSOLU — cohérence avec la popup de détail.
+ *   (Renommé depuis nombreDepassements pour refléter la sémantique exacte.)
  */
 export interface HeatmapJourDTO {
   jour: number;
   /** Format "yyyy-MM-dd" */
   date: string;
-  nombreDepassements: number;
+  nombreAlertesCritiques: number;
 }
 
 /**

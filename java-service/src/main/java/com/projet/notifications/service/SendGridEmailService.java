@@ -76,7 +76,7 @@ public class SendGridEmailService implements EmailService {
 
         } catch (IOException e) {
             // Erreur réseau (timeout, DNS…) — transitoire, retry pertinent
-            logger.error("[SENDGRID] Erreur réseau — {}", e.getMessage());
+            logger.error("[SENDGRID] Erreur réseau - {}", e.getMessage());
             return EmailResult.echecTemporaire("Erreur réseau : " + e.getMessage());
         }
     }
@@ -99,7 +99,7 @@ public class SendGridEmailService implements EmailService {
             return traduireReponse(response);
 
         } catch (IOException e) {
-            logger.error("[SENDGRID] Erreur réseau lors de l'envoi HTML — {}", e.getMessage());
+            logger.error("[SENDGRID] Erreur réseau lors de l'envoi HTML - {}", e.getMessage());
             return EmailResult.echecTemporaire("Erreur réseau : " + e.getMessage());
         }
     }
@@ -194,6 +194,59 @@ public class SendGridEmailService implements EmailService {
         return result;
     }
 
+    @Override
+    public EmailResult envoyerNotificationAlerte(
+            String destinataireEmail,
+            String sujet,
+            String metrique,
+            String typeAlerte,
+            String severite,
+            String dateHeure,
+            String idAlerte,
+            String urlTableauBord,
+            String emplacement,
+            String pointMesureNom
+    ) {
+        String severiteDisplay = switch (severite) {
+            case "CRITIQUE" -> "🔴 CRITIQUE";
+            case "MOYENNE"  -> "🟡 MOYENNE";
+            default         -> "🔵 " + severite;
+        };
+
+        String emplacementLabel = emplacement != null ? emplacement : "l'équipement";
+        if ("CABINE".equalsIgnoreCase(emplacement)) {
+            emplacementLabel = "la cabine de peinture";
+        } else if ("ETUVE".equalsIgnoreCase(emplacement)) {
+            emplacementLabel = "l'étuve";
+        }
+
+        String message = String.format(
+                "Une anomalie a été détectée sur %s (<strong>%s</strong>). Voici les détails :<br><br>" +
+                "<table style='border-collapse:collapse; width:100%%; font-size:14px; color:#475569;'>" +
+                "<tr><td style='padding:6px 0; font-weight:600; width:120px;'>Métrique</td><td style='padding:6px 0;'>%s</td></tr>" +
+                "<tr style='background:#f8fafc;'><td style='padding:6px 0; font-weight:600;'>Type</td><td style='padding:6px 0;'>%s</td></tr>" +
+                "<tr><td style='padding:6px 0; font-weight:600;'>Sévérité</td><td style='padding:6px 0;'>%s</td></tr>" +
+                "<tr style='background:#f8fafc;'><td style='padding:6px 0; font-weight:600;'>Date / Heure</td><td style='padding:6px 0;'>%s</td></tr>" +
+                "<tr><td style='padding:6px 0; font-weight:600;'>ID alerte</td><td style='padding:6px 4px; font-family:monospace; font-size:12px; color:#94a3b8;'>%s</td></tr>" +
+                "</table>",
+                emplacementLabel, pointMesureNom, metrique, typeAlerte, severiteDisplay, dateHeure, idAlerte
+        );
+
+        String html = construireTemplateEmail(
+                "Alerte détectée",
+                message,
+                "Consulter le tableau de bord",
+                urlTableauBord,
+                null
+        );
+
+        EmailResult result = envoyerEmailHtml(destinataireEmail, sujet, html);
+        if (!result.isSucces()) {
+            logger.error("[SENDGRID] Échec envoi alerte email à {} - statut={}", destinataireEmail, result.statut());
+        }
+        return result;
+    }
+
     private String construireTemplateEmail(String titre, String message, String texteBouton, String urlBouton, String mentionValidite) {
         boolean hasButton = urlBouton != null && !urlBouton.trim().isEmpty() && texteBouton != null && !texteBouton.trim().isEmpty();
         
@@ -265,12 +318,12 @@ public class SendGridEmailService implements EmailService {
         int code = response.getStatusCode();
 
         if (code >= 200 && code < 300) {
-            logger.info("[SENDGRID] Email envoyé — code={}", code);
+            logger.info("[SENDGRID] Email envoyé - code={}", code);
             return EmailResult.succes();
         }
 
         String messageErreur = buildMessageErreur(code, response.getBody());
-        logger.warn("[SENDGRID] Échec d'envoi — code={}, erreur={}", code, tronquer(response.getBody(), 200));
+        logger.warn("[SENDGRID] Échec d'envoi - code={}, erreur={}", code, tronquer(response.getBody(), 200));
 
         // 429 Rate Limit : erreur transitoire — le prochain cycle @Scheduled retentera
         if (code == 429) {
@@ -295,7 +348,7 @@ public class SendGridEmailService implements EmailService {
 
     /** Format : "HTTP {code} — {body tronqué à 500 chars}". La clé API n'apparaît jamais dans le body SendGrid. */
     private String buildMessageErreur(int statusCode, String body) {
-        return String.format("HTTP %d — %s", statusCode, tronquer(body, 500));
+        return String.format("HTTP %d - %s", statusCode, tronquer(body, 500));
     }
 
     private String tronquer(String texte, int maxLen) {

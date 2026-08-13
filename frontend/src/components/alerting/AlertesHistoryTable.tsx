@@ -103,6 +103,20 @@ export function AlertesHistoryTable() {
     }
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
+    
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+      const parts: string[] = [`${days}j`];
+      if (remainingHours > 0) {
+        parts.push(`${remainingHours}h`);
+      }
+      if (remainingMinutes > 0) {
+        parts.push(`${remainingMinutes}min`);
+      }
+      return parts.join(' ');
+    }
+
     if (remainingMinutes === 0) {
       return `${hours}h`;
     }
@@ -400,7 +414,6 @@ export function AlertesHistoryTable() {
                       </td>
                       <td className="px-5 py-3.5 text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3 w-3 text-muted-foreground" />
                           {formatDuree(alerte.dureeMinutes)}
                         </span>
                       </td>

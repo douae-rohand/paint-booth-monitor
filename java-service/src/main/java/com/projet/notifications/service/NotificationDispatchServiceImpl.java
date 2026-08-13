@@ -179,6 +179,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
         }
 
         AlerteMessage message = new AlerteMessage(
+                "CREATION",
                 alerte.getIdAlerte(),
                 pointMesure.getId(),
                 pointMesure.getNom(),
@@ -188,7 +189,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
                 alerte.getCreatedAt()
         );
         messagingTemplate.convertAndSend("/topic/alertes", message);
-        logger.info("[WS] Alerte {} publiée sur /topic/alertes", alerte.getIdAlerte());
+        logger.info("[WS] Alerte {} (CREATION) publiée sur /topic/alertes", alerte.getIdAlerte());
     }
 
     private void publishKpisWebSocket() {
@@ -200,7 +201,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private String construireTitre(Alerte alerte) {
-        return String.format("[%s] Anomalie détectée — %s",
+        return String.format("[%s] Anomalie détectée - %s",
                 alerte.getSeverite().name(),
                 alerte.getMetrique().name());
     }

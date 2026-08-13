@@ -72,8 +72,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON rapport_pdf TO java_service;
 -- 5. Entités à cheval — GRANT colonne par colonne
 -- ============================================================
 
--- Alerte : Python crée (à l'ingestion), Java ne modifie que le statut
-GRANT SELECT, INSERT ON alerte TO python_service;
+-- Alerte : Python crée (à l'ingestion) ET résout (statut RESOLUE), Java peut aussi modifier le statut
+GRANT SELECT, INSERT, UPDATE (statut, updated_at) ON alerte TO python_service;
 GRANT SELECT, UPDATE (statut, updated_at, deleted_at) ON alerte TO java_service;
 
 -- SeuilDynamique : Java administre la config, Python écrit les valeurs calculées

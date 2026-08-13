@@ -106,4 +106,32 @@ public interface EmailService {
      * @return résultat sémantique de l'envoi
      */
     EmailResult envoyerEmailBienvenue(String email, String prenom);
+
+    /**
+     * Envoie un email de notification d'alerte avec un template HTML et un bouton CTA vers le tableau de bord.
+     *
+     * @param destinataireEmail adresse du superviseur
+     * @param sujet             sujet du mail (ex: "[CRITIQUE] Anomalie détectée - TEMPERATURE")
+     * @param metrique          nom de la métrique (ex: TEMPERATURE)
+     * @param typeAlerte        nature de l'anomalie (ex: SEUIL_DEPASSE)
+     * @param severite          niveau de sévérité (ex: CRITIQUE)
+     * @param dateHeure         horodatage de l'alerte
+     * @param idAlerte          identifiant de l'alerte pour traçabilité
+     * @param urlTableauBord    lien vers le dashboard
+     * @param emplacement       emplacement de la mesure
+     * @param pointMesureNom    nom du point de mesure
+     * @return résultat sémantique de l'envoi
+     */
+    EmailResult envoyerNotificationAlerte(
+            String destinataireEmail,
+            String sujet,
+            String metrique,
+            String typeAlerte,
+            String severite,
+            String dateHeure,
+            String idAlerte,
+            String urlTableauBord,
+            String emplacement,
+            String pointMesureNom
+    );
 }

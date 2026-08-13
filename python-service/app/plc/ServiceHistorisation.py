@@ -374,6 +374,8 @@ class ServiceHistorisation:
             alerte_active.updated_at = datetime.now()
             session.add(alerte_active)
             await session.flush()
+            # NOTIFY alerte_resolue dans la même transaction — délivré au commit
+            await self._notifier_alerte_resolue(session, alerte_active.id_alerte)
 
     async def _verifier_seuil_dynamique(
         self,
@@ -452,6 +454,8 @@ class ServiceHistorisation:
             alerte_active.updated_at = datetime.now()
             session.add(alerte_active)
             await session.flush()
+            # NOTIFY alerte_resolue dans la même transaction — délivré au commit
+            await self._notifier_alerte_resolue(session, alerte_active.id_alerte)
 
     async def _boucle_recalcul_seuils_dynamiques(self) -> None:
         """
@@ -760,19 +764,38 @@ class ServiceHistorisation:
 
     async def _notifier_nouvelle_alerte(self, session: AsyncSession, id_alerte) -> None:
         """
-        Empile un NOTIFY dans la transaction en cours de la session.
+        Empile un NOTIFY nouvelle_alerte dans la transaction en cours.
         PostgreSQL ne délivre ce NOTIFY qu'au commit de cette transaction,
         jamais en cas de rollback — garantit l'atomicité alerte/notification.
+        """
+        await self._notifier(session, "nouvelle_alerte", str(id_alerte))
+
+    async def _notifier_alerte_resolue(self, session: AsyncSession, id_alerte) -> None:
+        """
+        Empile un NOTIFY alerte_resolue dans la transaction en cours.
+        Symétrique à _notifier_nouvelle_alerte — même garantie d'atomicité.
+        Le Java listener écoute ce canal sur la même connexion dédiée et publie
+        sur /topic/alertes pour que AppShell et ActiveAlertsBand rafraîchissent
+        leur liste sans attendre la prochaine nouvelle alerte.
+        """
+        await self._notifier(session, "alerte_resolue", str(id_alerte))
+
+    async def _notifier(self, session: AsyncSession, canal: str, payload: str) -> None:
+        """
+        Fonction utilitaire commune pour pg_notify.
+        Empile le NOTIFY dans la transaction SQLAlchemy en cours — délivré
+        uniquement au commit, jamais en cas de rollback.
 
         Args:
             session: Session SQLAlchemy async en cours
-            id_alerte: UUID de l'alerte créée
+            canal:   Nom du canal PostgreSQL (ex: "nouvelle_alerte", "alerte_resolue")
+            payload: Contenu du message (ex: UUID de l'alerte)
         """
         await session.execute(
             text("SELECT pg_notify(:channel, :payload)"),
             {
-                "channel": "nouvelle_alerte",
-                "payload": str(id_alerte),
+                "channel": canal,
+                "payload": payload,
             },
         )
 

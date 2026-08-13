@@ -100,13 +100,26 @@ public class AlerteStatsService {
      * @param metrique Métrique (optionnel)
      * @return Liste des données par jour du mois
      */
+    /**
+     * Récupère les données de heatmap pour un mois donné.
+     * Ne compte que les alertes SEUIL_ABSOLU — même filtre que getDetailJour.
+     * Cohérence grille ↔ popup garantie : nombreAlertesCritiques = alertes critiques uniquement.
+     *
+     * @param annee         Année
+     * @param mois          Mois (1-12)
+     * @param idPointMesure ID du point de mesure (optionnel)
+     * @param metrique      Métrique (optionnel)
+     * @return Liste des données par jour du mois
+     */
     public List<HeatmapJourDTO> getHeatmapMois(int annee, int mois, Long idPointMesure, Metrique metrique) {
         YearMonth yearMonth = YearMonth.of(annee, mois);
         LocalDateTime dateDebut = yearMonth.atDay(1).atStartOfDay();
         LocalDateTime dateFin = yearMonth.atEndOfMonth().atTime(23, 59, 59);
 
-        // Récupérer les alertes du mois
-        List<Alerte> alertes = alerteRepository.findByCreatedAtBetween(dateDebut, dateFin);
+        // Même méthode de repository que getDetailJour : filtre SEUIL_ABSOLU uniquement.
+        // Les alertes dynamiques (SEUIL_DYNAMIQUE) et futures (DERIVE_IA) sont exclues.
+        List<Alerte> alertes = alerteRepository.findByTypeAlerteAndCreatedAtBetween(
+                TypeAlerte.SEUIL_ABSOLU, dateDebut, dateFin);
 
         // Filtrer par point et métrique si fournis
         if (idPointMesure != null || metrique != null) {
@@ -114,7 +127,6 @@ public class AlerteStatsService {
                     .filter(a -> {
                         Mesure mesure = mesureRepository.findById(a.getIdMesure()).orElse(null);
                         if (mesure == null) return false;
-
                         if (idPointMesure != null && !mesure.getPointMesure().getId().equals(idPointMesure)) {
                             return false;
                         }
@@ -133,7 +145,7 @@ public class AlerteStatsService {
                         Collectors.counting()
                 ));
 
-        // Créer la liste complète des jours du mois (même ceux à 0)
+        // Créer la liste complète des jours du mois (même ceux à 0 alerte critique)
         List<HeatmapJourDTO> result = new ArrayList<>();
         int daysInMonth = yearMonth.lengthOfMonth();
 
