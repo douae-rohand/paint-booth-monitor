@@ -1,22 +1,28 @@
 package com.projet.notifications.service;
 
+import com.projet.alerting.model.enums.Metrique;
+import com.projet.auth.model.Superviseur;
+
 import java.util.UUID;
 
 /**
- * Service de dispatch des notifications d'alerte.
- * 
- * Ce service est responsable du dispatch multicanal des alertes (email, WhatsApp, push)
- * après réception via PostgreSQL NOTIFY.
- * 
- * L'implémentation actuelle est un stub qui logge uniquement.
- * L'implémentation réelle (cohérente avec CDC section 7) sera branchée ultérieurement.
+ * Contrat de dispatch des notifications multicanal (EMAIL + IN_APP).
+ * Chaque méthode correspond à un TypeEvenement distinct.
  */
 public interface NotificationDispatchService {
 
-    /**
-     * Dispatche une alerte vers les canaux configurés.
-     * 
-     * @param idAlerte Identifiant de l'alerte à dispatcher
-     */
+    /** Déclenché par NOTIFY nouvelle_alerte — crée et dispatche ALERTE_CREE. */
     void dispatcherAlerte(UUID idAlerte);
+
+    /** Déclenché par NOTIFY alerte_resolue — crée et dispatche ALERTE_RESOLU. */
+    void dispatcherAlerteResolue(UUID idAlerte);
+
+    /** Déclenché à l'activation d'un compte superviseur. */
+    void dispatcherCompteActive(Superviseur superviseur);
+
+    /** Déclenché à la modification d'un seuil absolu ou dynamique par un Admin. */
+    void dispatcherSeuilModifie(String nomPointMesure, Metrique metrique, boolean estAbsolu);
+
+    /** Déclenché à la génération d'un rapport PDF. */
+    void dispatcherRapportGenere(String nomRapport);
 }

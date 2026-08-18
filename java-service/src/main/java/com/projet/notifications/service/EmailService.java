@@ -1,38 +1,28 @@
 package com.projet.notifications.service;
 
+import java.util.Map;
+
 /**
  * Contrat d'envoi d'email — indépendant du fournisseur.
  *
  * Pour changer de fournisseur (Mailgun, SES, Brevo…) : implémenter cette interface
- * et déclarer le nouveau bean. EmailWorkerService et les appelants de envoyerLienActivation
- * ne nécessitent aucune modification.
+ * et déclarer le nouveau bean. Les appelants ne nécessitent aucune modification.
+ *
+ * Toutes les méthodes retournent {@link EmailResult} et ne lèvent jamais d'exception
+ * pour le flux normal — les erreurs sont encapsulées dans EmailResult.statut().
  */
 public interface EmailService {
 
     // ── Types partagés ────────────────────────────────────────────────────────
 
-    /**
-     * Classification sémantique du résultat d'un envoi.
-     *
-     * SUCCES           → email accepté par le fournisseur
-     * ECHEC_TEMPORAIRE → erreur transitoire, un retry a du sens (réseau, rate limit, 5xx)
-     * ECHEC_DEFINITIF  → erreur permanente, un retry est inutile (adresse invalide, auth, config)
-     */
     enum EmailStatus {
         SUCCES,
         ECHEC_TEMPORAIRE,
         ECHEC_DEFINITIF
     }
 
-    /**
-     * Résultat d'un appel d'envoi.
-     *
-     * @param statut  classification du résultat (jamais null)
-     * @param erreur  message d'erreur à stocker dans derniere_erreur (null si SUCCES)
-     */
     record EmailResult(EmailStatus statut, String erreur) {
 
-        /** Raccourci pour les tests et les appelants internes. */
         public static EmailResult succes() {
             return new EmailResult(EmailStatus.SUCCES, null);
         }
@@ -45,93 +35,83 @@ public interface EmailService {
             return new EmailResult(EmailStatus.ECHEC_DEFINITIF, erreur);
         }
 
-        public boolean isSucces() {
-            return statut == EmailStatus.SUCCES;
-        }
-
-        public boolean isEchecTemporaire() {
-            return statut == EmailStatus.ECHEC_TEMPORAIRE;
-        }
-
-        public boolean isEchecDefinitif() {
-            return statut == EmailStatus.ECHEC_DEFINITIF;
-        }
+        public boolean isSucces()          { return statut == EmailStatus.SUCCES; }
+        public boolean isEchecTemporaire() { return statut == EmailStatus.ECHEC_TEMPORAIRE; }
+        public boolean isEchecDefinitif()  { return statut == EmailStatus.ECHEC_DEFINITIF; }
     }
 
-    // ── Méthodes du contrat ───────────────────────────────────────────────────
+    // ── Emails transactionnels (hors outbox) ──────────────────────────────────
 
-    /**
-     * Envoie un email de notification (alerte, rapport, etc.).
-     * Retourne un {@link EmailResult} — ne lève jamais d'exception pour le flux normal.
-     *
-     * @param destinataireEmail adresse du destinataire (déjà validée en amont)
-     * @param titre             sujet de l'email
-     * @param contenu           corps de l'email (texte brut)
-     * @return résultat sémantique de l'envoi
-     */
-    EmailResult envoyerNotification(String destinataireEmail, String titre, String contenu);
-
-    /**
-     * Envoie le lien d'activation de compte.
-     * Ne retourne pas de résultat — les erreurs sont loguées par l'implémentation.
-     *
-     * @param email           adresse du nouveau superviseur
-     * @param lienActivation  URL d'activation à inclure dans l'email
-     */
+    /** Lien d'activation du compte (24h). */
     EmailResult envoyerLienActivation(String email, String lienActivation);
 
-    /**
-     * Envoie le lien de réinitialisation de mot de passe.
-     *
-     * @param email                adresse de l'utilisateur
-     * @param lienReinitialisation URL de réinitialisation à inclure dans l'email
-     * @return résultat sémantique de l'envoi
-     */
+    /** Lien de réinitialisation du mot de passe (15min). */
     EmailResult envoyerLienReinitialisation(String email, String lienReinitialisation);
 
-    /**
-     * Envoie l'email de notification de désactivation de compte.
-     *
-     * @param email  adresse de l'utilisateur
-     * @param prenom prenom de l'utilisateur
-     * @return résultat sémantique de l'envoi
-     */
+    /** Notification de désactivation de compte (envoyé au superviseur). */
     EmailResult envoyerNotificationDesactivation(String email, String prenom);
 
-    /**
-     * Envoie l'email de bienvenue après activation réussie.
-     *
-     * @param email  adresse de l'utilisateur
-     * @param prenom prenom de l'utilisateur
-     * @return résultat sémantique de l'envoi
-     */
+    /** Email de bienvenue après activation réussie (envoyé au superviseur). */
     EmailResult envoyerEmailBienvenue(String email, String prenom);
 
+    // ── Emails outbox (EmailWorkerService) ────────────────────────────────────
+
     /**
-     * Envoie un email de notification d'alerte avec un template HTML et un bouton CTA vers le tableau de bord.
+     * Notification d'alerte avec template HTML riche (ALERTE_CREE / ALERTE_RESOLU).
+     * Le titre est lu depuis Notification.titre et transmis tel quel — jamais reconstruit.
      *
-     * @param destinataireEmail adresse du superviseur
-     * @param sujet             sujet du mail (ex: "[CRITIQUE] Anomalie détectée - TEMPERATURE")
-     * @param metrique          nom de la métrique (ex: TEMPERATURE)
-     * @param typeAlerte        nature de l'anomalie (ex: SEUIL_DEPASSE)
-     * @param severite          niveau de sévérité (ex: CRITIQUE)
-     * @param dateHeure         horodatage de l'alerte
-     * @param idAlerte          identifiant de l'alerte pour traçabilité
-     * @param urlTableauBord    lien vers le dashboard
-     * @param emplacement       emplacement de la mesure
-     * @param pointMesureNom    nom du point de mesure
-     * @return résultat sémantique de l'envoi
+     * @param donneesEvenement map JSONB contenant : idAlerte, metrique, typeAlerte, severite,
+     *                         nomPointMesure, typeEmplacement, dateEvenement
      */
     EmailResult envoyerNotificationAlerte(
             String destinataireEmail,
-            String sujet,
-            String metrique,
-            String typeAlerte,
-            String severite,
-            String dateHeure,
-            String idAlerte,
-            String urlTableauBord,
-            String emplacement,
-            String pointMesureNom
+            String titre,
+            Map<String, Object> donneesEvenement
     );
+
+    /**
+     * Notification d'activation de compte (COMPTE_ACTIVEE) — envoyée aux Admins.
+     * Template HTML avec tableau nom/prénom/date + bouton "Voir les superviseurs".
+     * Le titre est lu depuis Notification.titre et transmis tel quel.
+     *
+     * @param donneesEvenement map JSONB contenant : prenomSuperviseur, nomSuperviseur, dateActivation
+     */
+    EmailResult envoyerNotificationCompteActive(
+            String destinataireEmail,
+            String titre,
+            Map<String, Object> donneesEvenement
+    );
+
+    /**
+     * Notification de modification de seuil (CONFIG_SEUILS_MODIFIE) — envoyée aux Superviseurs.
+     * Template HTML avec tableau point/métrique/type + bouton "Voir les seuils".
+     * Le titre est lu depuis Notification.titre et transmis tel quel.
+     *
+     * @param donneesEvenement map JSONB contenant : nomPointMesure, metrique, typeModification, dateModification
+     */
+    EmailResult envoyerNotificationSeuilModifie(
+            String destinataireEmail,
+            String titre,
+            Map<String, Object> donneesEvenement
+    );
+
+    /**
+     * Notification de rapport disponible (RAPPORT_GENERE) — envoyée aux Superviseurs.
+     * Template HTML avec référence rapport + bouton "Télécharger" si urlRapport présent.
+     * Le titre est lu depuis Notification.titre et transmis tel quel.
+     *
+     * @param donneesEvenement map JSONB contenant : idRapport, dateGeneration, urlRapport (optionnel)
+     */
+    EmailResult envoyerNotificationRapportGenere(
+            String destinataireEmail,
+            String titre,
+            Map<String, Object> donneesEvenement
+    );
+
+    /**
+     * Fallback texte brut — utilisé uniquement si donnees_evenement est null
+     * (cas exceptionnel : alerte supprimée ON DELETE SET NULL, ou données manquantes).
+     * Ne pas utiliser pour les flux normaux.
+     */
+    EmailResult envoyerNotification(String destinataireEmail, String titre, String contenu);
 }
