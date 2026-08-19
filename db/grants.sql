@@ -56,10 +56,13 @@ GRANT SELECT ON conversation_chatbot TO java_service;
 GRANT SELECT, INSERT, UPDATE(actif, date_activation, date_desactivation) ON seuil_absolu TO java_service;
 GRANT SELECT ON seuil_absolu TO python_service;
 
--- ConfigurationDestinataire : interne à Java
-GRANT SELECT, INSERT, UPDATE, DELETE ON configuration_destinataire TO java_service;
+-- ConfigurationDestinataire supprimée (V38) : mapping destinataires/canaux géré en dur dans le code Java
+-- (supprimé de grants.sql en même temps)
 
 -- Notification (le message) : interne à Java
+-- Colonnes : id_notification, id_alerte, type_evenement, titre, donnees_evenement (JSONB), created_at, deleted_at
+-- donnees_evenement remplace l'ancienne colonne contenu (supprimée en V39) — données brutes structurées
+-- partagées par tous les canaux (EMAIL, IN_APP), chacun produisant sa propre mise en forme.
 GRANT SELECT, INSERT, UPDATE, DELETE ON notification TO java_service;
 
 -- EnvoiNotification (l'association destinataire × canal) : interne à Java

@@ -40,9 +40,8 @@ Sert de référence pour la définition des rôles PostgreSQL (`app_java`, `app_
 |---|---|---|---|
 | SeuilAbsolu | Java (Admin configure) | Python (applique le seuil à l'ingestion) | ✅ Java écrit, Python lit — pas de conflit colonne |
 | PointMesure | Java (Admin active/désactive) | Python (associe nom_point_mesure lors de l'extraction/écriture) | ✅ Java écrit, Python lit — pas de conflit colonne |
-| ConfigurationDestinataire | Java | Java | ✅ interne à Java |
-| Notification | Java | Java | ✅ interne à Java — le message (titre/contenu), une ligne par événement |
-| EnvoiNotification | Java | Java | ✅ interne à Java — un envoi par (notification, superviseur, canal) |
+| Notification | Java | Java | ✅ interne à Java — 1 ligne par événement, titre + donnees_evenement (JSONB). `donnees_evenement` remplace l'ancienne colonne `contenu` (supprimée en V39) : stocke les données brutes structurées de l'événement, chaque canal (EMAIL, IN_APP) produisant sa propre mise en forme à partir de cette source commune |
+| EnvoiNotification | Java | Java | ✅ interne à Java — 1 envoi par (notification × superviseur × canal), avec statut_envoi, tentatives, derniere_erreur (colonnes retry ajoutées en V35) |
 | RapportPDF | Java | Java | ✅ interne à Java |
 
 ---
@@ -90,7 +89,7 @@ GRANT SELECT, UPDATE (valeur_min_calculee, valeur_max_calculee, date_calcul) ON 
 1. **Migration unique (Flyway, côté Java)** doit créer les colonnes de `Alerte` et `SeuilDynamique` en une seule fois, avec les deux "zones" de colonnes (Java vs Python) documentées en commentaire SQL dans la migration elle-même.
 2. **Idempotence** : pour `Alerte`, si Python retente un `INSERT` suite à une reconnexion PLC ou un NOTIFY manqué, il faut une contrainte d'unicité (ex : sur `mesure_id` + `type_alerte` + fenêtre de temps) pour éviter les doublons — déjà noté dans ton doc de priorités P3 ("gestion de l'idempotence").
 3. Toutes les autres entités (✅) peuvent recevoir un `GRANT SELECT` simple pour le service lecteur — pas de complexité colonne par colonne à prévoir.
-4. **`Notification` a été scindée en deux tables** (voir migration V15/V16) : `notification` porte le contenu du message (titre, contenu, une fois par événement), `envoi_notification` porte la diffusion par destinataire/canal (évite la duplication de titre/contenu sur chaque canal envoyé). Les deux restent 100% propriété Java, aucun changement de GRANT pour Python.
+4. **`Notification` a été scindée en deux tables** (voir migrations V15/V16) : `notification` porte le titre et `donnees_evenement` (JSONB, données brutes de l'événement — remplace l'ancienne colonne `contenu` supprimée en V39), `envoi_notification` porte la diffusion par destinataire/canal. Les deux restent 100% propriété Java.
 
 ---
 
