@@ -1,15 +1,17 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Cpu, History, LayoutDashboard, Factory, LogOut, AlertTriangle, Users, Bell } from "lucide-react";
+import { Cpu, History, LayoutDashboard, Factory, LogOut, SlidersHorizontal, Users, AlertTriangle } from "lucide-react";
 import { type ReactNode, useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { getAlertesActives } from "@/api/alerting";
 import { useDashboardWebSocket } from "@/hooks/useDashboardWebSocket";
+import { useNotifications } from "@/hooks/useNotifications";
+import { BellNotifications } from "@/components/notifications/BellNotifications";
+import { NotificationToast } from "@/components/notifications/NotificationToast";
 
 const baseNav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/history", label: "Historique", icon: History },
-  { to: "/alertes", label: "Alertes", icon: Bell },
+  { to: "/alertes", label: "Alertes", icon: AlertTriangle },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -18,6 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, isAdmin } = useAuth();
   const [activeAlertsCount, setActiveAlertsCount] = useState<number>(0);
   const { subscribeToAlertes } = useDashboardWebSocket();
+  const notificationsHook = useNotifications();
 
   useEffect(() => {
     const fetchAlertesActives = async () => {
@@ -38,7 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, [subscribeToAlertes]);
   const nav = isAdmin
-    ? [...baseNav, { to: "/plc", label: "PLC", icon: Cpu }, { to: "/seuils", label: "Seuils", icon: AlertTriangle }, { to: "/superviseurs", label: "Superviseurs", icon: Users }]
+    ? [...baseNav, { to: "/plc", label: "PLC", icon: Cpu }, { to: "/seuils", label: "Seuils", icon: SlidersHorizontal }, { to: "/superviseurs", label: "Superviseurs", icon: Users }]
     : baseNav;
   const today = new Date().toLocaleDateString("fr-FR", {
     weekday: "long",
@@ -59,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="neu-card-sm mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
           <Factory className="h-6 w-6 text-primary" />
         </div>
-        <nav className="flex flex-col items-center gap-1 rounded-3xl border border-border bg-white p-2">
+        <nav className="flex flex-col items-center gap-1 rounded-3xl border border-border bg-white p-2 overflow-visible">
           {nav.map((item) => {
             const active =
               item.to === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.to);
@@ -86,6 +89,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+
+        {/* Bell notifications — placé sous la nav, au-dessus du bouton logout */}
+        <div className="mt-2">
+          <BellNotifications hook={notificationsHook} />
+        </div>
+
         <div className="mt-auto">
           <button
             type="button"
@@ -97,6 +106,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
       </aside>
+
+      {/* Toast notifications — portal hors sidebar, position fixed bottom-right */}
+      <NotificationToast
+        notification={notificationsHook.dernierePush}
+        onDismiss={notificationsHook.acquitterPush}
+      />
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">

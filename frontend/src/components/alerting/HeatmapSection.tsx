@@ -96,37 +96,70 @@ export function HeatmapSection({ modeFiltre = 'independant', filtreGlobal }: Hea
 
   // Abonnement WebSocket
   useEffect(() => {
-    const now = new Date();
-    const isCurrentMonth =
-      currentMonthDate.getFullYear() === now.getFullYear() &&
-      currentMonthDate.getMonth() === now.getMonth();
+    // Vérifier si l'utilisateur regarde le mois courant AU MOMENT de l'enregistrement de l'effet.
+    // On recalcule "maintenant" à l'intérieur du callback pour gérer le passage à minuit.
+    const registeredAt = new Date();
+    const isViewingCurrentMonth =
+      currentMonthDate.getFullYear() === registeredAt.getFullYear() &&
+      currentMonthDate.getMonth() === registeredAt.getMonth();
 
-    if (!isCurrentMonth) return;
+    // Si l'utilisateur a navigué manuellement vers un mois passé, on ne s'abonne pas.
+    if (!isViewingCurrentMonth) return;
 
     const unsubscribe = subscribeToAlertes((data: unknown) => {
-      const alerte = data as { createdAt: string };
+      const alerte = data as { createdAt: string; typeAlerte?: string };
+
+      // La heatmap ne reflète que les alertes SEUIL_ABSOLU (cohérence avec la popup de détail).
+      // Les autres types (SEUIL_DYNAMIQUE, DERIVE_IA…) sont ignorés silencieusement ici.
+      // TopAlertesSection et les autres abonnés au même topic ne sont pas affectés.
+      if (alerte.typeAlerte !== 'SEUIL_ABSOLU') return;
+
       const alertDate = new Date(alerte.createdAt);
+
+      // Recalculer "maintenant" au moment de la réception — corrige le bug de passage à minuit.
+      const now = new Date();
+      const alertDateStr = alertDate.toISOString().split('T')[0];
+
       const isToday =
         alertDate.getDate() === now.getDate() &&
         alertDate.getMonth() === now.getMonth() &&
         alertDate.getFullYear() === now.getFullYear();
 
+      // Si l'alerte est du mois courant réel mais que currentMonthDate est décalé
+      // (passage de mois à minuit alors que l'utilisateur regardait le mois courant),
+      // on bascule l'affichage vers le nouveau mois avant d'incrémenter.
+      const alertIsCurrentMonth =
+        alertDate.getFullYear() === now.getFullYear() &&
+        alertDate.getMonth() === now.getMonth();
+
+      const displayedIsStaleMonth =
+        currentMonthDate.getFullYear() !== now.getFullYear() ||
+        currentMonthDate.getMonth() !== now.getMonth();
+
+      if (alertIsCurrentMonth && displayedIsStaleMonth) {
+        // L'utilisateur regardait le mois courant mais minuit vient de passer :
+        // on recharge la heatmap du nouveau mois courant.
+        setCurrentMonthDate(new Date(now.getFullYear(), now.getMonth(), 1));
+        // fetchHeatmap sera déclenché automatiquement par le changement de currentMonthDate.
+        return;
+      }
+
       if (isToday) {
         setHeatmapData((prev) => {
-          const index = prev.findIndex((d) => d.date === alertDate.toISOString().split('T')[0]);
+          const index = prev.findIndex((d) => d.date === alertDateStr);
           if (index >= 0) {
             const updated = [...prev];
             updated[index] = {
               ...updated[index],
-              nombreDepassements: updated[index].nombreDepassements + 1,
+              nombreAlertesCritiques: updated[index].nombreAlertesCritiques + 1,
             };
             return updated;
           }
           return prev;
         });
 
-        // Si popup ouverte, recharger
-        if (selectedDayDetail && selectedDayDetail.date === alertDate.toISOString().split('T')[0]) {
+        // Si popup ouverte sur ce jour, recharger le détail
+        if (selectedDayDetail && selectedDayDetail.date === alertDateStr) {
           fetchDayDetail(selectedDayDetail.date);
         }
       }
@@ -163,7 +196,7 @@ export function HeatmapSection({ modeFiltre = 'independant', filtreGlobal }: Hea
       {/* Header */}
       <div>
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold">Heatmap des alertes</h3>
+          <h3 className="text-base font-bold">Heatmap des alertes absolues</h3>
           {connected && <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />}
         </div>
         <p className="text-xs text-muted-foreground">Consulter et filtrer les alertes mensuelles</p>
@@ -271,26 +304,26 @@ export function HeatmapSection({ modeFiltre = 'independant', filtreGlobal }: Hea
             ));
           })()}
           {heatmapData.map((d) => {
-            const intensity = Math.min(d.nombreDepassements / 8, 1);
+            const intensity = Math.min(d.nombreAlertesCritiques / 8, 1);
             const bg =
-              d.nombreDepassements === 0
-                ? 'var(--surface)'
+              d.nombreAlertesCritiques === 0
+                ? '#ffffff'
                 : `color-mix(in oklab, var(--primary) ${35 + intensity * 65}%, white)`;
 
             return (
               <button
                 key={d.date}
                 onClick={() => handleDayClick(d)}
-                className="aspect-square rounded-lg text-[10px] font-semibold flex items-center justify-center cursor-help transition-all duration-150 hover:scale-105"
+                className="aspect-square rounded-lg text-[10px] font-semibold flex items-center justify-center cursor-help transition-all duration-150 hover:scale-105 border border-border/40"
                 style={{
                   background: bg,
                   color:
-                    d.nombreDepassements > 0 && intensity > 0.5
+                    d.nombreAlertesCritiques > 0 && intensity > 0.5
                       ? 'var(--primary-foreground)'
                       : 'var(--muted-foreground)',
                   boxShadow:
-                    d.nombreDepassements === 0
-                      ? 'var(--shadow-neu-inset)'
+                    d.nombreAlertesCritiques === 0
+                      ? 'none'
                       : 'var(--shadow-neu-sm)',
                 }}
               >

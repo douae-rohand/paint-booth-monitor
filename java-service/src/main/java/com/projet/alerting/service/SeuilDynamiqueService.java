@@ -12,10 +12,12 @@ import com.projet.auth.repository.AdminRepository;
 import com.projet.measures.model.PointMesure;
 import com.projet.measures.repository.PointMesureRepository;
 import org.springframework.http.HttpStatus;
+import com.projet.notifications.service.NotificationDispatchService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -24,13 +26,16 @@ public class SeuilDynamiqueService {
     private final SeuilDynamiqueRepository seuilDynamiqueRepository;
     private final PointMesureRepository pointMesureRepository;
     private final AdminRepository adminRepository;
+    private final NotificationDispatchService notificationDispatchService;
 
     public SeuilDynamiqueService(SeuilDynamiqueRepository seuilDynamiqueRepository,
                                  PointMesureRepository pointMesureRepository,
-                                 AdminRepository adminRepository) {
+                                 AdminRepository adminRepository,
+                                 NotificationDispatchService notificationDispatchService) {
         this.seuilDynamiqueRepository = seuilDynamiqueRepository;
         this.pointMesureRepository = pointMesureRepository;
         this.adminRepository = adminRepository;
+        this.notificationDispatchService = notificationDispatchService;
     }
 
     @Transactional
@@ -71,6 +76,12 @@ public class SeuilDynamiqueService {
         seuil.setMargeConfiguree(dto.getMargeConfiguree());
         seuil.setUpdatedAt(LocalDateTime.now());
         SeuilDynamique saved = seuilDynamiqueRepository.save(seuil);
+
+        // Notifier les superviseurs de la modification de la marge dynamique
+        notificationDispatchService.dispatcherSeuilModifie(
+                saved.getPointMesure().getNom(), saved.getMetrique(), false,
+                Map.of("marge", saved.getMargeConfiguree()));
+
         return mapToResponseDTO(saved);
     }
 

@@ -1,5 +1,7 @@
 package com.projet.notifications.listener;
 
+import com.projet.alerting.repository.AlerteRepository;
+import com.projet.alerting.service.AlerteBroadcastService;
 import com.projet.notifications.service.NotificationDispatchService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -22,18 +24,30 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Listener PostgreSQL NOTIFY pour les alertes.
- * 
- * Ce composant écoute les notifications PostgreSQL sur le canal "nouvelle_alerte"
- * via une connexion dédiée (hors pool HikariCP) et dispatche les alertes reçues.
- * 
- * La connexion dédiée est nécessaire car le pool HikariCP recycle les connexions,
- * ce qui est incompatible avec un LISTEN qui doit rester ouvert en continu.
+ *
+ * Écoute deux canaux sur la même connexion JDBC dédiée (hors pool HikariCP) :
+ *   - nouvelle_alerte : dispatch CREATION — deux appels distincts et explicites :
+ *       1. notificationDispatchService.dispatcherAlerte()  → notifications personnelles
+ *          (EMAIL outbox + IN_APP push bell icon) via NotificationDispatchServiceImpl
+ *          Note : AlerteBroadcastService est maintenant appelé DEPUIS dispatcherAlerte()
+ *       2. (broadcast intégré dans dispatcherAlerte via AlerteBroadcastService)
+ *   - alerte_resolue  : dispatch RESOLUTION — deux appels distincts et explicites :
+ *       1. notificationDispatchService.dispatcherAlerteResolue() → notifications personnelles
+ *          Note : AlerteBroadcastService est maintenant appelé DEPUIS dispatcherAlerteResolue()
+ *       2. (broadcast intégré dans dispatcherAlerteResolue via AlerteBroadcastService)
+ *
+ * Le listener est un orchestrateur minimal : il reçoit le NOTIFY, parse le payload,
+ * et délègue intégralement. Il ne construit plus aucun message WebSocket.
+ *
+ * Connexion dédiée hors pool HikariCP : nécessaire car LISTEN doit rester ouvert
+ * en continu — HikariCP recycle les connexions ce qui est incompatible.
  */
 @Component
 public class PostgresNotificationListener {
 
     private static final Logger logger = LoggerFactory.getLogger(PostgresNotificationListener.class);
-    private static final String CHANNEL = "nouvelle_alerte";
+    private static final String CHANNEL_CREATION  = "nouvelle_alerte";
+    private static final String CHANNEL_RESOLUTION = "alerte_resolue";
     private static final long NOTIFICATION_TIMEOUT_MS = 5000;
     private static final long MAX_RECONNECT_DELAY_MS = 60000;
 
@@ -65,7 +79,8 @@ public class PostgresNotificationListener {
 
     @PostConstruct
     public void start() {
-        logger.info("Démarrage du listener PostgreSQL NOTIFY sur le canal '{}'", CHANNEL);
+        logger.info("Démarrage du listener PostgreSQL NOTIFY sur les canaux '{}' et '{}'",
+                CHANNEL_CREATION, CHANNEL_RESOLUTION);
         running.set(true);
         executorService = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "postgres-notification-listener");
@@ -97,34 +112,24 @@ public class PostgresNotificationListener {
         while (running.get()) {
             try {
                 ensureConnection();
-                
-                // Écouter les notifications avec timeout
                 PGNotification[] notifications = pgConnection.getNotifications((int) NOTIFICATION_TIMEOUT_MS);
-                
                 if (notifications != null) {
                     for (PGNotification notification : notifications) {
                         handleNotification(notification);
                     }
                 }
-                
-                // Réinitialiser le compteur d'erreurs après succès
                 if (consecutiveErrors > 0) {
                     logger.info("Connexion rétablie après {} échecs consécutifs", consecutiveErrors);
                     consecutiveErrors = 0;
                 }
-                
             } catch (SQLException e) {
                 consecutiveErrors++;
                 logger.error("Erreur lors de l'écoute PostgreSQL (tentative {})", consecutiveErrors, e);
-                
                 if (consecutiveErrors >= 5) {
-                    logger.error("{} échecs consécutifs - prochaine tentative dans {}s", 
+                    logger.error("{} échecs consécutifs - prochaine tentative dans {}s",
                             consecutiveErrors, calculateReconnectDelay() / 1000);
                 }
-                
                 closeConnection();
-                
-                // Backoff exponentiel
                 long delay = calculateReconnectDelay();
                 try {
                     TimeUnit.MILLISECONDS.sleep(delay);
@@ -141,38 +146,50 @@ public class PostgresNotificationListener {
             logger.info("Tentative de connexion PostgreSQL dédiée pour LISTEN");
             dedicatedConnection = java.sql.DriverManager.getConnection(dbUrl, dbUsername, dbPassword);
             pgConnection = dedicatedConnection.unwrap(PGConnection.class);
-            
             try (Statement stmt = dedicatedConnection.createStatement()) {
-                stmt.execute("LISTEN " + CHANNEL);
+                stmt.execute("LISTEN " + CHANNEL_CREATION);
+                stmt.execute("LISTEN " + CHANNEL_RESOLUTION);
             }
-            
-            logger.info("Connexion dédiée établie et LISTEN '{}' activé", CHANNEL);
+            logger.info("Connexion dédiée établie — LISTEN '{}' et '{}' activés",
+                    CHANNEL_CREATION, CHANNEL_RESOLUTION);
         }
     }
 
     private void handleNotification(PGNotification notification) {
         String channel = notification.getName();
         String payload = notification.getParameter();
-        
+
         logger.debug("Notification reçue sur canal '{}' avec payload: '{}'", channel, payload);
-        
-        if (CHANNEL.equals(channel) && payload != null) {
-            try {
-                UUID idAlerte = UUID.fromString(payload.trim());
-                logger.info("Alerte {} reçue via NOTIFY, dispatch en cours", idAlerte);
-                notificationDispatchService.dispatcherAlerte(idAlerte);
-            } catch (IllegalArgumentException e) {
-                logger.error("Payload invalide pour l'alerte: '{}'", payload, e);
-            }
+
+        if (payload == null) {
+            logger.warn("Payload null reçu sur canal '{}' — ignoré", channel);
+            return;
+        }
+
+        UUID idAlerte;
+        try {
+            idAlerte = UUID.fromString(payload.trim());
+        } catch (IllegalArgumentException e) {
+            logger.error("Payload invalide sur canal '{}': '{}'", channel, payload, e);
+            return;
+        }
+
+        if (CHANNEL_CREATION.equals(channel)) {
+            logger.info("Alerte {} reçue via NOTIFY (création), dispatch en cours", idAlerte);
+            // broadcast global (/topic/alertes + /topic/kpis) + notifications personnelles (EMAIL + IN_APP)
+            notificationDispatchService.dispatcherAlerte(idAlerte);
+
+        } else if (CHANNEL_RESOLUTION.equals(channel)) {
+            logger.info("Alerte {} reçue via NOTIFY (résolution), dispatch en cours", idAlerte);
+            // broadcast global (/topic/alertes + /topic/kpis) + notifications personnelles (EMAIL + IN_APP)
+            notificationDispatchService.dispatcherAlerteResolue(idAlerte);
         }
     }
 
     private void closeConnection() {
         if (dedicatedConnection != null) {
             try {
-                if (!dedicatedConnection.isClosed()) {
-                    dedicatedConnection.close();
-                }
+                if (!dedicatedConnection.isClosed()) dedicatedConnection.close();
                 logger.info("Connexion dédiée fermée");
             } catch (SQLException e) {
                 logger.warn("Erreur lors de la fermeture de la connexion dédiée", e);
@@ -184,10 +201,7 @@ public class PostgresNotificationListener {
     }
 
     private long calculateReconnectDelay() {
-        // Backoff exponentiel: immédiat, 5s, 10s, 30s, max 60s
-        if (consecutiveErrors == 1) {
-            return 0; // Tentative immédiate
-        }
+        if (consecutiveErrors == 1) return 0;
         long delay = 5000 * (long) Math.pow(2, consecutiveErrors - 2);
         return Math.min(delay, MAX_RECONNECT_DELAY_MS);
     }

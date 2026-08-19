@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitialiser-mot-de-passe'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as ActivationRouteImport } from './routes/activation'
@@ -21,6 +22,11 @@ import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAlertesRouteImport } from './routes/_authenticated/alertes'
 
+const ReinitialiserMotDePasseRoute = ReinitialiserMotDePasseRouteImport.update({
+  id: '/reinitialiser-mot-de-passe',
+  path: '/reinitialiser-mot-de-passe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/activation': typeof ActivationRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/alertes': typeof AuthenticatedAlertesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/activation': typeof ActivationRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/alertes': typeof AuthenticatedAlertesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/activation': typeof ActivationRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/_authenticated/alertes': typeof AuthenticatedAlertesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
@@ -122,6 +131,7 @@ export interface FileRouteTypes {
     | '/activation'
     | '/change-password'
     | '/login'
+    | '/reinitialiser-mot-de-passe'
     | '/alertes'
     | '/dashboard'
     | '/history'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/activation'
     | '/change-password'
     | '/login'
+    | '/reinitialiser-mot-de-passe'
     | '/alertes'
     | '/dashboard'
     | '/history'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '/activation'
     | '/change-password'
     | '/login'
+    | '/reinitialiser-mot-de-passe'
     | '/_authenticated/alertes'
     | '/_authenticated/dashboard'
     | '/_authenticated/history'
@@ -160,10 +172,18 @@ export interface RootRouteChildren {
   ActivationRoute: typeof ActivationRoute
   ChangePasswordRoute: typeof ChangePasswordRoute
   LoginRoute: typeof LoginRoute
+  ReinitialiserMotDePasseRoute: typeof ReinitialiserMotDePasseRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reinitialiser-mot-de-passe': {
+      id: '/reinitialiser-mot-de-passe'
+      path: '/reinitialiser-mot-de-passe'
+      fullPath: '/reinitialiser-mot-de-passe'
+      preLoaderRoute: typeof ReinitialiserMotDePasseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -273,6 +293,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivationRoute: ActivationRoute,
   ChangePasswordRoute: ChangePasswordRoute,
   LoginRoute: LoginRoute,
+  ReinitialiserMotDePasseRoute: ReinitialiserMotDePasseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

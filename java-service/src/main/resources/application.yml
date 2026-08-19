@@ -24,12 +24,27 @@ spring:
 python-service:
   url: ${PYTHON_SERVICE_URL:http://localhost:8000}
 
+sendgrid:
+  api-key: ${SENDGRID_API_KEY}
+  sender-email: ${SENDGRID_SENDER_EMAIL}
+  sender-name: ${SENDGRID_SENDER_NAME:Supervision Cabine de Peinture}
+
+email:
+  worker:
+    batch-size: ${EMAIL_WORKER_BATCH_SIZE:20}
+    max-tentatives: ${EMAIL_WORKER_MAX_TENTATIVES:5}
+    cron: ${EMAIL_WORKER_CRON:*/5 * * * * *}
+
 
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
 
 app:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  auth:
+    reset-token-expiration-minutes: ${RESET_TOKEN_EXPIRATION_MINUTES:15}
+    activation-token-expiration-hours: ${ACTIVATION_TOKEN_EXPIRATION_HOURS:24}
   security:
     secure-cookie: ${SECURE_COOKIE:false}
   cors:

@@ -71,12 +71,18 @@ export function ActiveAlertsBand({ alerts: propAlerts, loading: propLoading, err
     if (diffMinutes < 60) {
       return `${diffMinutes} min`;
     }
-    const hours = Math.floor(diffMinutes / 60);
+
+    const totalHours = Math.floor(diffMinutes / 60);
     const remainingMinutes = diffMinutes % 60;
-    if (remainingMinutes === 0) {
-      return `${hours}h`;
+
+    if (totalHours < 24) {
+      return remainingMinutes === 0 ? `${totalHours}h` : `${totalHours}h ${remainingMinutes}min`;
     }
-    return `${hours}h ${remainingMinutes}min`;
+
+    // ≥ 24h : présenter en jours + heures restantes
+    const days = Math.floor(totalHours / 24);
+    const remainingHours = totalHours % 24;
+    return remainingHours === 0 ? `${days}j` : `${days}j ${remainingHours}h`;
   };
 
   const getSeverityIcon = (severite: string) => {

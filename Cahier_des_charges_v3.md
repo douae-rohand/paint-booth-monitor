@@ -120,7 +120,6 @@ Hérite de tous les droits de l'Utilisateur, plus :
 
 * Gérer les comptes utilisateurs (création, modification, désactivation)
 * Configurer les seuils d'alerte (absolus et dynamiques)
-* Configurer les destinataires et canaux de notification (email, WhatsApp, push)
 * Consulter et piloter les résultats du module IA
 * Consulter les logs d'accès et d'audit
 

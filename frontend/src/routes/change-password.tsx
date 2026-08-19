@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import * as authApi from '@/api/auth/index';
+import { isPasswordValid } from '@/lib/password-rules';
+import PasswordStrengthIndicator from '@/components/auth/PasswordStrengthIndicator';
 
 /**
  * ChangePassword – Compact modal with blurred background
@@ -22,6 +24,7 @@ const ChangePassword: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showIndicator, setShowIndicator] = useState(false);
 
   // Si l'utilisateur n'a pas besoin de changer de mot de passe, rediriger vers le dashboard
   React.useEffect(() => {
@@ -33,12 +36,6 @@ const ChangePassword: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    // Validation côté client
-    if (newPassword.length < 8) {
-      setError('Le nouveau mot de passe doit contenir au moins 8 caractères');
-      return;
-    }
 
     if (newPassword !== confirmPassword) {
       setError('Les nouveaux mots de passe ne correspondent pas');
@@ -115,7 +112,8 @@ const ChangePassword: React.FC = () => {
                 type={showNewPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => { setNewPassword(e.target.value); setShowIndicator(true); }}
+                onFocus={() => setShowIndicator(true)}
                 className={cn(
                   "pl-11 pr-11 h-11 neu-inset border-0 focus-visible:ring-2 text-sm placeholder:text-muted-foreground/70",
                   error && "ring-2 ring-destructive"
@@ -130,6 +128,7 @@ const ChangePassword: React.FC = () => {
                 {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <PasswordStrengthIndicator password={newPassword} show={showIndicator} />
           </div>
 
           {/* Confirmer nouveau mot de passe */}
@@ -173,7 +172,7 @@ const ChangePassword: React.FC = () => {
             type="submit"
             className="w-full h-10 text-sm font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
             style={{ boxShadow: 'var(--shadow-glow)' }}
-            disabled={loading}
+            disabled={loading || !isPasswordValid(newPassword)}
           >
             {loading ? 'Mise à jour en cours...' : 'Mettre à jour le mot de passe'}
           </Button>

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
-import { ShieldAlert, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { PointMesureMetriqueSelector } from '@/components/alerting/PointMesureMetriqueSelector';
 import { SeuilAbsoluSection } from '@/components/alerting/SeuilAbsoluSection';
@@ -51,7 +51,7 @@ function SeuilsContent() {
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
-          <AlertTriangle className="h-5 w-5 text-primary" />
+          <SlidersHorizontal className="h-5 w-5 text-primary" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-foreground">Gestion des seuils</h1>

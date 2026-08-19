@@ -3,16 +3,35 @@ package com.projet.notifications.model;
 import com.projet.alerting.model.Alerte;
 import com.projet.notifications.model.enums.TypeEvenement;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * Module: notifications
  * SQL Table: notification
  *
- * Written and read by Java service. One notification is created per event 
- * (one per unique event, not per recipient). See EnvoiNotification for delivery tracking.
- * The nullable FK to alerte is SET NULL on delete (per migration constraint).
+ * Une ligne par événement métier (pas par destinataire ni par canal).
+ * Voir EnvoiNotification pour le suivi de livraison par destinataire × canal.
+ *
+ * donnees_evenement (JSONB) stocke les données brutes structurées de l'événement.
+ * Chaque canal (EMAIL, IN_APP) produit sa propre mise en forme à partir de ces données.
+ * Structures par TypeEvenement :
+ *
+ *   ALERTE_CREE / ALERTE_RESOLU :
+ *     { idAlerte, metrique, typeAlerte, severite, nomPointMesure, dateEvenement }
+ *
+ *   COMPTE_ACTIVEE :
+ *     { idSuperviseur, nomSuperviseur, prenomSuperviseur, dateActivation }
+ *
+ *   CONFIG_SEUILS_MODIFIE :
+ *     { idPointMesure, nomPointMesure, metrique, typeModification, dateModification }
+ *
+ *   RAPPORT_GENERE :
+ *     { idRapport, dateGeneration }
  */
 @Entity
 @Table(name = "notification")
@@ -34,8 +53,14 @@ public class Notification {
     @Column(length = 255)
     private String titre;
 
-    @Column(columnDefinition = "TEXT")
-    private String contenu;
+    /**
+     * Données brutes structurées de l'événement (JSONB).
+     * Source unique partagée par tous les canaux — chacun formate selon ses besoins.
+     * Ne jamais stocker de texte pré-formaté ici.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "donnees_evenement", columnDefinition = "jsonb")
+    private Map<String, Object> donneesEvenement;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -61,8 +86,8 @@ public class Notification {
     public String getTitre() { return titre; }
     public void setTitre(String titre) { this.titre = titre; }
 
-    public String getContenu() { return contenu; }
-    public void setContenu(String contenu) { this.contenu = contenu; }
+    public Map<String, Object> getDonneesEvenement() { return donneesEvenement; }
+    public void setDonneesEvenement(Map<String, Object> donneesEvenement) { this.donneesEvenement = donneesEvenement; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

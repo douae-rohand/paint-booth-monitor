@@ -27,15 +27,18 @@ public class AuthService implements UserDetailsService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    private final MotDePasseValidator motDePasseValidator;
 
-    public AuthService(SuperviseurRepository superviseurRepository, 
-                       RefreshTokenRepository refreshTokenRepository, 
+    public AuthService(SuperviseurRepository superviseurRepository,
+                       RefreshTokenRepository refreshTokenRepository,
                        JwtUtil jwtUtil,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       MotDePasseValidator motDePasseValidator) {
         this.superviseurRepository = superviseurRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
+        this.motDePasseValidator = motDePasseValidator;
     }
 
     @Override
@@ -185,12 +188,9 @@ public class AuthService implements UserDetailsService {
             throw new IllegalArgumentException("Ancien mot de passe incorrect");
         }
 
-        // Validate new password (at least 8 characters)
-        if (newPassword.length() < 8) {
-            throw new IllegalArgumentException("Le nouveau mot de passe doit contenir au moins 8 caractères");
-        }
+        // Validate new password strength (centralized rules)
+        motDePasseValidator.valider(newPassword);
 
-        // Update password and reset mustChangePassword
         superviseur.setMotDePasseHash(passwordEncoder.encode(newPassword));
         superviseur.setMustChangePassword(false);
         superviseur.setUpdatedAt(LocalDateTime.now());

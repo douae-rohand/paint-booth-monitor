@@ -51,7 +51,10 @@ apiClient.interceptors.response.use(
           await handleAuthFailure();
         } catch (handlerError) {
           console.error('Auth failure handler failed:', handlerError);
-          window.location.href = '/login';
+          const publicPaths = ['/login', '/activation', '/reinitialiser-mot-de-passe'];
+          if (!publicPaths.includes(window.location.pathname)) {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }

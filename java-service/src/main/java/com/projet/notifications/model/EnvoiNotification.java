@@ -48,6 +48,20 @@ public class EnvoiNotification {
     @Column(name = "date_lecture")
     private LocalDateTime dateLecture;
 
+    /**
+     * Nombre de tentatives d'envoi effectuées.
+     * Incrémenté à chaque échec. Quand tentatives >= seuil configuré, statut passe à ECHEC.
+     */
+    @Column(nullable = false)
+    private int tentatives = 0;
+
+    /**
+     * Dernier message d'erreur renvoyé par SendGrid (code HTTP + body).
+     * Null si aucune tentative n'a échoué. Utile pour diagnostiquer sans fouiller les logs.
+     */
+    @Column(name = "derniere_erreur", columnDefinition = "TEXT")
+    private String derniereErreur;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
@@ -89,4 +103,10 @@ public class EnvoiNotification {
 
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+
+    public int getTentatives() { return tentatives; }
+    public void setTentatives(int tentatives) { this.tentatives = tentatives; }
+
+    public String getDerniereErreur() { return derniereErreur; }
+    public void setDerniereErreur(String derniereErreur) { this.derniereErreur = derniereErreur; }
 }

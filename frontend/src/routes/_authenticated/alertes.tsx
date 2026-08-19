@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { AlertTriangle } from "lucide-react";
 import { ActiveAlertsBand } from "@/components/alerting/ActiveAlertsBand";
 import { AlertesHistoryTable } from "@/components/alerting/AlertesHistoryTable";
 import { useDashboardWebSocket } from "@/hooks/useDashboardWebSocket";
@@ -53,11 +54,16 @@ function AlertesPage() {
       <div className="neu-card p-6 flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between mb-5 shrink-0">
-          <div>
-            <h2 className="text-lg font-bold">Alertes</h2>
-            <p className="text-sm text-muted-foreground">
-              Consultez les alertes actives et l'historique des alertes
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
+              <AlertTriangle className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">Alertes</h2>
+              <p className="text-sm text-muted-foreground">
+                Consultez les alertes actives et l'historique des alertes
+              </p>
+            </div>
           </div>
         </div>
 

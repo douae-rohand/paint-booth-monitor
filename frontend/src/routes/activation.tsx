@@ -5,6 +5,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { activerCompte, type ActivationCompteDTO } from '../api/admin/superviseurs';
+import { isPasswordValid } from '../lib/password-rules';
+import PasswordStrengthIndicator from '../components/auth/PasswordStrengthIndicator';
 
 export const Route = createFileRoute('/activation')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -26,6 +28,7 @@ function ActivationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
+  const [showIndicator, setShowIndicator] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -47,11 +50,6 @@ function ActivationPage() {
 
     if (nouveauMotDePasse !== confirmationMotDePasse) {
       setError('Les mots de passe ne correspondent pas.');
-      return;
-    }
-
-    if (nouveauMotDePasse.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.');
       return;
     }
 
@@ -143,7 +141,8 @@ function ActivationPage() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={nouveauMotDePasse}
-                onChange={(e) => setNouveauMotDePasse(e.target.value)}
+                onChange={(e) => { setNouveauMotDePasse(e.target.value); setShowIndicator(true); }}
+                onFocus={() => setShowIndicator(true)}
                 className="pl-14 pr-14 h-14 neu-inset border-0 focus-visible:ring-2 text-base placeholder:text-muted-foreground/70"
                 required
                 disabled={isSubmitting}
@@ -157,6 +156,7 @@ function ActivationPage() {
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
+            <PasswordStrengthIndicator password={nouveauMotDePasse} show={showIndicator} />
           </div>
 
           <div className="space-y-2">
@@ -199,7 +199,7 @@ function ActivationPage() {
             type="submit"
             className="w-full h-12 text-base font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
             style={{ boxShadow: 'var(--shadow-glow)' }}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isPasswordValid(nouveauMotDePasse)}
           >
             {isSubmitting ? (
               <>

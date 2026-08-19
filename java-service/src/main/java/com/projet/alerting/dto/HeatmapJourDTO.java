@@ -29,7 +29,11 @@ public class HeatmapJourDTO {
     private LocalDate date;
 
     /**
-     * Nombre de dépassements ce jour.
+     * Nombre d'alertes critiques (SEUIL_ABSOLU uniquement) ce jour.
+     * Les alertes dynamiques (SEUIL_DYNAMIQUE) et futures (DERIVE_IA) sont exclues
+     * volontairement pour cohérence avec la popup de détail (getDetailJour).
+     * Renommé de nombreDepassements → nombreAlertesCritiques pour refléter
+     * la sémantique exacte après correction de getHeatmapMois.
      */
-    private Long nombreDepassements;
+    private Long nombreAlertesCritiques;
 }
