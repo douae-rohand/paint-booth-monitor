@@ -92,8 +92,11 @@ public class SendGridEmailService implements EmailService {
     public EmailResult envoyerNotificationAlerte(
             String destinataireEmail, String titre, Map<String, Object> donneesEvenement
     ) {
+        String typeEvenement = donneesEvenement != null
+                ? String.valueOf(donneesEvenement.getOrDefault("typeEvenement", "ALERTE_CREE"))
+                : "ALERTE_CREE";
         EmailResult r = envoyerHtml(destinataireEmail, titre,
-                templateBuilder.alerte(titre, donneesEvenement));
+                templateBuilder.alerte(titre, typeEvenement, donneesEvenement));
         if (!r.isSucces())
             logger.error("[SENDGRID] Échec alerte email {} - statut={}", destinataireEmail, r.statut());
         return r;

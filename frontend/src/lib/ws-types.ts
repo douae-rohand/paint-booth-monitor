@@ -60,17 +60,20 @@ export interface StatutTempsReelMessage {
 // ── AlerteMessage (/topic/alertes) ─────────────────────────────────────────────
 /**
  * Miroir de AlerteMessage.java.
- * Publié lors de la création d'une alerte.
- * `idAlerte` : UUID Java → string TS.
- * `typeAlerte` : enum TypeAlerte Java.
- * `severite` : enum Severite Java.
- * `dateCreation` : format "yyyy-MM-dd'T'HH:mm:ss" (@JsonFormat Java).
+ * Publié lors de la création ou de la résolution d'une alerte.
+ * `evenement`   : "CREATION" ou "RESOLUTION" — ajouté lors de la correction résolution symétrique.
+ * `idAlerte`    : UUID Java → string TS.
+ * `typeAlerte`  : enum TypeAlerte Java.
+ * `severite`    : enum Severite Java.
+ * `dateCreation`: format "yyyy-MM-dd'T'HH:mm:ss" (@JsonFormat Java).
  */
 export interface AlerteMessage {
+  /** "CREATION" ou "RESOLUTION" */
+  evenement: 'CREATION' | 'RESOLUTION';
   /** UUID de l'alerte */
   idAlerte: string;
-  idPointMesure: number;
-  nomPointMesure: string;
+  idPointMesure: number | null;
+  nomPointMesure: string | null;
   metrique: Metrique;
   typeAlerte: 'SEUIL_ABSOLU' | 'SEUIL_DYNAMIQUE' | 'DERIVE_IA';
   severite: 'FAIBLE' | 'MOYENNE' | 'CRITIQUE';

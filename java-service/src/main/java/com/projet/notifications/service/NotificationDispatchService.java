@@ -20,8 +20,18 @@ public interface NotificationDispatchService {
     /** Déclenché à l'activation d'un compte superviseur. */
     void dispatcherCompteActive(Superviseur superviseur);
 
-    /** Déclenché à la modification d'un seuil absolu ou dynamique par un Admin. */
-    void dispatcherSeuilModifie(String nomPointMesure, Metrique metrique, boolean estAbsolu);
+    /**
+     * Déclenché à la modification d'un seuil absolu ou dynamique par un Admin.
+     *
+     * @param nomPointMesure  nom du point de mesure concerné
+     * @param metrique        métrique concernée
+     * @param estAbsolu       true = seuil absolu (valeurMin/valeurMax), false = marge dynamique
+     * @param valeurs         map des valeurs modifiées :
+     *                        seuil absolu  → { "valeurMin": x, "valeurMax": y }
+     *                        marge dyn.    → { "marge": z }
+     */
+    void dispatcherSeuilModifie(String nomPointMesure, Metrique metrique,
+                                boolean estAbsolu, java.util.Map<String, Object> valeurs);
 
     /** Déclenché à la génération d'un rapport PDF. */
     void dispatcherRapportGenere(String nomRapport);

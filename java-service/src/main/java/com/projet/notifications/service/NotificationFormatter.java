@@ -33,15 +33,14 @@ public class NotificationFormatter {
 
         return switch (type) {
             case ALERTE_CREE -> String.format(
-                    "Anomalie détectée sur %s — %s (%s). Sévérité : %s.",
+                    "Anomalie détectée sur %s - %s (%s).",
                     str(donnees, "nomPointMesure"),
                     str(donnees, "metrique"),
-                    str(donnees, "typeAlerte"),
-                    str(donnees, "severite")
+                    str(donnees, "typeAlerte")
             );
 
             case ALERTE_RESOLU -> String.format(
-                    "Anomalie résolue sur %s — %s. La valeur est revenue dans les bornes.",
+                    "Anomalie résolue sur %s - %s.",
                     str(donnees, "nomPointMesure"),
                     str(donnees, "metrique")
             );
@@ -52,14 +51,29 @@ public class NotificationFormatter {
                     str(donnees, "nomSuperviseur")
             );
 
-            case CONFIG_SEUILS_MODIFIE -> String.format(
-                    "La configuration %s a été mise à jour pour %s (%s).",
-                    "SEUIL_ABSOLU".equals(donnees.get("typeModification"))
-                            ? "du seuil absolu"
-                            : "de la marge dynamique",
-                    str(donnees, "nomPointMesure"),
-                    str(donnees, "metrique")
-            );
+            case CONFIG_SEUILS_MODIFIE -> {
+                String typeLabel = "SEUIL_ABSOLU".equals(donnees.get("typeModification"))
+                        ? "du seuil absolu" : "de la marge dynamique";
+                boolean estAbsolu = "SEUIL_ABSOLU".equals(donnees.get("typeModification"));
+                if (estAbsolu) {
+                    yield String.format(
+                            "La configuration %s pour: %s (%s), Min : %s, Max : %s.",
+                            typeLabel,
+                            str(donnees, "nomPointMesure"),
+                            str(donnees, "metrique"),
+                            str(donnees, "valeurMin"),
+                            str(donnees, "valeurMax")
+                    );
+                } else {
+                    yield String.format(
+                            "La configuration %s pour: %s (%s), Marge : ±%s.",
+                            typeLabel,
+                            str(donnees, "nomPointMesure"),
+                            str(donnees, "metrique"),
+                            str(donnees, "marge")
+                    );
+                }
+            }
 
             case RAPPORT_GENERE -> String.format(
                     "Un nouveau rapport (réf. %s) est disponible en téléchargement.",

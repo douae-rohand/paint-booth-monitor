@@ -11,6 +11,7 @@ import com.projet.auth.repository.RefreshTokenRepository;
 import com.projet.auth.repository.SuperviseurRepository;
 import com.projet.auth.repository.TokenActivationRepository;
 import com.projet.notifications.service.EmailService;
+import com.projet.notifications.service.NotificationDispatchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +37,7 @@ public class SuperviseurAdminService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final MotDePasseValidator motDePasseValidator;
+    private final NotificationDispatchService notificationDispatchService;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -49,13 +51,15 @@ public class SuperviseurAdminService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             EmailService emailService,
-            MotDePasseValidator motDePasseValidator) {
+            MotDePasseValidator motDePasseValidator,
+            NotificationDispatchService notificationDispatchService) {
         this.superviseurRepository = superviseurRepository;
         this.tokenActivationRepository = tokenActivationRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.motDePasseValidator = motDePasseValidator;
+        this.notificationDispatchService = notificationDispatchService;
     }
 
     @Transactional
@@ -136,13 +140,23 @@ public class SuperviseurAdminService {
         try {
             EmailService.EmailResult result = emailService.envoyerEmailBienvenue(superviseur.getEmail(), superviseur.getPrenom());
             if (!result.isSucces()) {
-                logger.warn("[ADMIN_SERVICE] Échec envoi email bienvenue à {} — statut={} — {}", 
+                logger.warn("[ADMIN_SERVICE] Échec envoi email bienvenue à {} — statut={} — {}",
                         superviseur.getEmail(), result.statut(), result.erreur());
             } else {
                 logger.info("[ADMIN_SERVICE] Email de bienvenue envoyé avec succès à {}", superviseur.getEmail());
             }
         } catch (Exception e) {
-            logger.error("[ADMIN_SERVICE] Erreur inattendue lors de l'envoi de l'email de bienvenue à {} — {}", 
+            logger.error("[ADMIN_SERVICE] Erreur inattendue lors de l'envoi de l'email de bienvenue à {} — {}",
+                    superviseur.getEmail(), e.getMessage(), e);
+        }
+
+        // Notifier les Admins de l'activation du compte (IN_APP + EMAIL outbox)
+        // Appel séparé de l'email de bienvenue : celui-ci est envoyé au superviseur lui-même,
+        // dispatcherCompteActive envoie aux Admins pour les informer.
+        try {
+            notificationDispatchService.dispatcherCompteActive(superviseur);
+        } catch (Exception e) {
+            logger.error("[ADMIN_SERVICE] Erreur lors du dispatch notification compteActive pour {} — {}",
                     superviseur.getEmail(), e.getMessage(), e);
         }
     }

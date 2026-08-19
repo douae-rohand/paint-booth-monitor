@@ -103,7 +103,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
                     construireTitreAlerteCree(alerte, donnees.nomPointMesure()),
                     donnees.versMap(TypeEvenement.ALERTE_CREE));
 
-        }, () -> logger.warn("Alerte {} introuvable — dispatch ignoré", idAlerte));
+        }, () -> logger.warn("Alerte {} introuvable - dispatch ignoré", idAlerte));
     }
 
     @Override
@@ -137,7 +137,8 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
     }
 
     @Override
-    public void dispatcherSeuilModifie(String nomPointMesure, Metrique metrique, boolean estAbsolu) {
+    public void dispatcherSeuilModifie(String nomPointMesure, Metrique metrique,
+                                       boolean estAbsolu, Map<String, Object> valeurs) {
         String typeLabel = estAbsolu ? "Seuil absolu modifié" : "Marge dynamique modifiée";
         String titre = String.format("%s - %s (%s)", typeLabel, nomPointMesure, labelMetrique(metrique));
         Map<String, Object> donnees = new HashMap<>();
@@ -145,6 +146,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
         donnees.put("metrique", metrique.name());
         donnees.put("typeModification", estAbsolu ? "SEUIL_ABSOLU" : "MARGE_DYNAMIQUE");
         donnees.put("dateModification", LocalDateTime.now().toString());
+        if (valeurs != null) donnees.putAll(valeurs);
         creerOutbox(null, TypeEvenement.CONFIG_SEUILS_MODIFIE, titre, donnees);
     }
 
@@ -196,6 +198,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
         Map<String, Object> versMap(TypeEvenement type) {
             Map<String, Object> m = new HashMap<>();
             m.put("idAlerte", idAlerte);
+            m.put("typeEvenement", type.name()); // nécessaire pour EmailTemplateBuilder.alerte()
             m.put("metrique", metrique);
             m.put("typeAlerte", typeAlerte);
             m.put("severite", severite);
@@ -213,12 +216,12 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
         String sev = alerte.getSeverite() == Severite.CRITIQUE ? "critique" : "moyenne";
         String type = alerte.getTypeAlerte() == TypeAlerte.SEUIL_ABSOLU
                 ? "Seuil absolu dépassé" : "Anomalie dynamique détectée";
-        return String.format("Alerte %s - %s (%s, %s)", sev, type,
+        return String.format("Alerte %s : %s (%s, %s)", sev, type,
                 labelMetrique(alerte.getMetrique()), nomPointMesure);
     }
 
     private String construireTitreAlerteResolu(Alerte alerte, String nomPointMesure) {
-        return String.format("Alerte résolue - %s, %s",
+        return String.format("Alerte résolue : %s, %s",
                 labelMetrique(alerte.getMetrique()), nomPointMesure);
     }
 
@@ -241,7 +244,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
 
         List<UUID> destinataireIds = destinatairesPourEvenement(typeEvenement);
         if (destinataireIds.isEmpty()) {
-            logger.info("[OUTBOX] {} — aucun destinataire actif", typeEvenement);
+            logger.info("[OUTBOX] {} - aucun destinataire actif", typeEvenement);
             return;
         }
 
@@ -253,7 +256,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
                                 saved.getIdNotification(), idDestinataire, canal)) continue;
 
                 if (canal == Canal.EMAIL && !isEmailValide(resolveEmail(idDestinataire))) {
-                    logger.warn("[OUTBOX] Email invalide pour {} — ligne EMAIL non créée", idDestinataire);
+                    logger.warn("[OUTBOX] Email invalide pour {} - ligne EMAIL non créée", idDestinataire);
                     continue;
                 }
 
@@ -284,7 +287,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
             }
         }
 
-        logger.info("[OUTBOX] {} — {} EnvoiNotification créés (notification={})",
+        logger.info("[OUTBOX] {} - {} EnvoiNotification créés (notification={})",
                 typeEvenement, nbCrees, saved.getIdNotification());
     }
 

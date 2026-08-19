@@ -85,58 +85,68 @@ public class EmailTemplateBuilder {
 
     /**
      * Template HTML pour ALERTE_CREE / ALERTE_RESOLU.
-     * Tableau de détails + bouton CTA vers la page alertes.
+     * Le message d'introduction diffère selon le type :
+     *   ALERTE_CREE  → "Une anomalie a été détectée..."
+     *   ALERTE_RESOLU → "L'anomalie a été résolue..."
      * Le titre est lu depuis Notification.titre — jamais généré ici.
      *
+     * @param typeEvenement  "ALERTE_CREE" ou "ALERTE_RESOLU"
      * @param donneesEvenement map JSONB contenant : idAlerte, metrique, typeAlerte, severite,
      *                         nomPointMesure, typeEmplacement, dateEvenement, urlTableauBord (optionnel)
      */
-    public String alerte(String titre, Map<String, Object> donneesEvenement) {
-        String metrique      = str(donneesEvenement, "metrique");
-        String typeAlerte    = str(donneesEvenement, "typeAlerte");
-        String severite      = str(donneesEvenement, "severite");
-        String dateHeure     = str(donneesEvenement, "dateEvenement");
-        String idAlerte      = str(donneesEvenement, "idAlerte");
-        String emplacement   = str(donneesEvenement, "typeEmplacement");
+    public String alerte(String titre, String typeEvenement, Map<String, Object> donneesEvenement) {
+        String metrique       = str(donneesEvenement, "metrique");
+        String typeAlerte     = str(donneesEvenement, "typeAlerte");
+        String severite       = str(donneesEvenement, "severite");
+        String dateHeure      = str(donneesEvenement, "dateEvenement");
+        String idAlerte       = str(donneesEvenement, "idAlerte");
+        String emplacement    = str(donneesEvenement, "typeEmplacement");
         String pointMesureNom = str(donneesEvenement, "nomPointMesure");
 
-        // urlTableauBord : optionnel dans donnees_evenement, sinon construite depuis frontendUrl
         String urlRaw = str(donneesEvenement, "urlTableauBord");
         String urlTableauBord = urlRaw.isBlank() ? frontendUrl + "/alertes" : urlRaw;
+
         String severiteDisplay = switch (severite) {
-            case "CRITIQUE" -> "🔴 CRITIQUE";
-            case "MOYENNE"  -> "🟡 MOYENNE";
-            default         -> "🔵 " + severite;
+            case "CRITIQUE" -> "CRITIQUE";
+            case "MOYENNE"  -> "MOYENNE";
+            default         -> severite;
         };
 
         String emplacementLabel;
         if ("CABINE".equalsIgnoreCase(emplacement)) {
-            emplacementLabel = "la cabine de peinture";
+            emplacementLabel = "la cabine";
         } else if ("ETUVE".equalsIgnoreCase(emplacement)) {
             emplacementLabel = "l'étuve";
         } else {
             emplacementLabel = emplacement != null ? emplacement : "l'équipement";
         }
 
-        String message = String.format(
-                "Une anomalie a été détectée sur %s (<strong>%s</strong>). Voici les détails :<br><br>"
-                + "<table style='border-collapse:collapse;width:100%%;font-size:14px;color:#475569;'>"
-                + "<tr><td style='padding:6px 0;font-weight:600;width:120px;'>Métrique</td>"
-                +     "<td style='padding:6px 0;'>%s</td></tr>"
-                + "<tr style='background:#f8fafc;'><td style='padding:6px 0;font-weight:600;'>Type</td>"
-                +     "<td style='padding:6px 0;'>%s</td></tr>"
-                + "<tr><td style='padding:6px 0;font-weight:600;'>Sévérité</td>"
-                +     "<td style='padding:6px 0;'>%s</td></tr>"
-                + "<tr style='background:#f8fafc;'><td style='padding:6px 0;font-weight:600;'>Date / Heure</td>"
-                +     "<td style='padding:6px 0;'>%s</td></tr>"
-                + "<tr><td style='padding:6px 0;font-weight:600;'>ID alerte</td>"
-                +     "<td style='padding:6px 4px;font-family:monospace;font-size:12px;color:#94a3b8;'>%s</td></tr>"
-                + "</table>",
-                emplacementLabel, pointMesureNom,
-                metrique, typeAlerte, severiteDisplay, dateHeure, idAlerte
-        );
+        boolean estResolution = "ALERTE_RESOLU".equals(typeEvenement);
 
-        return construireStructure(titre, message, "Consulter le tableau de bord", urlTableauBord, null);
+        String intro = estResolution
+                ? String.format("L'anomalie sur %s (<strong>%s</strong>) a été résolue. Voici les détails :<br><br>",
+                        emplacementLabel, pointMesureNom)
+                : String.format("Une anomalie a été détectée sur %s (<strong>%s</strong>). Voici les détails :<br><br>",
+                        emplacementLabel, pointMesureNom);
+
+        String dateLabel = estResolution ? "Date résolution" : "Date / Heure";
+
+        String message = intro
+                + "<table style='border-collapse:collapse;width:100%;font-size:14px;color:#475569;'>"
+                + "<tr><td style='padding:6px 0;font-weight:600;width:120px;'>Métrique</td>"
+                +     "<td style='padding:6px 0;'>" + metrique + "</td></tr>"
+                + "<tr style='background:#f8fafc;'><td style='padding:6px 0;font-weight:600;'>Type</td>"
+                +     "<td style='padding:6px 0;'>" + typeAlerte + "</td></tr>"
+                + "<tr><td style='padding:6px 0;font-weight:600;'>Sévérité</td>"
+                +     "<td style='padding:6px 0;'>" + severiteDisplay + "</td></tr>"
+                + "<tr style='background:#f8fafc;'><td style='padding:6px 0;font-weight:600;'>" + dateLabel + "</td>"
+                +     "<td style='padding:6px 0;'>" + dateHeure + "</td></tr>"
+                + "<tr><td style='padding:6px 0;font-weight:600;'>ID alerte</td>"
+                +     "<td style='padding:6px 4px;font-family:monospace;font-size:12px;color:#94a3b8;'>" + idAlerte + "</td></tr>"
+                + "</table>";
+
+        String btnTexte = estResolution ? "Voir l'historique des alertes" : "Consulter le tableau de bord";
+        return construireStructure(titre, message, btnTexte, urlTableauBord, null);
     }
 
     /**
@@ -171,6 +181,15 @@ public class EmailTemplateBuilder {
         String dateModification = str(donneesEvenement, "dateModification");
 
         String typeLabel = "SEUIL_ABSOLU".equals(typeModification) ? "seuil absolu" : "marge dynamique";
+        boolean estAbsolu = "SEUIL_ABSOLU".equals(typeModification);
+
+        String lignesValeurs = estAbsolu
+                ? "<tr><td style='padding:6px 0;font-weight:600;width:160px;'>Valeur min</td>"
+                +     "<td style='padding:6px 0;'>" + str(donneesEvenement, "valeurMin") + "</td></tr>"
+                + "<tr style='background:#f8fafc;'><td style='padding:6px 0;font-weight:600;'>Valeur max</td>"
+                +     "<td style='padding:6px 0;'>" + str(donneesEvenement, "valeurMax") + "</td></tr>"
+                : "<tr><td style='padding:6px 0;font-weight:600;width:160px;'>Marge (±)</td>"
+                +     "<td style='padding:6px 0;'>" + str(donneesEvenement, "marge") + "</td></tr>";
 
         String message = String.format(
                 "Un administrateur a mis à jour la configuration du <strong>%s</strong> "
@@ -188,7 +207,8 @@ public class EmailTemplateBuilder {
                 typeLabel, nomPointMesure, metrique,
                 nomPointMesure, metrique,
                 "SEUIL_ABSOLU".equals(typeModification) ? "Seuil absolu" : "Marge dynamique",
-                dateModification);
+                dateModification)
+                + lignesValeurs;
 
         String urlSeuils = frontendUrl + "/seuils";
         return construireStructure(titre, message, "Voir les seuils configurés", urlSeuils, null);
@@ -212,7 +232,7 @@ public class EmailTemplateBuilder {
                 + "<tr style='background:#f8fafc;'><td style='padding:6px 0;font-weight:600;'>Généré le</td>"
                 +     "<td style='padding:6px 0;'>%s</td></tr>"
                 + "</table>",
-                idRapport.isEmpty() ? "—" : idRapport, dateGeneration);
+                idRapport.isEmpty() ? "-" : idRapport, dateGeneration);
 
         // Bouton CTA uniquement si URL disponible
         String btnTexte = urlRapport.isEmpty() ? null : "Télécharger le rapport";

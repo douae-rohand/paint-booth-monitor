@@ -11,11 +11,13 @@ import com.projet.auth.repository.AdminRepository;
 import com.projet.measures.model.PointMesure;
 import com.projet.measures.repository.PointMesureRepository;
 import org.springframework.http.HttpStatus;
+import com.projet.notifications.service.NotificationDispatchService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -25,13 +27,16 @@ public class SeuilAbsoluService {
     private final SeuilAbsoluRepository seuilAbsoluRepository;
     private final PointMesureRepository pointMesureRepository;
     private final AdminRepository adminRepository;
+    private final NotificationDispatchService notificationDispatchService;
 
     public SeuilAbsoluService(SeuilAbsoluRepository seuilAbsoluRepository,
                               PointMesureRepository pointMesureRepository,
-                              AdminRepository adminRepository) {
+                              AdminRepository adminRepository,
+                              NotificationDispatchService notificationDispatchService) {
         this.seuilAbsoluRepository = seuilAbsoluRepository;
         this.pointMesureRepository = pointMesureRepository;
         this.adminRepository = adminRepository;
+        this.notificationDispatchService = notificationDispatchService;
     }
 
     @Transactional
@@ -73,6 +78,12 @@ public class SeuilAbsoluService {
         seuil.setCreatedAt(LocalDateTime.now());
 
         SeuilAbsolu saved = seuilAbsoluRepository.save(seuil);
+
+        // Notifier les superviseurs de la nouvelle configuration de seuil absolu
+        notificationDispatchService.dispatcherSeuilModifie(
+                pm.getNom(), dto.getMetrique(), true,
+                Map.of("valeurMin", saved.getValeurMin(), "valeurMax", saved.getValeurMax()));
+
         return mapToResponseDTO(saved);
     }
 
@@ -94,6 +105,11 @@ public class SeuilAbsoluService {
             seuil.setDateActivation(LocalDateTime.now());
             seuil.setDateDesactivation(null);
             seuil = seuilAbsoluRepository.save(seuil);
+
+            // Notifier les superviseurs de l'activation du seuil absolu
+            notificationDispatchService.dispatcherSeuilModifie(
+                    seuil.getPointMesure().getNom(), seuil.getMetrique(), true,
+                    Map.of("valeurMin", seuil.getValeurMin(), "valeurMax", seuil.getValeurMax()));
         }
 
         return mapToResponseDTO(seuil);
