@@ -39,4 +39,12 @@ public interface PointMesureRepository extends JpaRepository<PointMesure, Long> 
      * Compte le nombre total de points de mesure actifs non supprimés.
      */
     long countByActifTrueAndDeletedAtIsNull();
+
+    /**
+     * Retourne un point de mesure par ID s'il est actif et non supprimé.
+     *
+     * @param id ID du point de mesure
+     * @return Optional contenant le point de mesure s'il existe et est actif
+     */
+    Optional<PointMesure> findByIdAndActifTrueAndDeletedAtIsNull(Long id);
 }

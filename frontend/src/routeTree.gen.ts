@@ -9,32 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitialiser-mot-de-passe'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ChangePasswordRouteImport } from './routes/change-password'
-import { Route as ActivationRouteImport } from './routes/activation'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as ActivationRouteImport } from './routes/activation'
+import { Route as ChangePasswordRouteImport } from './routes/change-password'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitialiser-mot-de-passe'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedSuperviseursRouteImport } from './routes/_authenticated/superviseurs'
-import { Route as AuthenticatedSeuilsRouteImport } from './routes/_authenticated/seuils'
-import { Route as AuthenticatedPlcRouteImport } from './routes/_authenticated/plc'
-import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAlertesRouteImport } from './routes/_authenticated/alertes'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
+import { Route as AuthenticatedPlcRouteImport } from './routes/_authenticated/plc'
+import { Route as AuthenticatedRapportsRouteImport } from './routes/_authenticated/rapports'
+import { Route as AuthenticatedSeuilsRouteImport } from './routes/_authenticated/seuils'
+import { Route as AuthenticatedSuperviseursRouteImport } from './routes/_authenticated/superviseurs'
 
-const ReinitialiserMotDePasseRoute = ReinitialiserMotDePasseRouteImport.update({
-  id: '/reinitialiser-mot-de-passe',
-  path: '/reinitialiser-mot-de-passe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChangePasswordRoute = ChangePasswordRouteImport.update({
-  id: '/change-password',
-  path: '/change-password',
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ActivationRoute = ActivationRouteImport.update({
@@ -42,13 +32,54 @@ const ActivationRoute = ActivationRouteImport.update({
   path: '/activation',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRoute = AuthenticatedRouteImport.update({
-  id: '/_authenticated',
+const ChangePasswordRoute = ChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReinitialiserMotDePasseRoute = ReinitialiserMotDePasseRouteImport.update({
+  id: '/reinitialiser-mot-de-passe',
+  path: '/reinitialiser-mot-de-passe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAlertesRoute = AuthenticatedAlertesRouteImport.update({
+  id: '/alertes',
+  path: '/alertes',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedHistoryRoute = AuthenticatedHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedPlcRoute = AuthenticatedPlcRouteImport.update({
+  id: '/plc',
+  path: '/plc',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedRapportsRoute = AuthenticatedRapportsRouteImport.update({
+  id: '/rapports',
+  path: '/rapports',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSeuilsRoute = AuthenticatedSeuilsRouteImport.update({
+  id: '/seuils',
+  path: '/seuils',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedSuperviseursRoute =
@@ -57,31 +88,6 @@ const AuthenticatedSuperviseursRoute =
     path: '/superviseurs',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedSeuilsRoute = AuthenticatedSeuilsRouteImport.update({
-  id: '/seuils',
-  path: '/seuils',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedPlcRoute = AuthenticatedPlcRouteImport.update({
-  id: '/plc',
-  path: '/plc',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedHistoryRoute = AuthenticatedHistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedAlertesRoute = AuthenticatedAlertesRouteImport.update({
-  id: '/alertes',
-  path: '/alertes',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/plc': typeof AuthenticatedPlcRoute
+  '/rapports': typeof AuthenticatedRapportsRoute
   '/seuils': typeof AuthenticatedSeuilsRoute
   '/superviseurs': typeof AuthenticatedSuperviseursRoute
 }
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/plc': typeof AuthenticatedPlcRoute
+  '/rapports': typeof AuthenticatedRapportsRoute
   '/seuils': typeof AuthenticatedSeuilsRoute
   '/superviseurs': typeof AuthenticatedSuperviseursRoute
   '/': typeof AuthenticatedIndexRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
   '/_authenticated/plc': typeof AuthenticatedPlcRoute
+  '/_authenticated/rapports': typeof AuthenticatedRapportsRoute
   '/_authenticated/seuils': typeof AuthenticatedSeuilsRoute
   '/_authenticated/superviseurs': typeof AuthenticatedSuperviseursRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/history'
     | '/plc'
+    | '/rapports'
     | '/seuils'
     | '/superviseurs'
   fileRoutesByTo: FileRoutesByTo
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/history'
     | '/plc'
+    | '/rapports'
     | '/seuils'
     | '/superviseurs'
     | '/'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/history'
     | '/_authenticated/plc'
+    | '/_authenticated/rapports'
     | '/_authenticated/seuils'
     | '/_authenticated/superviseurs'
     | '/_authenticated/'
@@ -177,25 +189,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/reinitialiser-mot-de-passe': {
-      id: '/reinitialiser-mot-de-passe'
-      path: '/reinitialiser-mot-de-passe'
-      fullPath: '/reinitialiser-mot-de-passe'
-      preLoaderRoute: typeof ReinitialiserMotDePasseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/change-password': {
-      id: '/change-password'
-      path: '/change-password'
-      fullPath: '/change-password'
-      preLoaderRoute: typeof ChangePasswordRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/activation': {
@@ -205,11 +203,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActivationRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteImport
+    '/change-password': {
+      id: '/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof ChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reinitialiser-mot-de-passe': {
+      id: '/reinitialiser-mot-de-passe'
+      path: '/reinitialiser-mot-de-passe'
+      fullPath: '/reinitialiser-mot-de-passe'
+      preLoaderRoute: typeof ReinitialiserMotDePasseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -219,32 +231,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/superviseurs': {
-      id: '/_authenticated/superviseurs'
-      path: '/superviseurs'
-      fullPath: '/superviseurs'
-      preLoaderRoute: typeof AuthenticatedSuperviseursRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/seuils': {
-      id: '/_authenticated/seuils'
-      path: '/seuils'
-      fullPath: '/seuils'
-      preLoaderRoute: typeof AuthenticatedSeuilsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/plc': {
-      id: '/_authenticated/plc'
-      path: '/plc'
-      fullPath: '/plc'
-      preLoaderRoute: typeof AuthenticatedPlcRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/history': {
-      id: '/_authenticated/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof AuthenticatedHistoryRouteImport
+    '/_authenticated/alertes': {
+      id: '/_authenticated/alertes'
+      path: '/alertes'
+      fullPath: '/alertes'
+      preLoaderRoute: typeof AuthenticatedAlertesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard': {
@@ -254,11 +245,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/alertes': {
-      id: '/_authenticated/alertes'
-      path: '/alertes'
-      fullPath: '/alertes'
-      preLoaderRoute: typeof AuthenticatedAlertesRouteImport
+    '/_authenticated/history': {
+      id: '/_authenticated/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof AuthenticatedHistoryRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/plc': {
+      id: '/_authenticated/plc'
+      path: '/plc'
+      fullPath: '/plc'
+      preLoaderRoute: typeof AuthenticatedPlcRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/rapports': {
+      id: '/_authenticated/rapports'
+      path: '/rapports'
+      fullPath: '/rapports'
+      preLoaderRoute: typeof AuthenticatedRapportsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/seuils': {
+      id: '/_authenticated/seuils'
+      path: '/seuils'
+      fullPath: '/seuils'
+      preLoaderRoute: typeof AuthenticatedSeuilsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/superviseurs': {
+      id: '/_authenticated/superviseurs'
+      path: '/superviseurs'
+      fullPath: '/superviseurs'
+      preLoaderRoute: typeof AuthenticatedSuperviseursRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
@@ -269,6 +288,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedPlcRoute: typeof AuthenticatedPlcRoute
+  AuthenticatedRapportsRoute: typeof AuthenticatedRapportsRoute
   AuthenticatedSeuilsRoute: typeof AuthenticatedSeuilsRoute
   AuthenticatedSuperviseursRoute: typeof AuthenticatedSuperviseursRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -279,6 +299,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedPlcRoute: AuthenticatedPlcRoute,
+  AuthenticatedRapportsRoute: AuthenticatedRapportsRoute,
   AuthenticatedSeuilsRoute: AuthenticatedSeuilsRoute,
   AuthenticatedSuperviseursRoute: AuthenticatedSuperviseursRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,

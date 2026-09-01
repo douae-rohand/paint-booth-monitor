@@ -36,14 +36,19 @@ public class CsrfOriginFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String method = request.getMethod();
-        
+
+        // Les requêtes OPTIONS (preflight CORS) ne doivent JAMAIS être bloquées par ce filtre.
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // CSRF checks only matter for state-changing operations
         Set<String> mutatingMethods = Set.of("POST", "PUT", "PATCH", "DELETE");
-        
+
         if (mutatingMethods.contains(method)) {
             String origin = request.getHeader("Origin");
-            
-            // Fallback to Referer if Origin is missing
+
             if (origin == null || origin.isEmpty()) {
                 String referer = request.getHeader("Referer");
                 if (referer != null && !referer.isEmpty()) {
@@ -57,18 +62,22 @@ public class CsrfOriginFilter extends OncePerRequestFilter {
             }
 
             if (origin == null || origin.isEmpty() || !allowedOrigins.contains(origin)) {
-                // Reject the request using the uniform ApiErrorResponse format
+                String requestOrigin = request.getHeader("Origin");
+                if (requestOrigin != null && allowedOrigins.contains(requestOrigin)) {
+                    response.setHeader("Access-Control-Allow-Origin", requestOrigin);
+                    response.setHeader("Access-Control-Allow-Credentials", "true");
+                }
                 response.setStatus(HttpStatus.FORBIDDEN.value());
                 response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
-                
+                response.setHeader("Cache-Control", "no-store, no-cache");
+                response.setHeader("Pragma", "no-cache");
                 String jsonResponse = String.format(
-                        "{\"code\":403,\"message\":\"Requete bloquee par protection CSRF (Origin invalide ou manquant)\",\"timestamp\":\"%s\"}",
-                        LocalDateTime.now().toString()
+                        "{\"code\":403,\"message\":\"Requete bloquee par protection CSRF (Origin invalide ou manquant : '%s')\",\"timestamp\":\"%s\"}",
+                        origin, LocalDateTime.now().toString()
                 );
-                
                 response.getWriter().write(jsonResponse);
-                return; // Stop filter chain
+                return;
             }
         }
 

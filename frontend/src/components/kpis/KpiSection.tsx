@@ -109,9 +109,15 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
     fetchKpis();
   }, [fetchKpis]);
 
-  // Abonnement WebSocket
+  // Abonnement WebSocket — mise à jour temps réel uniquement en mode global (sans scope point+métrique)
+  // En mode scopé, les valeurs viennent du fetch HTTP et reflètent la période sélectionnée.
+  // Ne pas écraser les valeurs scopées avec le snapshot global du WebSocket.
   useEffect(() => {
     const unsubscribe = subscribeToKpis((data: unknown) => {
+      // Si un scope point+métrique est actif, ignorer les mises à jour WebSocket
+      // car elles portent des valeurs globales qui écraseraient les valeurs filtrées.
+      if (selectedPoint && selectedMetrique) return;
+
       const kpiMessage = data as { alertesActives: number; nbPointsEnAnomalie: number };
       setKpis((prev) => {
         if (!prev) return prev;
@@ -142,7 +148,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
       });
     });
     return unsubscribe;
-  }, [subscribeToKpis]);
+  }, [subscribeToKpis, selectedPoint, selectedMetrique]);
 
   // Sync avec filtre global
   useEffect(() => {
@@ -281,7 +287,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
                 animatedFields.has('nbPointsEnAnomalie') ? 'animate-pulse' : ''
               }`}
             >
-              {kpis.nbPointsEnAnomalie} points en anomalie
+              {kpis.nbPointsEnAnomalie} {scopeActive ? 'sur ce point/métrique' : 'points en anomalie'}
             </p>
           </div>
           <div className="neu-pressable p-3 rounded-2xl">
@@ -296,16 +302,20 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
               Taux de Conformité
             </p>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {scopeActive && kpis.tauxConformite != null
+              {kpis.tauxConformite != null
                 ? `${Math.round(kpis.tauxConformite)}%`
-                : kpis.nbPointsTotal > 0
-                  ? `${Math.round(((kpis.nbPointsTotal - kpis.nbPointsEnAnomalie) / kpis.nbPointsTotal) * 100)}%`
-                  : 'N/A'}
+                : scopeActive
+                  ? '--'
+                  : kpis.nbPointsTotal > 0
+                    ? `${Math.round(((kpis.nbPointsTotal - kpis.nbPointsEnAnomalie) / kpis.nbPointsTotal) * 100)}%`
+                    : '--'}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {scopeActive && kpis.tauxConformite != null
+              {kpis.tauxConformite != null
                 ? 'Sur la période sélectionnée'
-                : 'Vue globale'}
+                : scopeActive
+                  ? 'Aucun seuil configuré'
+                  : 'Vue globale'}
             </p>
           </div>
           <div className="neu-pressable p-3 rounded-2xl">
@@ -322,10 +332,12 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
               {scopeActive && kpis.tempsMoyenEntreIncidentsHeures != null
                 ? formatDureeHeures(kpis.tempsMoyenEntreIncidentsHeures)
-                : 'N/A'}
+                : '--'}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {scopeActive ? 'Entre alertes SEUIL_ABSOLU' : 'Sélectionner un point'}
+              {scopeActive
+                ? 'Entre alertes SEUIL_ABSOLU'
+                : 'Sélectionnez un point de mesure'}
             </p>
           </div>
           <div className="neu-pressable p-3 rounded-2xl">
@@ -342,10 +354,12 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
               {scopeActive && kpis.tempsMoyenRetourNormalHeures != null
                 ? formatDureeHeures(kpis.tempsMoyenRetourNormalHeures)
-                : 'N/A'}
+                : '--'}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {scopeActive ? 'Après résolution' : 'Sélectionner un point'}
+              {scopeActive
+                ? 'Après résolution'
+                : 'Sélectionnez un point de mesure'}
             </p>
           </div>
           <div className="neu-pressable p-3 rounded-2xl">

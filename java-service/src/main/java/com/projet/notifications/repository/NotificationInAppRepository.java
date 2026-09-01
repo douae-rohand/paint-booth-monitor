@@ -10,34 +10,57 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
  * Repository dédié aux requêtes IN_APP pour le bell icon.
- * Lit EnvoiNotification JOIN Notification, filtré sur canal=IN_APP et le Superviseur courant.
  */
 public interface NotificationInAppRepository extends JpaRepository<EnvoiNotification, UUID> {
 
     /**
-     * Liste paginée des notifications IN_APP pour un Superviseur donné,
-     * triée par date de création décroissante.
+     * Toutes les notifications IN_APP non-lues d'un Superviseur, triées created_at DESC.
+     * LIMIT 100 : garde-fou technique uniquement — jamais censé être atteint en usage normal.
+     * Si ce seuil est atteint en pratique, c'est un signal produit à investiguer.
      */
-    @Query("""
-            SELECT e FROM EnvoiNotification e
-            JOIN FETCH e.notification n
-            WHERE e.superviseur.idSuperviseur = :idSuperviseur
-              AND e.canal = :canal
-              AND e.deletedAt IS NULL
-            ORDER BY n.createdAt DESC
-            """)
-    Page<EnvoiNotification> findBySuperviseurAndCanal(
+    @Query(value = """
+            SELECT e.* FROM envoi_notification e
+            JOIN notification n ON e.id_notification = n.id_notification
+            WHERE e.id_superviseur = :idSuperviseur
+              AND e.canal = 'IN_APP'
+              AND e.lu = false
+              AND e.deleted_at IS NULL
+            ORDER BY n.created_at DESC
+            LIMIT 100
+            """, nativeQuery = true)
+    List<EnvoiNotification> findNonLuesPourPanel(
+            @Param("idSuperviseur") UUID idSuperviseur
+    );
+
+    /**
+     * Notifications IN_APP lues récentes (dans les 7 derniers jours), plafonnées à 5,
+     * triées created_at DESC.
+     * Complète les non-lues dans le panel pour donner un contexte de flux récent.
+     */
+    @Query(value = """
+            SELECT e.* FROM envoi_notification e
+            JOIN notification n ON e.id_notification = n.id_notification
+            WHERE e.id_superviseur = :idSuperviseur
+              AND e.canal = 'IN_APP'
+              AND e.lu = true
+              AND e.deleted_at IS NULL
+              AND n.created_at >= :depuis
+            ORDER BY n.created_at DESC
+            LIMIT 5
+            """, nativeQuery = true)
+    List<EnvoiNotification> findLuesRecentesPourPanel(
             @Param("idSuperviseur") UUID idSuperviseur,
-            @Param("canal") Canal canal,
-            Pageable pageable
+            @Param("depuis") LocalDateTime depuis
     );
 
     /**
      * Compteur des notifications IN_APP non lues pour le badge bell icon.
+     * Compte toutes les non-lues sans limite ni fenêtre de rétention — toujours exact.
      */
     @Query("""
             SELECT COUNT(e) FROM EnvoiNotification e
@@ -53,7 +76,6 @@ public interface NotificationInAppRepository extends JpaRepository<EnvoiNotifica
 
     /**
      * Marque toutes les notifications IN_APP non lues comme lues pour un Superviseur.
-     * Utilisé par PATCH /api/notifications/lu-tout.
      */
     @Modifying
     @Query("""
@@ -70,5 +92,23 @@ public interface NotificationInAppRepository extends JpaRepository<EnvoiNotifica
             @Param("idSuperviseur") UUID idSuperviseur,
             @Param("canal") Canal canal,
             @Param("dateLecture") LocalDateTime dateLecture
+    );
+
+    /**
+     * Ancienne méthode paginée — conservée pour compatibilité si utilisée ailleurs.
+     * Le panel utilise désormais findNonLuesPourPanel + findLuesRecentesPourPanel.
+     */
+    @Query("""
+            SELECT e FROM EnvoiNotification e
+            JOIN FETCH e.notification n
+            WHERE e.superviseur.idSuperviseur = :idSuperviseur
+              AND e.canal = :canal
+              AND e.deletedAt IS NULL
+            ORDER BY n.createdAt DESC
+            """)
+    Page<EnvoiNotification> findBySuperviseurAndCanal(
+            @Param("idSuperviseur") UUID idSuperviseur,
+            @Param("canal") Canal canal,
+            Pageable pageable
     );
 }

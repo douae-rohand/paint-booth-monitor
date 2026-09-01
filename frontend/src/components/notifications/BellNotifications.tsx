@@ -12,8 +12,6 @@ interface BellNotificationsProps {
   hook: UseNotificationsReturn;
 }
 
-// ── Couleur de l'icône Bell selon le type de la dernière notification ─────────
-
 function bellColor(type: TypeEvenement): string {
   switch (type) {
     case 'ALERTE_CREE':           return 'text-rose-500';
@@ -44,7 +42,10 @@ function formatDate(dateStr: string): string {
   }
 }
 
-// ── Composant principal ───────────────────────────────────────────────────────
+/** Plafonne le badge d'affichage à 9+. Ne modifie pas nonLuesCount. */
+function formatBadgeCount(count: number): string {
+  return count <= 9 ? String(count) : '9+';
+}
 
 export function BellNotifications({ hook }: BellNotificationsProps) {
   const {
@@ -59,11 +60,8 @@ export function BellNotifications({ hook }: BellNotificationsProps) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-
-  // Couleur active de la Bell — réinitialisée après BELL_COLOR_DURATION_MS
   const [activeBellType, setActiveBellType] = useState<TypeEvenement | null>(null);
 
-  // Quand une nouvelle notification push arrive, colorer la Bell temporairement
   useEffect(() => {
     if (!dernierePush) return;
     setActiveBellType(dernierePush.typeEvenement);
@@ -71,7 +69,6 @@ export function BellNotifications({ hook }: BellNotificationsProps) {
     return () => clearTimeout(timer);
   }, [dernierePush]);
 
-  // Fermer le panel au clic extérieur
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
@@ -90,7 +87,6 @@ export function BellNotifications({ hook }: BellNotificationsProps) {
     if (!lu) await marquerLu(idEnvoi);
   };
 
-  // La couleur de la Bell : priorité à la couleur push active, sinon état normal
   const bellIconClass = activeBellType
     ? cn(bellColor(activeBellType), 'animate-bounce')
     : undefined;
@@ -104,16 +100,16 @@ export function BellNotifications({ hook }: BellNotificationsProps) {
         onClick={() => setOpen((v) => !v)}
         title="Notifications"
         className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-2xl transition-all relative",
+          "flex h-9 w-9 items-center justify-center rounded-xl transition-all relative",
           open
-            ? "bg-primary text-primary-foreground"
+            ? "bg-primary text-primary-foreground shadow-[inset_2px_2px_5px_rgba(0,0,0,0.15)]"
             : "text-muted-foreground hover:text-foreground hover:bg-secondary"
         )}
       >
-        <Bell className={cn("h-5 w-5 transition-colors duration-300", bellIconClass)} />
+        <Bell className={cn("h-4 w-4 transition-colors duration-300", bellIconClass)} />
         {nonLuesCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 border-2 border-white dark:border-background animate-in zoom-in duration-200">
-            {nonLuesCount > 99 ? '99+' : nonLuesCount}
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground px-1 border-2 border-white dark:border-background animate-in zoom-in duration-200">
+            {formatBadgeCount(nonLuesCount)}
           </span>
         )}
       </button>
@@ -122,7 +118,7 @@ export function BellNotifications({ hook }: BellNotificationsProps) {
       {open && (
         <div
           ref={panelRef}
-          className="absolute left-full ml-3 top-0 z-50 w-80 rounded-2xl border border-border/60 bg-background shadow-xl animate-in fade-in slide-in-from-left-2 duration-200"
+          className="absolute right-0 top-full mt-2 z-50 w-80 rounded-2xl border border-border/60 bg-background shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
         >
           {/* En-tête */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
@@ -157,21 +153,16 @@ export function BellNotifications({ hook }: BellNotificationsProps) {
                   <li
                     key={n.idEnvoi}
                     onClick={() => handleNotifClick(n.idEnvoi, n.lu)}
-                    className={cn(
-                      "flex gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/40",
-                      !n.lu && "bg-primary/5"
-                    )}
+                    className="flex gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/40"
                   >
-                    {/* Indicateur type */}
+                    {/* Point coloré gauche — type d'événement */}
                     <div className="mt-1.5 shrink-0">
                       <span className={cn("block h-2 w-2 rounded-full", dotColor(n.typeEvenement))} />
                     </div>
+
                     {/* Contenu */}
                     <div className="min-w-0 flex-1">
-                      <p className={cn(
-                        "text-xs leading-snug",
-                        !n.lu ? "font-semibold text-foreground" : "text-muted-foreground"
-                      )}>
+                      <p className="text-xs leading-snug text-foreground">
                         {n.titre}
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">
@@ -181,7 +172,8 @@ export function BellNotifications({ hook }: BellNotificationsProps) {
                         {formatDate(n.dateCreation)}
                       </p>
                     </div>
-                    {/* Point non-lu */}
+
+                    {/* Point bleu droite — indicateur non-lu */}
                     {!n.lu && (
                       <div className="shrink-0 mt-1.5">
                         <span className="block h-1.5 w-1.5 rounded-full bg-primary" />

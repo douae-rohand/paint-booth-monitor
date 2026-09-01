@@ -2,7 +2,7 @@
  * useNotifications — centralise :
  *  - Abonnement WebSocket personnel /user/queue/notifications
  *  - Compteur non-lu (badge bell)
- *  - Liste des notifications récentes
+ *  - Liste combinée (toutes les non-lues + lues récentes) chargée une fois au montage
  *  - Actions marquerLu / marquerToutLu
  *
  * Utilisé par BellNotifications (badge + panel) ET NotificationToast (toast transitoire).
@@ -21,13 +21,16 @@ import {
 const USER_QUEUE = '/user/queue/notifications';
 
 export interface UseNotificationsReturn {
-  /** Liste des notifications récentes (chargée via REST au montage) */
+  /**
+   * Liste combinée : toutes les non-lues + lues récentes (7j, max 5).
+   * Le backend garantit que toutes les non-lues sont présentes.
+   */
   notifications: NotificationInAppDTO[];
-  /** Compteur non-lus pour le badge */
+  /** Compteur non-lus pour le badge — piloté uniquement par marquerLu/marquerToutLu/WebSocket */
   nonLuesCount: number;
   /** Dernière notification reçue via WebSocket (pour le toast) */
   dernierePush: NotificationInAppDTO | null;
-  /** true pendant le premier chargement REST */
+  /** true pendant le chargement initial REST */
   loading: boolean;
   /** Recharge la liste depuis le serveur */
   recharger: () => Promise<void>;
@@ -45,18 +48,17 @@ export function useNotifications(): UseNotificationsReturn {
   const [nonLuesCount, setNonLuesCount] = useState(0);
   const [dernierePush, setDernierePush] = useState<NotificationInAppDTO | null>(null);
   const [loading, setLoading] = useState(true);
-  // Évite une double requête si le composant remonte rapidement
   const loadedRef = useRef(false);
 
   // ── Chargement initial REST ────────────────────────────────────────────────
 
   const recharger = useCallback(async () => {
     try {
-      const [page, count] = await Promise.all([
-        getNotifications(0, 20),
+      const [liste, count] = await Promise.all([
+        getNotifications(),
         getNonLuesCount(),
       ]);
-      setNotifications(page.content);
+      setNotifications(liste);
       setNonLuesCount(count);
     } catch (e) {
       console.error('[useNotifications] Erreur chargement:', e);
@@ -76,10 +78,9 @@ export function useNotifications(): UseNotificationsReturn {
   useEffect(() => {
     const unsubscribe = subscribe(USER_QUEUE, (data: unknown) => {
       const notif = data as NotificationInAppDTO;
-      // Ajouter en tête de liste sans recharger depuis le serveur
+      // Prépend en tête de liste sans rechargement réseau
       setNotifications((prev) => [notif, ...prev]);
       setNonLuesCount((prev) => prev + 1);
-      // Exposer pour le toast (réinitialisé après affichage via acquitterPush)
       setDernierePush(notif);
     });
     return unsubscribe;

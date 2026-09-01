@@ -150,14 +150,6 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
         creerOutbox(null, TypeEvenement.CONFIG_SEUILS_MODIFIE, titre, donnees);
     }
 
-    @Override
-    public void dispatcherRapportGenere(String nomRapport) {
-        Map<String, Object> donnees = new HashMap<>();
-        donnees.put("idRapport", nomRapport != null ? nomRapport : "");
-        donnees.put("dateGeneration", LocalDateTime.now().toString());
-        creerOutbox(null, TypeEvenement.RAPPORT_GENERE, "Rapport disponible", donnees);
-    }
-
     // ── Résolution des données brutes ─────────────────────────────────────────
 
     private DonneesAlerte resoudreDonneesAlerte(Alerte alerte) {
@@ -295,7 +287,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
 
     private List<UUID> destinatairesPourEvenement(TypeEvenement typeEvenement) {
         return switch (typeEvenement) {
-            case ALERTE_CREE, ALERTE_RESOLU, CONFIG_SEUILS_MODIFIE, RAPPORT_GENERE ->
+            case ALERTE_CREE, ALERTE_RESOLU, CONFIG_SEUILS_MODIFIE ->
                 superviseurRepository.findAll().stream()
                         .filter(s -> s.isActif() && s.isCompteActive() && s.getDeletedAt() == null)
                         .map(Superviseur::getIdSuperviseur).toList();

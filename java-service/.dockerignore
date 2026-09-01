@@ -1,0 +1,24 @@
+# Contrôle de version
+.git
+.gitignore
+
+# Variables d'environnement — ne jamais copier dans le contexte de build
+.env
+.env.*
+!.env.example
+
+# Artefacts de build Java (reconstruits dans le stage build)
+target/
+
+# IDE et éditeurs
+.idea
+.vscode
+*.iml
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

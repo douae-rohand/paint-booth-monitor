@@ -74,11 +74,6 @@ public class NotificationFormatter {
                     );
                 }
             }
-
-            case RAPPORT_GENERE -> String.format(
-                    "Un nouveau rapport (réf. %s) est disponible en téléchargement.",
-                    str(donnees, "idRapport")
-            );
         };
     }
 

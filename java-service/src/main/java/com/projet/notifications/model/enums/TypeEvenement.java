@@ -17,9 +17,6 @@ public enum TypeEvenement {
     /** Alerte passée au statut RESOLUE (valeur revenue dans les bornes). */
     ALERTE_RESOLU,
 
-    /** Rapport PDF généré et disponible en téléchargement. */
-    RAPPORT_GENERE,
-
     /** Compte superviseur activé (lien d'activation cliqué). */
     COMPTE_ACTIVEE,
 

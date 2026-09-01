@@ -149,6 +149,7 @@ public class MesureHistoriqueService {
 
     /**
      * Exécute la requête d'agrégation selon la granularité.
+     * Méthode publique pour réutilisation par le module reports.
      *
      * @param idPointMesure ID du point de mesure
      * @param metrique Métrique
@@ -158,7 +159,7 @@ public class MesureHistoriqueService {
      * @return Liste des points agrégés
      */
     @SuppressWarnings("unchecked")
-    private List<MesureHistoriqueDTO> executerAggregation(
+    public List<MesureHistoriqueDTO> executerAggregation(
             Long idPointMesure,
             Metrique metrique,
             LocalDateTime dateDebut,

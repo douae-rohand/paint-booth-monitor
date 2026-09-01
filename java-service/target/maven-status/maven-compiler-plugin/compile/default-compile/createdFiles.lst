@@ -74,8 +74,8 @@ com\projet\alerting\controller\AlerteStatsController.class
 com\projet\auth\dto\SuperviseurCreateDTO.class
 com\projet\auth\dto\SuperviseurUpdateDTO.class
 com\projet\auth\exception\SuperviseurNonTrouveException.class
+com\projet\reports\dto\RapportPDFResponseDTO$PointMesureSummary.class
 com\projet\alerting\service\AlerteStatsService.class
-com\projet\reports\service\ReportService.class
 com\projet\reports\model\enums\StatutGeneration.class
 com\projet\notifications\service\NotificationPushService.class
 com\projet\auth\dto\SuperviseurResponseDTO.class
@@ -133,6 +133,7 @@ com\projet\auth\exception\MotDePasseTropFaibleException.class
 com\projet\notifications\service\NotificationDispatchServiceImpl.class
 com\projet\measures\dto\PointMesureStatutDTO$MesureStatutDTO.class
 com\projet\measures\dto\MesureEtuveDTO.class
+com\projet\reports\dto\RapportPDFResponseDTO.class
 com\projet\alerting\service\SeuilDynamiqueService.class
 com\projet\auth\service\AuthService$RotationResult.class
 com\projet\alerting\dto\TopAlerteDTO.class

@@ -1,7 +1,7 @@
 /**
  * API notifications IN_APP
  * Consomme les endpoints Java :
- *   GET    /api/notifications                  → liste paginée
+ *   GET    /api/notifications                  → liste combinée (non-lues + lues récentes)
  *   GET    /api/notifications/non-lues/count   → badge count
  *   PATCH  /api/notifications/{id}/lu          → marquer lue
  *   PATCH  /api/notifications/lu-tout          → tout marquer lu
@@ -29,24 +29,14 @@ export interface NotificationInAppDTO {
   dateLecture: string | null;
 }
 
-export interface NotificationsPage {
-  content: NotificationInAppDTO[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
-}
-
 // ── Appels REST ───────────────────────────────────────────────────────────────
 
-/** Liste paginée des notifications IN_APP de l'utilisateur courant. */
-export const getNotifications = async (
-  page = 0,
-  size = 20
-): Promise<NotificationsPage> => {
-  const res = await apiClient.get<NotificationsPage>('/api/notifications', {
-    params: { page, size },
-  });
+/**
+ * Liste combinée pour le panel : toutes les non-lues + lues des 7 derniers jours (max 5).
+ * Retourne un tableau simple — le backend garantit toutes les non-lues sans troncature.
+ */
+export const getNotifications = async (): Promise<NotificationInAppDTO[]> => {
+  const res = await apiClient.get<NotificationInAppDTO[]>('/api/notifications');
   return res.data;
 };
 

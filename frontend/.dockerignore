@@ -1,0 +1,33 @@
+# Contrôle de version
+.git
+.gitignore
+
+# Variables d'environnement — ne jamais copier dans le contexte de build
+.env
+.env.*
+!.env.example
+
+# Dépendances Node (réinstallées via npm install dans le stage build)
+node_modules/
+
+# Artefacts de build (reconstruits dans le stage build)
+dist/
+build/
+
+# Cache TanStack / Vite
+.tanstack/
+.vite/
+
+# IDE et éditeurs
+.idea
+.vscode
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
