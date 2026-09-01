@@ -32,7 +32,6 @@ import java.util.Map;
  *   ALERTE_CREE / ALERTE_RESOLU → envoyerNotificationAlerte     (template HTML riche)
  *   COMPTE_ACTIVEE              → envoyerNotificationCompteActive  (template HTML)
  *   CONFIG_SEUILS_MODIFIE       → envoyerNotificationSeuilModifie  (template HTML)
- *   RAPPORT_GENERE              → envoyerNotificationRapportGenere (template HTML)
  *   fallback (données null)     → envoyerNotification              (texte brut, sécurité)
  */
 @Service
@@ -123,7 +122,6 @@ public class EmailWorkerService {
             case ALERTE_CREE, ALERTE_RESOLU -> emailService.envoyerNotificationAlerte(email, titre, d);
             case COMPTE_ACTIVEE       -> emailService.envoyerNotificationCompteActive(email, titre, d);
             case CONFIG_SEUILS_MODIFIE -> emailService.envoyerNotificationSeuilModifie(email, titre, d);
-            case RAPPORT_GENERE       -> emailService.envoyerNotificationRapportGenere(email, titre, d);
         };
     }
 

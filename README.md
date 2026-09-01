@@ -103,14 +103,14 @@ Le système repose sur une **architecture polyglotte** à trois couches applicat
                             │ Point d'entrée unique
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         Service Java — Business & Access (Spring Boot)        │
+│         Service Java - Business & Access (Spring Boot)        │
 │  Auth JWT · KPIs · Rapports · Notifications · API Gateway     │
 │  Proxy REST interne vers Python · WebSocket · LISTEN/NOTIFY   │
 └──────────────┬──────────────────────────────┬───────────────┘
                │ REST interne                  │ JDBC
                ▼                               ▼
 ┌──────────────────────────────┐   ┌──────────────────────────┐
-│  Service Python — Data & IA   │   │      PostgreSQL           │
+│  Service Python - Data & IA   │   │      PostgreSQL           │
 │  Snap7/OPC UA · Historisation  │◄──│  (+ pgvector pour RAG)    │
 │  Alerting · IA · RAG · NOTIFY  │   └──────────────────────────┘
 └──────────────┬───────────────┘
@@ -120,6 +120,11 @@ Le système repose sur une **architecture polyglotte** à trois couches applicat
         │  S7-1200    │
         │  (PLC)      │
         └─────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                      MinIO (Stockage)                         │
+│              Rapports PDF · Fichiers · Assets                  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### Flux principaux
@@ -146,6 +151,7 @@ Le frontend ne communique **jamais** directement avec le service Python.
 | KPIs, exports, rapports PDF | Java | Logique orientée reporting et utilisateur final |
 | Notifications multicanal | Java | Dispatch métier indépendant de la collecte |
 | API Gateway et WebSocket | Java | Point d'entrée unique, sécurisation centralisée |
+| Stockage fichiers (rapports PDF) | MinIO | Stockage objet S3-compatible pour les documents générés |
 
 ---
 
@@ -155,8 +161,9 @@ Le frontend ne communique **jamais** directement avec le service Python.
 |---|---|---|
 | Frontend | React, TanStack Start/Router, Tailwind CSS, shadcn/ui, Recharts | Interface neumorphique, dashboard industriel |
 | Gateway | Java 21, Spring Boot 4.1, Spring Security, JWT | API REST, WebSocket, Flyway |
-| Data & IA | Python 3.10+, FastAPI, SQLAlchemy (async), scikit-learn, LangChain | Collecte PLC, IA, RAG |
-| Base de données | PostgreSQL 15 | Extension `pgvector` prévue pour le RAG |
+| Data & IA | Python 3.13+, FastAPI, SQLAlchemy (async), scikit-learn, LangChain | Collecte PLC, IA, RAG |
+| Base de données | PostgreSQL 17 (pgvector/pgvector:pg17) | Extension `pgvector` pour le RAG |
+| Stockage objet | MinIO | Stockage des rapports PDF et fichiers |
 | PLC | Siemens S7-1200, protocole Snap7 (ou OPC UA) | Connexion Ethernet, IP statique |
 | Conteneurisation | Docker, Docker Compose | Orchestration multi-services |
 | CI | GitHub Actions | Pipelines séparés frontend / Java / Python |
@@ -181,7 +188,7 @@ paint-booth-monitor/
 ├── java-service/             # Gateway Spring Boot (auth, KPIs, rapports, WebSocket)
 ├── python-service/           # Collecte PLC, IA, alerting, RAG
 ├── docker/                   # Scripts d'initialisation (PostgreSQL)
-├── docker-compose.yml        # Orchestration des 4 services
+├── docker-compose.yml        # Orchestration des 5 services (postgres, java, python, frontend, minio)
 ├── .env.example              # Variables d'environnement Docker (modèle)
 ├── Cahier_des_charges_v3.md  # Spécifications fonctionnelles et techniques
 └── architecture_polyglotte_priorites.md  # Plan de développement priorisé
@@ -193,8 +200,8 @@ paint-booth-monitor/
 
 - **Docker** et **Docker Compose** (déploiement recommandé)
 - **Java 21** et **Maven 3.8+** (développement local du service Java)
-- **Python 3.10+** et **pip** (développement local du service Python)
-- **Node.js 20+** (développement local du frontend)
+- **Python 3.13+** et **pip** (développement local du service Python)
+- **Node.js 24+** (développement local du frontend)
 - Accès réseau à l'automate S7-1200 (IP configurée, même sous-réseau)
 
 ---
@@ -212,9 +219,10 @@ docker compose up --build
 
 # 3. Accès aux services
 # Frontend  : http://localhost:80
-# Java API  : http://localhost:8080
+# Java API  : http://localhost:8081
 # Python API: http://localhost:8000 (interne, non exposé au frontend)
 # PostgreSQL: localhost:5432
+# MinIO     : http://localhost:9000 (API), http://localhost:9001 (Console)
 ```
 
 Si la base a déjà été initialisée avec une ancienne configuration, recréer le volume :
@@ -329,10 +337,10 @@ Le projet a été engagé **directement en architecture polyglotte** (Frontend R
 
 Compte tenu d'une durée contrainte (environ 8 semaines) et d'un développement majoritairement solo, l'implémentation suit néanmoins une **montée en charge priorisée** :
 
-1. **Frontend ↔ Java** — authentification JWT, routes protégées, API gateway, gestion des erreurs.
-2. **Configuration transverse** — Docker Compose, variables d'environnement, base PostgreSQL opérationnelle.
-3. **Java ↔ Python** — contrat REST interne, proxy gateway, LISTEN/NOTIFY pour les alertes temps réel.
-4. **Fonctionnalités avancées** — collecte PLC, IA, RAG, KPIs, rapports, CI/CD.
+1. **Frontend ↔ Java** - authentification JWT, routes protégées, API gateway, gestion des erreurs.
+2. **Configuration transverse** - Docker Compose, variables d'environnement, base PostgreSQL opérationnelle.
+3. **Java ↔ Python** - contrat REST interne, proxy gateway, LISTEN/NOTIFY pour les alertes temps réel.
+4. **Fonctionnalités avancées** - collecte PLC, IA, RAG, KPIs, rapports, CI/CD.
 
 Cette approche permet de valider rapidement une chaîne bout en bout (connexion, JWT, route protégée) tout en conservant la séparation des responsabilités dès le départ. Le détail des priorités est documenté dans `architecture_polyglotte_priorites.md`.
 

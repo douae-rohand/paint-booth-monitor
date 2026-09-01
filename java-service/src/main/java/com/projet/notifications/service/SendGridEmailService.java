@@ -125,17 +125,6 @@ public class SendGridEmailService implements EmailService {
     }
 
     @Override
-    public EmailResult envoyerNotificationRapportGenere(
-            String destinataireEmail, String titre, Map<String, Object> donneesEvenement
-    ) {
-        EmailResult r = envoyerHtml(destinataireEmail, titre,
-                templateBuilder.rapportGenere(titre, donneesEvenement));
-        if (!r.isSucces())
-            logger.error("[SENDGRID] Échec rapport généré {} - statut={}", destinataireEmail, r.statut());
-        return r;
-    }
-
-    @Override
     public EmailResult envoyerNotification(String destinataireEmail, String titre, String contenu) {
         // Fallback texte brut — uniquement si donnees_evenement est null (cas exceptionnel)
         Mail mail = new Mail(

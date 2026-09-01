@@ -1,0 +1,41 @@
+# Contrôle de version
+.git
+.gitignore
+
+# Variables d'environnement — ne jamais copier dans le contexte de build
+.env
+.env.*
+!.env.example
+
+# Environnement virtuel Python (recréé via pip install dans le Dockerfile)
+.venv
+venv
+env
+
+# Cache Python
+__pycache__
+**/__pycache__
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Tests (pas nécessaires en production)
+tests/
+pytest.ini
+.pytest_cache
+
+# Scripts de dev non nécessaires à l'image
+scripts/
+
+# IDE et éditeurs
+.idea
+.vscode
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

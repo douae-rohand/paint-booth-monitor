@@ -96,19 +96,6 @@ public interface EmailService {
     );
 
     /**
-     * Notification de rapport disponible (RAPPORT_GENERE) — envoyée aux Superviseurs.
-     * Template HTML avec référence rapport + bouton "Télécharger" si urlRapport présent.
-     * Le titre est lu depuis Notification.titre et transmis tel quel.
-     *
-     * @param donneesEvenement map JSONB contenant : idRapport, dateGeneration, urlRapport (optionnel)
-     */
-    EmailResult envoyerNotificationRapportGenere(
-            String destinataireEmail,
-            String titre,
-            Map<String, Object> donneesEvenement
-    );
-
-    /**
      * Fallback texte brut — utilisé uniquement si donnees_evenement est null
      * (cas exceptionnel : alerte supprimée ON DELETE SET NULL, ou données manquantes).
      * Ne pas utiliser pour les flux normaux.

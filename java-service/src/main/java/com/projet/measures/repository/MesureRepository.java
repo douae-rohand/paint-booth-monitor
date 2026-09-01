@@ -301,4 +301,31 @@ public interface MesureRepository extends JpaRepository<Mesure, UUID> {
         @Param("dateFin") LocalDateTime dateFin,
         @Param("seulementDepassements") boolean seulementDepassements
     );
+
+    /**
+     * Calcule les statistiques (min, max, moyenne) pour un point de mesure et une métrique sur une période.
+     *
+     * @param idPointMesure ID du point de mesure
+     * @param metrique Métrique
+     * @param dateDebut Date de début
+     * @param dateFin Date de fin
+     * @return Object[] contenant [min, max, moyenne] (BigDecimal) ou null si aucune donnée
+     */
+    @Query(value = """
+        SELECT
+            MIN(m.valeur) AS min_val,
+            MAX(m.valeur) AS max_val,
+            AVG(m.valeur) AS avg_val
+        FROM mesure m
+        WHERE m.id_point_mesure = CAST(:idPointMesure AS bigint)
+            AND m.metrique = CAST(:metrique AS varchar)
+            AND m.plausible = true
+            AND m.created_at BETWEEN CAST(:dateDebut AS timestamp) AND CAST(:dateFin AS timestamp)
+        """, nativeQuery = true)
+    Object[] calculateStatisticsForPointAndPeriod(
+        @Param("idPointMesure") Long idPointMesure,
+        @Param("metrique") String metrique,
+        @Param("dateDebut") LocalDateTime dateDebut,
+        @Param("dateFin") LocalDateTime dateFin
+    );
 }

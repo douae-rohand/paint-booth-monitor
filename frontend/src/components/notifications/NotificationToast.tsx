@@ -32,7 +32,7 @@ export function NotificationToast({ notification, onDismiss }: NotificationToast
 
   return (
     <div
-      className="fixed top-6 right-6 z-[9999] w-80 rounded-2xl border border-border/60 bg-background shadow-xl animate-in slide-in-from-top-4 fade-in duration-300"
+      className="fixed top-20 right-6 z-[9999] w-80 rounded-2xl border border-border/60 bg-background shadow-xl animate-in slide-in-from-top-4 fade-in duration-300"
       role="alert"
       aria-live="polite"
     >

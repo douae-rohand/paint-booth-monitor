@@ -3,11 +3,11 @@ package com.projet.notifications.controller;
 import com.projet.auth.model.Superviseur;
 import com.projet.notifications.dto.NotificationInAppDTO;
 import com.projet.notifications.service.NotificationInAppService;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,13 +30,10 @@ public class NotificationInAppController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<NotificationInAppDTO>> lister(
-            @AuthenticationPrincipal Superviseur superviseur,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+    public ResponseEntity<List<NotificationInAppDTO>> lister(
+            @AuthenticationPrincipal Superviseur superviseur
     ) {
-        UUID id = superviseur.getIdSuperviseur();
-        return ResponseEntity.ok(service.listerNotifications(id, page, size));
+        return ResponseEntity.ok(service.listerPourPanel(superviseur.getIdSuperviseur()));
     }
 
     @GetMapping("/non-lues/count")

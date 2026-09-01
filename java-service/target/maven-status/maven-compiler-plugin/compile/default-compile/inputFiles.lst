@@ -77,7 +77,9 @@ C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\CsrfOrig
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\dto\ConfigurationPLCRequest.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\dto\ConfigurationPLCResponse.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\exception\ConfigurationPLCNotFoundException.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\FilterRegistrationConfig.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\GlobalExceptionHandler.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\MinioConfig.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\model\ConfigurationPLC.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\repository\ConfigurationPLCRepository.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\config\SecurityConfig.java
@@ -139,8 +141,13 @@ C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\s
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\service\NotificationPushService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\notifications\service\SendGridEmailService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\controller\ReportController.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\dto\RapportGenerationRequestDTO.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\dto\RapportPDFResponseDTO.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\model\enums\StatutGeneration.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\model\enums\TypeRapport.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\model\RapportPDF.java
-C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\service\ReportService.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\pdf\RapportPdfBuilder.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\repository\RapportPdfRepository.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\service\RapportGenerationService.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\reports\storage\MinioStorageService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\SupervisionApplication.java

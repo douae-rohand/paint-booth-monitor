@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Cpu, History, LayoutDashboard, Factory, LogOut, SlidersHorizontal, Users, AlertTriangle } from "lucide-react";
+import { Cpu, History, LayoutDashboard, LogOut, SlidersHorizontal, Users, AlertTriangle, FileText } from "lucide-react";
 import { type ReactNode, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { getAlertesActives } from "@/api/alerting";
@@ -12,6 +12,7 @@ const baseNav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/history", label: "Historique", icon: History },
   { to: "/alertes", label: "Alertes", icon: AlertTriangle },
+  { to: "/rapports", label: "Rapports", icon: FileText },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -40,9 +41,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     return unsubscribe;
   }, [subscribeToAlertes]);
+
   const nav = isAdmin
     ? [...baseNav, { to: "/plc", label: "PLC", icon: Cpu }, { to: "/seuils", label: "Seuils", icon: SlidersHorizontal }, { to: "/superviseurs", label: "Superviseurs", icon: Users }]
     : baseNav;
+
   const today = new Date().toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
@@ -57,10 +60,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen w-full">
-      {/* Sidebar */}
+      {/* Sidebar — bell icon retiré, logout seul en bas */}
       <aside className="sticky top-0 flex h-screen w-20 shrink-0 flex-col items-center gap-2 py-6 lg:w-24">
-        <div className="neu-card-sm mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
-          <Factory className="h-6 w-6 text-primary" />
+        <div className="mb-4 flex h-12 w-12 items-center justify-center">
+          <img src="/images/logo.png" alt="Logo" className="h-12 w-12 object-contain" />
         </div>
         <nav className="flex flex-col items-center gap-1 rounded-3xl border border-border bg-white p-2 overflow-visible">
           {nav.map((item) => {
@@ -90,11 +93,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        {/* Bell notifications — placé sous la nav, au-dessus du bouton logout */}
-        <div className="mt-2">
-          <BellNotifications hook={notificationsHook} />
-        </div>
-
         <div className="mt-auto">
           <button
             type="button"
@@ -107,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* Toast notifications — portal hors sidebar, position fixed bottom-right */}
+      {/* Toast notifications — position fixed, indépendant du layout */}
       <NotificationToast
         notification={notificationsHook.dernierePush}
         onDismiss={notificationsHook.acquitterPush}
@@ -127,12 +125,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               Voici l'état des cabines de peinture aujourd'hui.
             </p>
           </div>
+          {/* Bell icon déplacé ici depuis la sidebar — à droite de l'email */}
           <div className="flex items-center gap-3">
             {user?.email && (
               <span className="text-sm text-muted-foreground">
                 {user.email}
               </span>
             )}
+            <BellNotifications hook={notificationsHook} />
           </div>
         </header>
 
@@ -141,4 +141,3 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-

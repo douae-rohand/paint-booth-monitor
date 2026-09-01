@@ -32,7 +32,4 @@ public interface NotificationDispatchService {
      */
     void dispatcherSeuilModifie(String nomPointMesure, Metrique metrique,
                                 boolean estAbsolu, java.util.Map<String, Object> valeurs);
-
-    /** Déclenché à la génération d'un rapport PDF. */
-    void dispatcherRapportGenere(String nomRapport);
 }

@@ -214,33 +214,6 @@ public class EmailTemplateBuilder {
         return construireStructure(titre, message, "Voir les seuils configurés", urlSeuils, null);
     }
 
-    /**
-     * Template HTML pour RAPPORT_GENERE — placeholder (module non développé).
-     * Bouton CTA : "Télécharger le rapport" uniquement si urlRapport présent dans donneesEvenement.
-     * Le titre est lu depuis Notification.titre — jamais généré ici.
-     */
-    public String rapportGenere(String titre, Map<String, Object> donneesEvenement) {
-        String idRapport = str(donneesEvenement, "idRapport");
-        String dateGeneration = str(donneesEvenement, "dateGeneration");
-        String urlRapport = str(donneesEvenement, "urlRapport"); // optionnel
-
-        String message = String.format(
-                "Un nouveau rapport a été généré et est disponible en téléchargement.<br><br>"
-                + "<table style='border-collapse:collapse;width:100%%;font-size:14px;color:#475569;'>"
-                + "<tr><td style='padding:6px 0;font-weight:600;width:140px;'>Référence</td>"
-                +     "<td style='padding:6px 0;font-family:monospace;font-size:12px;color:#94a3b8;'>%s</td></tr>"
-                + "<tr style='background:#f8fafc;'><td style='padding:6px 0;font-weight:600;'>Généré le</td>"
-                +     "<td style='padding:6px 0;'>%s</td></tr>"
-                + "</table>",
-                idRapport.isEmpty() ? "-" : idRapport, dateGeneration);
-
-        // Bouton CTA uniquement si URL disponible
-        String btnTexte = urlRapport.isEmpty() ? null : "Télécharger le rapport";
-        String btnUrl   = urlRapport.isEmpty() ? null : urlRapport;
-
-        return construireStructure(titre, message, btnTexte, btnUrl, null);
-    }
-
     // ── Structure commune ─────────────────────────────────────────────────────
 
     /**

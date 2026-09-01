@@ -1,9 +1,18 @@
 server:
   port: 8081
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+
 spring:
   config:
-    import: optional:file:java-service/.env[.properties],optional:file:.env[.properties]
+    import: optional:file:java-service/.env[.properties]
   application:
     name: supervision-service
   datasource:
@@ -52,3 +61,9 @@ app:
   admin:
     initial-email: ${ADMIN_INITIAL_EMAIL:admin@renault.com}
     initial-password: ${ADMIN_INITIAL_PASSWORD:ChangeMe123!}
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:}
+  secret-key: ${MINIO_SECRET_KEY:}
+  bucket: ${MINIO_BUCKET:rapports}

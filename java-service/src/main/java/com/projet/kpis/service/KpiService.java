@@ -62,9 +62,9 @@ public class KpiService {
      * @return KpiResponseDTO avec les KPIs scopés
      */
     public KpiResponseDTO getKpisParPoint(Long idPointMesure, Metrique metrique, LocalDateTime dateDebut, LocalDateTime dateFin) {
-        // KPIs globaux (toujours inclus)
-        long alertesActives = alerteRepository.countByStatut(StatutAlerte.ACTIVE);
-        long nbPointsEnAnomalie = alerteRepository.countDistinctPointMesureByStatut(StatutAlerte.ACTIVE);
+        // KPIs scopés par point + métrique + période
+        long alertesActives = alerteRepository.countAlertesActivesParPointEtPeriode(idPointMesure, metrique, dateDebut, dateFin);
+        long nbPointsEnAnomalie = alerteRepository.countDistinctPointsEnAnomalieParPointEtPeriode(idPointMesure, metrique, dateDebut, dateFin);
         long nbPointsTotal = pointMesureRepository.countByActifTrueAndDeletedAtIsNull();
 
         // KPIs scopés
@@ -125,31 +125,17 @@ public class KpiService {
 
     /**
      * Calcule le temps moyen entre incidents (alertes SEUIL_ABSOLU) sur une période.
-     *
-     * @param idPointMesure ID du point de mesure
-     * @param metrique Métrique
-     * @param dateDebut Date de début
-     * @param dateFin Date de fin
-     * @return Temps moyen en heures, ou null si moins de 2 alertes
+     * Filtre correctement par point de mesure ET métrique via jointure Alerte → Mesure.
      */
     private Double calculerTempsMoyenEntreIncidents(Long idPointMesure, Metrique metrique, LocalDateTime dateDebut, LocalDateTime dateFin) {
-        // Récupérer les alertes SEUIL_ABSOLU pour cette paire dans la période
-        // Note: nécessite une requête custom avec jointure sur Mesure pour filtrer par pointMesure et metrique
-        // Pour l'instant, on utilise une approche simplifiée en récupérant toutes les alertes de la période
-        List<Alerte> alertes = alerteRepository.findByTypeAlerteAndCreatedAtBetween(TypeAlerte.SEUIL_ABSOLU, dateDebut, dateFin);
-
-        // Filtrer pour ne garder que celles liées au point et à la métrique (nécessite jointure avec Mesure)
-        // Pour simplifier, on suppose que le repository a une méthode dédiée ou on fait le filtrage en mémoire
-        // TODO: Implémenter une requête JPA custom pour filtrer par pointMesure et metrique via la jointure Mesure
+        List<Alerte> alertes = alerteRepository.findByPointMesureAndMetriqueAndTypeAlerteAndPeriode(
+                idPointMesure, metrique, TypeAlerte.SEUIL_ABSOLU, dateDebut, dateFin);
 
         if (alertes.size() < 2) {
-            return null;  // Moins de 2 alertes, impossible de calculer une moyenne
+            return null;
         }
 
-        // Trier par date de création
-        alertes.sort((a1, a2) -> a1.getCreatedAt().compareTo(a2.getCreatedAt()));
-
-        // Calculer les écarts entre créations consécutives
+        // Alertes déjà triées par createdAt ASC dans la requête
         long totalEcartHeures = 0;
         for (int i = 1; i < alertes.size(); i++) {
             LocalDateTime prev = alertes.get(i - 1).getCreatedAt();
@@ -162,33 +148,25 @@ public class KpiService {
 
     /**
      * Calcule le temps moyen de retour à la normale (alertes résolues) sur une période.
-     *
-     * @param idPointMesure ID du point de mesure
-     * @param metrique Métrique
-     * @param dateDebut Date de début
-     * @param dateFin Date de fin
-     * @return Temps moyen en heures, ou null si aucune alerte résolue
+     * Filtre correctement par point de mesure ET métrique via jointure Alerte → Mesure.
      */
     private Double calculerTempsMoyenRetourNormal(Long idPointMesure, Metrique metrique, LocalDateTime dateDebut, LocalDateTime dateFin) {
-        // Récupérer les alertes résolues dans la période
-        List<Alerte> alertesResolues = alerteRepository.findByStatutAndCreatedAtBetween(StatutAlerte.RESOLUE, dateDebut, dateFin);
+        List<Alerte> alertesResolues = alerteRepository.findByPointMesureAndMetriqueAndStatutAndPeriode(
+                idPointMesure, metrique, StatutAlerte.RESOLUE, dateDebut, dateFin);
 
         if (alertesResolues.isEmpty()) {
-            return null;  // Aucune alerte résolue
+            return null;
         }
 
-        // Filtrer pour ne garder que celles liées au point et à la métrique (nécessite jointure avec Mesure)
-        // TODO: Implémenter une requête JPA custom pour filtrer par pointMesure et metrique via la jointure Mesure
-
-        // Calculer la moyenne de (updatedAt - createdAt) en heures
-        // Note: updatedAt représente la date de résolution quand statut passe à RESOLUE
         long totalDureeHeures = 0;
+        int count = 0;
         for (Alerte alerte : alertesResolues) {
             if (alerte.getUpdatedAt() != null) {
                 totalDureeHeures += Duration.between(alerte.getCreatedAt(), alerte.getUpdatedAt()).toHours();
+                count++;
             }
         }
 
-        return (double) totalDureeHeures / alertesResolues.size();
+        return count > 0 ? (double) totalDureeHeures / count : null;
     }
 }

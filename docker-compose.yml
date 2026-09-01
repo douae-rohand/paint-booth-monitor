@@ -1,7 +1,8 @@
 services:
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg17
     container_name: paint-booth-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -16,7 +17,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h ${POSTGRES_HOST} -p ${POSTGRES_PORT}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,28 +26,59 @@ services:
     build:
       context: ./java-service
     container_name: java-gateway
+    restart: unless-stopped
     ports:
       - "8081:8081"
+    mem_limit: 512m
+    # java-service (en bridge) doit utiliser host.docker.internal:8000 pour joindre python-service,
+    # car ce dernier (en host mode) écoute directement sur l'interface réseau de la machine hôte.
+    # nécessaire pour la résolution de host.docker.internal sur Linux ; sans effet négatif sur Docker Desktop Windows/Mac
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${JAVA_SERVICE_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${JAVA_SERVICE_DB_PASSWORD}
-      PYTHON_SERVICE_URL: http://python-service:8000
+      PYTHON_SERVICE_URL: ${PYTHON_SERVICE_URL}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION}
       SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-false}
+      FRONTEND_URL: ${FRONTEND_URL}
+      RESET_TOKEN_EXPIRATION_MINUTES: ${RESET_TOKEN_EXPIRATION_MINUTES}
+      ACTIVATION_TOKEN_EXPIRATION_HOURS: ${ACTIVATION_TOKEN_EXPIRATION_HOURS}
+      SECURE_COOKIE: ${SECURE_COOKIE:-false}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      ADMIN_INITIAL_EMAIL: ${ADMIN_INITIAL_EMAIL}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      SENDGRID_SENDER_EMAIL: ${SENDGRID_SENDER_EMAIL}
+      SENDGRID_SENDER_NAME: ${SENDGRID_SENDER_NAME}
+      EMAIL_WORKER_BATCH_SIZE: ${EMAIL_WORKER_BATCH_SIZE:-20}
+      EMAIL_WORKER_MAX_TENTATIVES: ${EMAIL_WORKER_MAX_TENTATIVES:-5}
+      EMAIL_WORKER_CRON: ${EMAIL_WORKER_CRON}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET}
     depends_on:
       postgres:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
 
   python-service:
     build:
       context: ./python-service
     container_name: python-ai-rag
-    ports:
-      - "8000:8000"
+    restart: unless-stopped
+    # network_mode: host — permet l'accès direct au PLC réel (LAN) et au simulateur PLC
+    # (127.0.0.1 du conteneur = 127.0.0.1 de l'hôte). Conséquences :
+    #   - ports: retiré (incompatible avec host networking — le port 8000 est directement sur l'hôte)
+    #   - DATABASE_URL pointe vers localhost (postgres n'est plus résolvable par nom)
+    #   - java-service doit atteindre python-service via host.docker.internal:8000 (puisque java-service reste en mode bridge)
+    network_mode: host
     environment:
-      DATABASE_URL: postgresql+asyncpg://${PYTHON_SERVICE_DB_USER}:${PYTHON_SERVICE_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${PYTHON_SERVICE_DB_USER}:${PYTHON_SERVICE_DB_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DB}
       DATABASE_ECHO: ${DATABASE_ECHO:-false}
       DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-5}
       PLC_IP: ${PLC_IP}
@@ -63,10 +95,48 @@ services:
         VITE_API_URL: ${VITE_API_URL}
         VITE_WS_URL: ${VITE_WS_URL}
     container_name: react-frontend
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
-      - java-service
+      java-service:
+        condition: service_healthy
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: minio-storage
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    container_name: minio-bucket-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 \$${MINIO_ROOT_USER} \$${MINIO_ROOT_PASSWORD};
+      mc mb --ignore-existing local/\$${MINIO_BUCKET};
+      "
 
 volumes:
   pgdata:
+  minio_data:

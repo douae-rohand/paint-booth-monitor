@@ -136,9 +136,9 @@ L'idée : faire tourner une chaîne complète et minimale (frontend → Java →
 
 *(juste ce qu'il faut pour que P1 tourne réellement, pas plus)*
 
-- [ ] `docker-compose.yml` basique : frontend + java + postgres uniquement (Python pas encore branché)
+- [x] `docker-compose.yml` basique : frontend + java + postgres uniquement (Python pas encore branché)
 - [x] `.env` par service avec les secrets essentiels (JWT secret, credentials DB)
-- [ ] Healthcheck simple sur PostgreSQL avant démarrage de Java (`depends_on`)
+- [x] Healthcheck simple sur PostgreSQL avant démarrage de Java (`depends_on`)
 
 ---
 
@@ -164,8 +164,8 @@ L'idée : faire tourner une chaîne complète et minimale (frontend → Java →
 
 ## 6. PRIORITÉ 4 — Configuration transverse avancée
 
-- [ ] `docker-compose.yml` complet (Python inclus, réseau Docker finalisé)
-- [ ] Healthchecks `/health` sur Java et Python
+- [x] `docker-compose.yml` complet (Python inclus, réseau Docker finalisé)
+- [x] Healthchecks `/health` sur Java et Python
 - [ ] Logs uniformisés (format JSON structuré) pour corréler les deux services
 - [ ] CI/CD complet (pipelines séparés frontend/java/python + tests end-to-end)
 - [ ] Versionnage de l'API interne (`/internal/v1/...`)
