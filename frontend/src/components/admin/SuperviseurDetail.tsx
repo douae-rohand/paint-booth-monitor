@@ -346,19 +346,6 @@ export function SuperviseurDetail({ id, onBack, onRefresh, refreshKey }: Supervi
                   </AlertDialog>
                 </div>
               </div>
-
-              {/* Placeholder notifications */}
-              <div className="rounded-2xl border border-dashed border-border bg-muted/10 p-4 opacity-60">
-                <div className="flex items-start gap-3">
-                  <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div>
-                    <h3 className="text-sm font-bold">Notifications</h3>
-                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                      Bientôt disponible - Configurez les préférences de notification pour ce superviseur.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </>
           )}
         </div>

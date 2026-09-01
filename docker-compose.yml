@@ -60,6 +60,12 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,7 +84,11 @@ services:
     #   - java-service doit atteindre python-service via host.docker.internal:8000 (puisque java-service reste en mode bridge)
     network_mode: host
     environment:
-      DATABASE_URL: postgresql+asyncpg://${PYTHON_SERVICE_DB_USER}:${PYTHON_SERVICE_DB_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DB}
+      PYTHON_SERVICE_DB_USER: ${PYTHON_SERVICE_DB_USER}
+      PYTHON_SERVICE_DB_PASSWORD: ${PYTHON_SERVICE_DB_PASSWORD}
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
       DATABASE_ECHO: ${DATABASE_ECHO:-false}
       DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-5}
       PLC_IP: ${PLC_IP}
