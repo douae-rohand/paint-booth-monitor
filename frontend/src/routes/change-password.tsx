@@ -63,8 +63,8 @@ const ChangePassword: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)' }}>
-      <div className="w-full max-w-sm neu-card p-6 sm:p-7">
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)' }}>
+      <div className="w-full max-w-sm bg-card border border-border/50 rounded-3xl p-6 sm:p-7 shadow-2xl">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--foreground)' }}>
             Changer de mot de passe

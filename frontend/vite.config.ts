@@ -7,7 +7,9 @@ import path from "path";
 export default defineConfig({
   plugins: [
     tanstackStart({
-      server: { entry: "server" },
+      spa: {
+        enabled: true,
+      },
       importProtection: {
         behavior: "error",
         client: {

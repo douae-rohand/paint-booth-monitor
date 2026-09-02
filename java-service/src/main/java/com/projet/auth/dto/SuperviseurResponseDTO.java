@@ -12,6 +12,7 @@ public class SuperviseurResponseDTO {
     private boolean actif;
     private boolean compteActive;
     private LocalDateTime createdAt;
+    private LocalDateTime dateExpirationActivation;
 
     public SuperviseurResponseDTO() {}
 
@@ -38,4 +39,7 @@ public class SuperviseurResponseDTO {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getDateExpirationActivation() { return dateExpirationActivation; }
+    public void setDateExpirationActivation(LocalDateTime dateExpirationActivation) { this.dateExpirationActivation = dateExpirationActivation; }
 }

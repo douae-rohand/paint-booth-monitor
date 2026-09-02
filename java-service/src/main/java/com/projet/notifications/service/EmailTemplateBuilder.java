@@ -90,9 +90,10 @@ public class EmailTemplateBuilder {
      *   ALERTE_RESOLU → "L'anomalie a été résolue..."
      * Le titre est lu depuis Notification.titre — jamais généré ici.
      *
-     * @param typeEvenement  "ALERTE_CREE" ou "ALERTE_RESOLU"
+     * @param typeEvenement    "ALERTE_CREE" ou "ALERTE_RESOLU"
      * @param donneesEvenement map JSONB contenant : idAlerte, metrique, typeAlerte, severite,
-     *                         nomPointMesure, typeEmplacement, dateEvenement, urlTableauBord (optionnel)
+     *                         nomPointMesure, typeEmplacement, dateEvenement
+     *                         L'URL du bouton CTA est toujours construite depuis app.frontend-url + "/alertes".
      */
     public String alerte(String titre, String typeEvenement, Map<String, Object> donneesEvenement) {
         String metrique       = str(donneesEvenement, "metrique");
@@ -103,8 +104,7 @@ public class EmailTemplateBuilder {
         String emplacement    = str(donneesEvenement, "typeEmplacement");
         String pointMesureNom = str(donneesEvenement, "nomPointMesure");
 
-        String urlRaw = str(donneesEvenement, "urlTableauBord");
-        String urlTableauBord = urlRaw.isBlank() ? frontendUrl + "/alertes" : urlRaw;
+        String urlTableauBord = frontendUrl + "/alertes";
 
         String severiteDisplay = switch (severite) {
             case "CRITIQUE" -> "CRITIQUE";

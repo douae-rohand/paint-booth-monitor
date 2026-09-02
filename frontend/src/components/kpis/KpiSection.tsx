@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AlertTriangle, CheckCircle, Clock, Activity, Calendar as CalendarIcon } from 'lucide-react';
 import { getKpis, type KpiResponseDTO, type KpiParams } from '@/api/kpis';
 import { useDashboardWebSocket } from '@/hooks/useDashboardWebSocket';
@@ -12,9 +12,6 @@ import type { DateRange } from 'react-day-picker';
 import type { PointMesure, Metrique } from '@/api/alerting/seuils';
 import { usePointMesures } from '@/hooks/useSeuils';
 
-// State pour suivre les valeurs animées
-type AnimatedField = 'alertesActives' | 'nbPointsEnAnomalie' | 'tauxConformite' | 'tempsMoyenEntreIncidentsHeures' | 'tempsMoyenRetourNormalHeures';
-
 interface KpiSectionProps {
   modeFiltre?: 'global' | 'independant';
   filtreGlobal?: {
@@ -26,33 +23,53 @@ interface KpiSectionProps {
 }
 
 const PERIODES = [
-  { key: '24h', label: '24h', days: 1 },
-  { key: '7j', label: '7j', days: 7 },
-  { key: '30j', label: '30j', days: 30 },
+  { key: '24h',   label: '24h',    days: 1   },
+  { key: '7j',    label: '7j',     days: 7   },
+  { key: '30j',   label: '30j',    days: 30  },
   { key: '6mois', label: '6 mois', days: 180 },
-  { key: '1an', label: '1 an', days: 365 },
+  { key: '1an',   label: '1 an',   days: 365 },
 ];
 
 export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSectionProps) {
-  const [kpis, setKpis] = useState<KpiResponseDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedPoint, setSelectedPoint] = useState<PointMesure | null>(null);
-  const [selectedMetrique, setMetrique] = useState<Metrique | null>(null);
-  const [periode, setPeriode] = useState('30j');
+  const [kpis, setKpis]               = useState<KpiResponseDTO | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState<string | null>(null);
+  const [selectedPoint, setSelectedPoint]   = useState<PointMesure | null>(null);
+  const [selectedMetrique, setMetrique]     = useState<Metrique | null>(null);
+  const [periode, setPeriode]         = useState('30j');
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
-  const [animatedFields, setAnimatedFields] = useState<Set<AnimatedField>>(new Set());
 
-  const { connected, subscribeToKpis } = useDashboardWebSocket();
+  // ── Protection anti-chevauchement ────────────────────────────────────────
+  // fetchInProgress : empêche deux fetchs concurrents déclenchés par des
+  //   signaux WebSocket rapprochés.
+  // pendingRefetch  : si un signal arrive PENDANT un fetch, on arme un seul
+  //   re-fetch supplémentaire à exécuter juste après la fin du fetch en cours.
+  // debounceTimer   : absorbe plusieurs signaux consécutifs rapides (ex : cascade
+  //   de résolutions d'alertes) en un seul appel réseau après 400 ms de silence.
+  const fetchInProgress = useRef(false);
+  const pendingRefetch  = useRef(false);
+  const debounceTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMounted       = useRef(true);
 
+  const { connected, subscribeToAlertes } = useDashboardWebSocket();
   const { data: pointMesures } = usePointMesures();
 
   const isGlobalMode = modeFiltre === 'global' && filtreGlobal?.idPointMesure;
 
-  // Set default CABINE point and TEMPERATURE metric
+  // Nettoyage au démontage — évite tout setState après unmount
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
+
+  // Valeur par défaut : premier point CABINE + TEMPERATURE
   useEffect(() => {
     if (pointMesures && pointMesures.length > 0 && !selectedPoint && !selectedMetrique) {
-      const defaultPoint = pointMesures.find((p) => p.typeEmplacement === 'CABINE') || pointMesures[0];
+      const defaultPoint =
+        pointMesures.find((p) => p.typeEmplacement === 'CABINE') || pointMesures[0];
       if (defaultPoint) {
         setSelectedPoint(defaultPoint);
         setMetrique('TEMPERATURE');
@@ -60,7 +77,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
     }
   }, [pointMesures, selectedPoint, selectedMetrique]);
 
-  // Calcul des dates selon la période
+  // Calcul des dates selon la période sélectionnée
   const getDates = useCallback(() => {
     if (periode === 'custom' && customRange?.from) {
       return {
@@ -69,23 +86,33 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
       };
     }
     const days = PERIODES.find((p) => p.key === periode)?.days ?? 30;
-    const now = new Date();
+    const now   = new Date();
     const start = new Date(now);
     start.setDate(start.getDate() - days);
     return {
       dateDebut: start.toISOString(),
-      dateFin: now.toISOString(),
+      dateFin:   now.toISOString(),
     };
   }, [periode, customRange]);
 
-  // Fetch KPIs
+  // ── Fetch KPIs (avec gestion anti-chevauchement) ──────────────────────────
   const fetchKpis = useCallback(async () => {
+    // Si un fetch est déjà en cours, armer un refetch pour après
+    if (fetchInProgress.current) {
+      pendingRefetch.current = true;
+      return;
+    }
+
+    fetchInProgress.current = true;
+    pendingRefetch.current  = false;
+
     try {
-      setLoading(true);
-      setError(null);
+      if (isMounted.current) {
+        setLoading(true);
+        setError(null);
+      }
 
       let params: KpiParams = {};
-
       if (selectedPoint && selectedMetrique) {
         params = {
           pointMesureId: selectedPoint.id,
@@ -95,69 +122,55 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
       }
 
       const data = await getKpis(params);
-      setKpis(data);
+      if (isMounted.current) setKpis(data);
     } catch (e) {
       console.error('Erreur fetch KPIs:', e);
-      setError('Impossible de charger les KPIs');
+      if (isMounted.current) setError('Impossible de charger les KPIs');
     } finally {
-      setLoading(false);
+      fetchInProgress.current = false;
+      if (isMounted.current) setLoading(false);
+
+      // Si un signal est arrivé pendant ce fetch, lancer un seul re-fetch
+      if (pendingRefetch.current && isMounted.current) {
+        pendingRefetch.current = false;
+        fetchKpis();
+      }
     }
   }, [selectedPoint, selectedMetrique, getDates]);
 
-  // Fetch initial
+  // Fetch initial + re-fetch quand le scope ou la période change
   useEffect(() => {
     fetchKpis();
   }, [fetchKpis]);
 
-  // Abonnement WebSocket — mise à jour temps réel uniquement en mode global (sans scope point+métrique)
-  // En mode scopé, les valeurs viennent du fetch HTTP et reflètent la période sélectionnée.
-  // Ne pas écraser les valeurs scopées avec le snapshot global du WebSocket.
+  // ── Souscription WebSocket : /topic/alertes (même pattern qu'ActiveAlertsBand)
+  // Le message WebSocket sert uniquement de signal de changement.
+  // Son contenu n'est jamais lu ni appliqué directement.
+  // Un debounce de 400 ms absorbe les cascades de résolutions rapprochées.
   useEffect(() => {
-    const unsubscribe = subscribeToKpis((data: unknown) => {
-      // Si un scope point+métrique est actif, ignorer les mises à jour WebSocket
-      // car elles portent des valeurs globales qui écraseraient les valeurs filtrées.
-      if (selectedPoint && selectedMetrique) return;
+    const unsubscribe = subscribeToAlertes(() => {
+      // Annuler le timer précédent si un nouveau signal arrive dans les 400 ms
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
-      const kpiMessage = data as { alertesActives: number; nbPointsEnAnomalie: number };
-      setKpis((prev) => {
-        if (!prev) return prev;
-
-        // Détecter les changements pour déclencher l'animation
-        const changedFields = new Set<AnimatedField>();
-        if (prev.alertesActives !== kpiMessage.alertesActives) {
-          changedFields.add('alertesActives');
-        }
-        if (prev.nbPointsEnAnomalie !== kpiMessage.nbPointsEnAnomalie) {
-          changedFields.add('nbPointsEnAnomalie');
-        }
-
-        // Activer l'animation sur les champs changés
-        if (changedFields.size > 0) {
-          setAnimatedFields(changedFields);
-          // Désactiver après 500ms
-          setTimeout(() => {
-            setAnimatedFields(new Set());
-          }, 500);
-        }
-
-        return {
-          ...prev,
-          alertesActives: kpiMessage.alertesActives,
-          nbPointsEnAnomalie: kpiMessage.nbPointsEnAnomalie,
-        };
-      });
+      debounceTimer.current = setTimeout(() => {
+        if (isMounted.current) fetchKpis();
+      }, 400);
     });
-    return unsubscribe;
-  }, [subscribeToKpis, selectedPoint, selectedMetrique]);
 
-  // Sync avec filtre global
+    return () => {
+      unsubscribe();
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [subscribeToAlertes, fetchKpis]);
+
+  // Sync avec filtre global (réservé au mode global, non utilisé en mode indépendant)
   useEffect(() => {
     if (isGlobalMode && filtreGlobal) {
-      // En mode global, on utilise les valeurs du filtre global
-      // Note: il faudrait récupérer le PointMesure complet via l'API
-      // Pour simplifier, on laisse le filtre global gérer les IDs
+      // Le filtre global gère les IDs en amont
     }
   }, [isGlobalMode, filtreGlobal]);
+
+  // ── Rendu ─────────────────────────────────────────────────────────────────
 
   if (error) {
     return (
@@ -184,7 +197,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
 
   return (
     <div className="space-y-4">
-      {/* Header avec sélecteurs regroupés si mode indépendant */}
+      {/* Header avec sélecteurs — mode indépendant uniquement */}
       {modeFiltre === 'independant' && (
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -227,7 +240,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
                   <button
                     onClick={() => {
                       setPeriode('custom');
-                      setCustomRange(undefined); // Réinitialiser pour calendrier vide
+                      setCustomRange(undefined);
                     }}
                     className={
                       'flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ' +
@@ -256,9 +269,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
                     locale={fr}
                     numberOfMonths={1}
                     className="p-3 pointer-events-auto"
-                    modifiers={{
-                      today: undefined // Désactiver la mise en évidence d'aujourd'hui
-                    }}
+                    modifiers={{ today: undefined }}
                   />
                 </PopoverContent>
               </Popover>
@@ -269,24 +280,17 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
 
       {/* Cartes KPI */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+
         {/* Alertes Actives */}
         <div className="neu-card p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Alertes Actives
             </p>
-            <h3
-              className={`text-2xl font-bold tracking-tight text-[color:var(--danger)] ${
-                animatedFields.has('alertesActives') ? 'animate-pulse' : ''
-              }`}
-            >
+            <h3 className="text-2xl font-bold tracking-tight text-[color:var(--danger)]">
               {kpis.alertesActives}
             </h3>
-            <p
-              className={`text-xs text-muted-foreground ${
-                animatedFields.has('nbPointsEnAnomalie') ? 'animate-pulse' : ''
-              }`}
-            >
+            <p className="text-xs text-muted-foreground">
               {kpis.nbPointsEnAnomalie} {scopeActive ? 'sur ce point/métrique' : 'points en anomalie'}
             </p>
           </div>
@@ -295,7 +299,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
           </div>
         </div>
 
-        {/* Taux de Conformité (remplace Température moyenne) */}
+        {/* Taux de Conformité */}
         <div className="neu-card p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -323,7 +327,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
           </div>
         </div>
 
-        {/* Temps moyen entre incidents (remplace Humidité moyenne) */}
+        {/* Temps Moyen Incidents */}
         <div className="neu-card p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -335,9 +339,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
                 : '--'}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {scopeActive
-                ? 'Entre alertes SEUIL_ABSOLU'
-                : 'Sélectionnez un point de mesure'}
+              {scopeActive ? 'Entre alertes SEUIL_ABSOLU' : 'Sélectionnez un point de mesure'}
             </p>
           </div>
           <div className="neu-pressable p-3 rounded-2xl">
@@ -345,7 +347,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
           </div>
         </div>
 
-        {/* Temps retour normal */}
+        {/* Temps Retour Normal */}
         <div className="neu-card p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -357,15 +359,14 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
                 : '--'}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {scopeActive
-                ? 'Après résolution'
-                : 'Sélectionnez un point de mesure'}
+              {scopeActive ? 'Après résolution' : 'Sélectionnez un point de mesure'}
             </p>
           </div>
           <div className="neu-pressable p-3 rounded-2xl">
             <Activity className="h-5 w-5 text-chart-3" />
           </div>
         </div>
+
       </div>
     </div>
   );

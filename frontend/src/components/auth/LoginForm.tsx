@@ -73,8 +73,12 @@ const LoginForm: React.FC = () => {
     setError(null);
     setIsSubmitting(true);
     try {
-      await login(username, password);
-      navigate({ to: '/dashboard' });
+      const user = await login(username, password);
+      if (user?.mustChangePassword) {
+        navigate({ to: '/change-password' });
+      } else {
+        navigate({ to: '/dashboard' });
+      }
     } catch {
       setError('Identifiants invalides. Veuillez réessayer.');
       setIsSubmitting(false);

@@ -86,7 +86,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [logout, navigate]);
 
   const updateMustChangePassword = (value: boolean) => {
-    setUser(prev => prev ? { ...prev, mustChangePassword: value } : null);
+    setUser(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, mustChangePassword: value };
+      setCachedAuthState(updated);
+      return updated;
+    });
   };
 
 

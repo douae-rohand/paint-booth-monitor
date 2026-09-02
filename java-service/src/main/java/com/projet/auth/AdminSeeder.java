@@ -59,6 +59,7 @@ public class AdminSeeder implements CommandLineRunner {
         superviseur.setPrenom("Douae");
         superviseur.setPhone("06 12 34 56 78");
         superviseur.setActif(true);
+        superviseur.setCompteActive(true);
         superviseur.setMustChangePassword(true);
 
         Superviseur savedSuperviseur = superviseurRepository.save(superviseur);
