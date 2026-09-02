@@ -45,6 +45,7 @@ public class SecurityConfig {
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/logout", "/api/auth/me", "/api/auth/change-password", "/api/auth/activation", "/api/auth/mot-de-passe-oublie", "/api/auth/reinitialiser-mot-de-passe").permitAll()
                 .requestMatchers("/ws/**", "/ws/info/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

@@ -9,6 +9,7 @@ import {
   updateSuperviseur,
   activerSuperviseur,
   desactiverSuperviseur,
+  renvoyerActivationSuperviseur,
   type SuperviseurListItemDTO,
   type SuperviseurResponseDTO,
   type SuperviseurCreateDTO,
@@ -124,5 +125,20 @@ export const useSuperviseurActions = () => {
     }
   };
 
-  return { create, update, activate, deactivate, loading, error };
+  const resendActivation = async (id: string): Promise<SuperviseurResponseDTO | null> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await renvoyerActivationSuperviseur(id);
+      return result;
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err.response?.data?.message || 'Erreur lors du renvoi du lien d\'activation');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { create, update, activate, deactivate, resendActivation, loading, error };
 };

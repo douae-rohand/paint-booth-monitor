@@ -14,6 +14,7 @@ export interface SuperviseurResponseDTO {
   actif: boolean;
   compteActive: boolean;
   createdAt: string;
+  dateExpirationActivation?: string | null;
 }
 
 export interface SuperviseurListItemDTO {
@@ -85,6 +86,11 @@ export const activerSuperviseur = async (id: string): Promise<void> => {
 
 export const desactiverSuperviseur = async (id: string): Promise<void> => {
   await apiClient.patch(`/api/admin/superviseurs/${id}/desactiver`);
+};
+
+export const renvoyerActivationSuperviseur = async (id: string): Promise<SuperviseurResponseDTO> => {
+  const response = await apiClient.post<SuperviseurResponseDTO>(`/api/admin/superviseurs/${id}/renvoyer-activation`);
+  return response.data;
 };
 
 // ── Account activation (public) ───────────────────────────────────────────────

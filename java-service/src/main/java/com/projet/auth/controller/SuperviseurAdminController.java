@@ -57,4 +57,9 @@ public class SuperviseurAdminController {
         superviseurAdminService.activer(id);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/{id}/renvoyer-activation")
+    public ResponseEntity<SuperviseurResponseDTO> renvoyerActivation(@PathVariable UUID id) {
+        return ResponseEntity.ok(superviseurAdminService.renvoyerActivation(id));
+    }
 }

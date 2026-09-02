@@ -48,9 +48,6 @@ public class EmailWorkerService {
     @Value("${email.worker.max-tentatives:5}")
     private int maxTentatives;
 
-    @Value("${app.frontend-url:http://localhost:5173}")
-    private String frontendUrl;
-
     public EmailWorkerService(
             EnvoiNotificationRepository envoiNotificationRepository,
             EmailService emailService

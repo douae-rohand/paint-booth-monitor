@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -277,6 +278,53 @@ public class SuperviseurAdminService {
         // Ne pas toucher à compteActive (statut d'activation initial indépendant)
     }
 
+    @Transactional
+    public SuperviseurResponseDTO renvoyerActivation(UUID id) {
+        Superviseur superviseur = superviseurRepository.findById(id)
+                .orElseThrow(() -> new SuperviseurNonTrouveException("Superviseur non trouvé"));
+
+        if (superviseur.getAdmin() != null) {
+            throw new SuperviseurNonTrouveException("Superviseur non trouvé");
+        }
+
+        // Vérification de sécurité backend : interdire si compte_active == true
+        if (superviseur.isCompteActive()) {
+            throw new IllegalArgumentException("Le compte est déjà activé. Impossible de renvoyer un lien d'activation.");
+        }
+
+        // Invalider les anciens tokens d'activation non utilisés
+        List<TokenActivation> tokensNonUtilises = tokenActivationRepository.findBySuperviseurAndUtiliseFalse(superviseur);
+        for (TokenActivation t : tokensNonUtilises) {
+            t.setUtilise(true);
+        }
+        tokenActivationRepository.saveAll(tokensNonUtilises);
+
+        // Générer un nouveau token d'activation (24h)
+        String rawToken = UUID.randomUUID().toString().replace("-", "") +
+                          UUID.randomUUID().toString().replace("-", "");
+        String tokenHash = hashToken(rawToken);
+
+        TokenActivation newToken = new TokenActivation();
+        newToken.setSuperviseur(superviseur);
+        newToken.setTokenHash(tokenHash);
+        newToken.setUtilise(false);
+        newToken.setDateExpiration(LocalDateTime.now().plusHours(activationTokenExpirationHours));
+        newToken.setCreatedAt(LocalDateTime.now());
+        tokenActivationRepository.save(newToken);
+
+        // Construire le lien d'activation et envoyer l'email SendGrid
+        String lienActivation = frontendUrl + "/activation?token=" + rawToken;
+        EmailService.EmailResult result = emailService.envoyerLienActivation(superviseur.getEmail(), lienActivation);
+        if (!result.isSucces()) {
+            logger.warn("[ACTIVATION] Échec du renvoi de l'email d'activation à {} — statut={} — erreur={}",
+                    superviseur.getEmail(), result.statut(), result.erreur());
+        } else {
+            logger.info("[ACTIVATION] Email de ré-activation envoyé avec succès à {}", superviseur.getEmail());
+        }
+
+        return mapToResponseDTO(superviseur);
+    }
+
     private SuperviseurResponseDTO mapToResponseDTO(Superviseur superviseur) {
         SuperviseurResponseDTO dto = new SuperviseurResponseDTO();
         dto.setId(superviseur.getIdSuperviseur());
@@ -287,6 +335,13 @@ public class SuperviseurAdminService {
         dto.setActif(superviseur.isActif());
         dto.setCompteActive(superviseur.isCompteActive());
         dto.setCreatedAt(superviseur.getCreatedAt());
+
+        if (!superviseur.isCompteActive()) {
+            tokenActivationRepository
+                    .findTopBySuperviseurIdSuperviseurOrderByCreatedAtDesc(superviseur.getIdSuperviseur())
+                    .ifPresent(t -> dto.setDateExpirationActivation(t.getDateExpiration()));
+        }
+
         return dto;
     }
 

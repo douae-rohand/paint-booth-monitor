@@ -42,6 +42,15 @@ function formatDate(iso: string | null) {
   });
 }
 
+function SuccessBanner({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-[color:var(--success)]/30 bg-[color:var(--success)]/10 px-4 py-3">
+      <CheckCircle2 className="h-4 w-4 shrink-0 text-[color:var(--success)]" />
+      <p className="text-sm font-medium text-[color:var(--success)]">{message}</p>
+    </div>
+  );
+}
+
 function ErrorBanner({ message }: { message: string }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] px-4 py-3">
@@ -94,14 +103,19 @@ interface SuperviseurDetailProps {
 }
 
 export function SuperviseurDetail({ id, onBack, onRefresh, refreshKey }: SuperviseurDetailProps) {
-  const { data, loading, error } = useSuperviseur(id, refreshKey);
-  const { update, activate, deactivate } = useSuperviseurActions();
+  const { data: initialData, loading, error } = useSuperviseur(id, refreshKey);
+  const { update, activate, deactivate, resendActivation } = useSuperviseurActions();
+  const [updatedData, setUpdatedData] = useState<typeof initialData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<SuperviseurUpdateDTO>({});
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof SuperviseurUpdateDTO, string>>>({});
   const [serverError, setServerError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+
+  const data = updatedData ?? initialData;
 
   if (loading) {
     return (
@@ -166,9 +180,23 @@ export function SuperviseurDetail({ id, onBack, onRefresh, refreshKey }: Supervi
   const handleToggleActif = async () => {
     setActionId(id);
     setServerError(null);
+    setSuccessMessage(null);
     const success = data.actif ? await deactivate(id) : await activate(id);
     if (success) onRefresh();
     setActionId(null);
+  };
+
+  const handleResendActivation = async () => {
+    setResendLoading(true);
+    setServerError(null);
+    setSuccessMessage(null);
+    const result = await resendActivation(id);
+    setResendLoading(false);
+    if (result) {
+      setUpdatedData(result);
+      setSuccessMessage("Un nouveau lien d'activation a été envoyé par email avec succès.");
+      onRefresh();
+    }
   };
 
   return (
@@ -186,6 +214,7 @@ export function SuperviseurDetail({ id, onBack, onRefresh, refreshKey }: Supervi
           </button>
 
           {serverError && <ErrorBanner message={serverError} />}
+          {successMessage && <SuccessBanner message={successMessage} />}
 
           {/* ── Profile Header ── */}
           <div className="flex flex-col items-center gap-3 pt-2">
@@ -347,18 +376,57 @@ export function SuperviseurDetail({ id, onBack, onRefresh, refreshKey }: Supervi
                 </div>
               </div>
 
-              {/* Placeholder notifications */}
-              <div className="rounded-2xl border border-dashed border-border bg-muted/10 p-4 opacity-60">
-                <div className="flex items-start gap-3">
-                  <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div>
-                    <h3 className="text-sm font-bold">Notifications</h3>
-                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                      Bientôt disponible - Configurez les préférences de notification pour ce superviseur.
-                    </p>
+              {/* Section Activation du compte (si compte_active == false) */}
+              {!data.compteActive && (
+                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-amber-500" />
+                      <h3 className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                        Activation du compte
+                      </h3>
+                    </div>
+                    <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-semibold text-amber-500">
+                      En attente
+                    </span>
                   </div>
+
+                  {(() => {
+                    const expirationDate = data.dateExpirationActivation ? new Date(data.dateExpirationActivation) : null;
+                    const isExpired = !expirationDate || expirationDate < new Date();
+
+                    return (
+                      <div className="flex flex-col gap-3">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {isExpired ? (
+                            <span className="text-[color:var(--danger)] font-medium">
+                              Le lien d'activation précédent a expiré (dépassé 24h). Vous pouvez renvoyer un nouveau lien.
+                            </span>
+                          ) : (
+                            <span>
+                              Le lien d'activation actuel est encore valide jusqu'au{' '}
+                              <strong className="text-foreground">{formatDate(data.dateExpirationActivation ?? null)}</strong>.
+                            </span>
+                          )}
+                        </p>
+
+                        <button
+                          onClick={handleResendActivation}
+                          disabled={!isExpired || resendLoading}
+                          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-[var(--shadow-glow)] transition-all w-full sm:w-auto"
+                        >
+                          {resendLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Mail className="h-4 w-4" />
+                          )}
+                          Renvoyer le lien d'activation
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
