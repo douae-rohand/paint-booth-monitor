@@ -78,8 +78,8 @@ export function AlertesHistoryTable() {
 
       const data: AlertesPage = await getHistoriqueAlertes(params);
       setAlertes(data.content);
-      setTotalPages(data.totalPages);
-      setTotalElements(data.totalElements);
+      setTotalPages(data.page?.totalPages ?? 0);
+      setTotalElements(data.page?.totalElements ?? 0);
     } catch (e) {
       console.error('Erreur fetch alertes:', e);
       setError('Impossible de charger l\'historique des alertes');

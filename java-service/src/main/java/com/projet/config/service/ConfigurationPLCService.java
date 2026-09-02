@@ -7,6 +7,8 @@ import com.projet.config.dto.ConfigurationPLCResponse;
 import com.projet.config.exception.ConfigurationPLCNotFoundException;
 import com.projet.config.model.ConfigurationPLC;
 import com.projet.config.repository.ConfigurationPLCRepository;
+import com.projet.audit.annotation.Audite;
+import com.projet.audit.model.enums.ActionAudit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,6 +77,7 @@ public class ConfigurationPLCService {
      * @param adminId   UUID de l'Admin authentifie (extrait du SecurityContext par le controller).
      * @return          DTO de la configuration nouvellement creee.
      */
+    @Audite(ActionAudit.MODIFICATION_CONFIGURATION_PLC)
     @Transactional
     public ConfigurationPLCResponse creerConfiguration(ConfigurationPLCRequest request, UUID adminId) {
         validerRequest(request);
@@ -133,6 +136,7 @@ public class ConfigurationPLCService {
      * @param id    UUID de la configuration a activer.
      * @return      DTO de la configuration activee.
      */
+    @Audite(ActionAudit.MODIFICATION_CONFIGURATION_PLC)
     @Transactional
     public ConfigurationPLCResponse activerConfiguration(UUID id) {
         ConfigurationPLC cible = configurationPLCRepository.findById(id)
@@ -172,6 +176,7 @@ public class ConfigurationPLCService {
      * @param id    UUID de la configuration a desactiver.
      * @return      DTO de la configuration desactivee.
      */
+    @Audite(ActionAudit.MODIFICATION_CONFIGURATION_PLC)
     @Transactional
     public ConfigurationPLCResponse desactiverConfiguration(UUID id) {
         ConfigurationPLC config = configurationPLCRepository.findById(id)

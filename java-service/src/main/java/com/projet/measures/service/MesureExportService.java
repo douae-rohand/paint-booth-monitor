@@ -1,5 +1,7 @@
 package com.projet.measures.service;
 
+import com.projet.audit.annotation.Audite;
+import com.projet.audit.model.enums.ActionAudit;
 import com.projet.measures.dto.MesureCabineDTO;
 import com.projet.measures.dto.MesureEtuveDTO;
 import com.projet.measures.model.PointMesure;
@@ -48,6 +50,7 @@ public class MesureExportService {
      * @param seulementDepassements Si true, ne retourne que les lignes avec au moins un dépassement
      * @return ByteArray contenant le fichier CSV
      */
+    @Audite(ActionAudit.EXPORT_MESURES)
     public byte[] exportCabineCSV(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
         List<MesureCabineDTO> mesures = getAllHistoriqueCabine(dateDebut, dateFin, seulementDepassements);
         
@@ -91,6 +94,7 @@ public class MesureExportService {
      * @param seulementDepassements Si true, ne retourne que les lignes avec dépassement
      * @return ByteArray contenant le fichier CSV
      */
+    @Audite(ActionAudit.EXPORT_MESURES)
     public byte[] exportEtuveCSV(String zone, LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
         List<MesureEtuveDTO> mesures = getAllHistoriqueEtuve(zone, dateDebut, dateFin, seulementDepassements);
         
@@ -133,6 +137,7 @@ public class MesureExportService {
      * @param seulementDepassements Si true, ne retourne que les lignes avec au moins un dépassement
      * @return ByteArray contenant le fichier PDF
      */
+    @Audite(ActionAudit.EXPORT_MESURES)
     public byte[] exportCabinePDF(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
         List<MesureCabineDTO> mesures = getAllHistoriqueCabine(dateDebut, dateFin, seulementDepassements);
         
@@ -240,6 +245,7 @@ public class MesureExportService {
      * @param seulementDepassements Si true, ne retourne que les lignes avec dépassement
      * @return ByteArray contenant le fichier PDF
      */
+    @Audite(ActionAudit.EXPORT_MESURES)
     public byte[] exportEtuvePDF(String zone, LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
         List<MesureEtuveDTO> mesures = getAllHistoriqueEtuve(zone, dateDebut, dateFin, seulementDepassements);
         
@@ -345,6 +351,7 @@ public class MesureExportService {
      * @param seulementDepassements Si true, ne retourne que les lignes avec au moins un dépassement
      * @return ByteArray contenant le fichier Excel
      */
+    @Audite(ActionAudit.EXPORT_MESURES)
     public byte[] exportCabineExcel(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
         List<MesureCabineDTO> mesures = getAllHistoriqueCabine(dateDebut, dateFin, seulementDepassements);
         
@@ -441,6 +448,7 @@ public class MesureExportService {
      * @param seulementDepassements Si true, ne retourne que les lignes avec dépassement
      * @return ByteArray contenant le fichier Excel
      */
+    @Audite(ActionAudit.EXPORT_MESURES)
     public byte[] exportEtuveExcel(String zone, LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
         List<MesureEtuveDTO> mesures = getAllHistoriqueEtuve(zone, dateDebut, dateFin, seulementDepassements);
         

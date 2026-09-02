@@ -38,7 +38,7 @@ export function HistoryTable({
   onPageChange,
   onPageSizeChange,
 }: HistoryTableProps) {
-  const totalPages = data?.totalPages ?? 1;
+  const totalPages = data?.page?.totalPages ?? 1;
   const current = Math.min(currentPage, totalPages - 1);
   const pageRows = data?.content ?? [];
 

@@ -12,6 +12,9 @@ import com.projet.auth.repository.SuperviseurRepository;
 import com.projet.auth.repository.TokenActivationRepository;
 import com.projet.notifications.service.EmailService;
 import com.projet.notifications.service.NotificationDispatchService;
+import com.projet.audit.annotation.Audite;
+import com.projet.audit.model.enums.ActionAudit;
+import com.projet.audit.service.LogAuditService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,6 +42,7 @@ public class SuperviseurAdminService {
     private final EmailService emailService;
     private final MotDePasseValidator motDePasseValidator;
     private final NotificationDispatchService notificationDispatchService;
+    private final LogAuditService logAuditService;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -53,7 +57,8 @@ public class SuperviseurAdminService {
             PasswordEncoder passwordEncoder,
             EmailService emailService,
             MotDePasseValidator motDePasseValidator,
-            NotificationDispatchService notificationDispatchService) {
+            NotificationDispatchService notificationDispatchService,
+            LogAuditService logAuditService) {
         this.superviseurRepository = superviseurRepository;
         this.tokenActivationRepository = tokenActivationRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -61,8 +66,10 @@ public class SuperviseurAdminService {
         this.emailService = emailService;
         this.motDePasseValidator = motDePasseValidator;
         this.notificationDispatchService = notificationDispatchService;
+        this.logAuditService = logAuditService;
     }
 
+    @Audite(ActionAudit.CREATION_SUPERVISEUR)
     @Transactional
     public SuperviseurResponseDTO creer(SuperviseurCreateDTO dto) {
         // Valider email unique
@@ -137,6 +144,9 @@ public class SuperviseurAdminService {
         tokenActivation.setUtilise(true);
         tokenActivationRepository.save(tokenActivation);
 
+        // Loguer l'événement d'activation du compte
+        logAuditService.logger(superviseur.getIdSuperviseur(), ActionAudit.COMPTE_ACTIVE_SUPERVISEUR);
+
         // Envoyer l'email de bienvenue (sans faire échouer le flow d'activation si échec)
         try {
             EmailService.EmailResult result = emailService.envoyerEmailBienvenue(superviseur.getEmail(), superviseur.getPrenom());
@@ -162,9 +172,11 @@ public class SuperviseurAdminService {
         }
     }
 
-    public Page<SuperviseurListItemDTO> lister(Boolean filtreActif, Boolean filtreCompteActive, Pageable pageable) {
+    public Page<SuperviseurListItemDTO> lister(Boolean filtreActif, Boolean filtreCompteActive, Boolean inclureAdmin, Pageable pageable) {
         Page<Superviseur> page;
-        if (filtreActif != null && filtreCompteActive != null) {
+        if (Boolean.TRUE.equals(inclureAdmin)) {
+            page = superviseurRepository.findAll(pageable);
+        } else if (filtreActif != null && filtreCompteActive != null) {
             page = superviseurRepository.findByAdminIsNullAndActifAndCompteActive(filtreActif, filtreCompteActive, pageable);
         } else if (filtreActif != null) {
             page = superviseurRepository.findByAdminIsNullAndActif(filtreActif, pageable);
@@ -188,6 +200,7 @@ public class SuperviseurAdminService {
         return mapToResponseDTO(superviseur);
     }
 
+    @Audite(ActionAudit.MODIFICATION_SUPERVISEUR)
     @Transactional
     public SuperviseurResponseDTO modifier(UUID id, SuperviseurUpdateDTO dto) {
         Superviseur superviseur = superviseurRepository.findById(id)
@@ -225,6 +238,7 @@ public class SuperviseurAdminService {
         return mapToResponseDTO(superviseur);
     }
 
+    @Audite(ActionAudit.DESACTIVATION_SUPERVISEUR)
     @Transactional
     public void desactiver(UUID id) {
         Superviseur superviseur = superviseurRepository.findById(id)
@@ -261,6 +275,7 @@ public class SuperviseurAdminService {
         }
     }
 
+    @Audite(ActionAudit.ACTIVATION_SUPERVISEUR)
     @Transactional
     public void activer(UUID id) {
         Superviseur superviseur = superviseurRepository.findById(id)

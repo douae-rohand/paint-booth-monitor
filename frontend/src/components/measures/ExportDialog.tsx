@@ -130,18 +130,17 @@ export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: Ex
               <div className="pt-3">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
+                    <button
                       className={cn(
-                        "w-full justify-start text-left font-normal",
+                        "neu-pressable flex w-full items-center gap-2 rounded-2xl border border-border/50 px-4 py-2.5 text-sm font-semibold transition-all hover:bg-primary/10 hover:text-primary hover:border-primary/30",
                         !dateRange && "text-muted-foreground"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                       {dateRange?.from ? (
                         dateRange.to ? (
                           <>
-                            {dateRange.from.toLocaleDateString("fr-FR")} -{" "}
+                            {dateRange.from.toLocaleDateString("fr-FR")} –{" "}
                             {dateRange.to.toLocaleDateString("fr-FR")}
                           </>
                         ) : (
@@ -150,7 +149,7 @@ export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: Ex
                       ) : (
                         <span>Sélectionner une période</span>
                       )}
-                    </Button>
+                    </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar

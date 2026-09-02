@@ -13,6 +13,8 @@ import com.projet.measures.model.PointMesure;
 import com.projet.measures.repository.PointMesureRepository;
 import org.springframework.http.HttpStatus;
 import com.projet.notifications.service.NotificationDispatchService;
+import com.projet.audit.annotation.Audite;
+import com.projet.audit.model.enums.ActionAudit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +40,7 @@ public class SeuilDynamiqueService {
         this.notificationDispatchService = notificationDispatchService;
     }
 
+    @Audite(ActionAudit.MODIFICATION_CONFIGURATION_SEUILS)
     @Transactional
     public SeuilDynamiqueResponseDTO creer(SeuilDynamiqueCreateDTO dto, UUID idAdminConnecte) {
         // Valider PointMesure
@@ -68,6 +71,7 @@ public class SeuilDynamiqueService {
         return mapToResponseDTO(saved);
     }
 
+    @Audite(ActionAudit.MODIFICATION_CONFIGURATION_SEUILS)
     @Transactional
     public SeuilDynamiqueResponseDTO modifierMarge(UUID id, SeuilDynamiqueUpdateDTO dto) {
         SeuilDynamique seuil = seuilDynamiqueRepository.findById(id)

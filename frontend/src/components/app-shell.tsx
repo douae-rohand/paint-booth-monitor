@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Cpu, History, LayoutDashboard, LogOut, SlidersHorizontal, Users, AlertTriangle, FileText } from "lucide-react";
+import { Cpu, History, LayoutDashboard, LogOut, SlidersHorizontal, Users, AlertTriangle, FileText, Shield } from "lucide-react";
 import { type ReactNode, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { getAlertesActives } from "@/api/alerting";
@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [subscribeToAlertes]);
 
   const nav = isAdmin
-    ? [...baseNav, { to: "/plc", label: "PLC", icon: Cpu }, { to: "/seuils", label: "Seuils", icon: SlidersHorizontal }, { to: "/superviseurs", label: "Superviseurs", icon: Users }]
+    ? [...baseNav, { to: "/plc", label: "PLC", icon: Cpu }, { to: "/seuils", label: "Seuils", icon: SlidersHorizontal }, { to: "/superviseurs", label: "Superviseurs", icon: Users }, { to: "/audit", label: "Audit", icon: Shield }]
     : baseNav;
 
   const today = new Date().toLocaleDateString("fr-FR", {

@@ -128,9 +128,9 @@ export function SuperviseurListe({
   };
 
   const superviseurs = data?.content || [];
-  const totalPages = Math.max(1, data?.totalPages ?? 1);
+  const totalPages = Math.max(1, data?.page?.totalPages ?? 1);
   const currentPage = Math.min(page, totalPages);
-  const totalElements = data?.totalElements ?? 0;
+  const totalElements = data?.page?.totalElements ?? 0;
 
   return (
     <div className="neu-card p-6 h-full flex flex-col overflow-hidden">

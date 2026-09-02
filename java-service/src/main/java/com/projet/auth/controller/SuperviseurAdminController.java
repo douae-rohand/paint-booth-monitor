@@ -25,8 +25,9 @@ public class SuperviseurAdminController {
     public ResponseEntity<Page<SuperviseurListItemDTO>> lister(
             @RequestParam(required = false) Boolean actif,
             @RequestParam(required = false) Boolean compteActive,
+            @RequestParam(required = false) Boolean inclureAdmin,
             Pageable pageable) {
-        return ResponseEntity.ok(superviseurAdminService.lister(actif, compteActive, pageable));
+        return ResponseEntity.ok(superviseurAdminService.lister(actif, compteActive, inclureAdmin, pageable));
     }
 
     @GetMapping("/{id}")

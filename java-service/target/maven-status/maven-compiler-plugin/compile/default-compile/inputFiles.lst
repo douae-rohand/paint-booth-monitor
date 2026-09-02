@@ -27,8 +27,14 @@ C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\servic
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\service\AlerteStatsService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\service\SeuilAbsoluService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\alerting\service\SeuilDynamiqueService.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\audit\annotation\Audite.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\audit\aspect\AuditAspect.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\audit\controller\AuditAdminController.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\audit\dto\LogAuditResponseDTO.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\audit\model\enums\ActionAudit.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\audit\model\LogAudit.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\audit\repository\LogAuditRepository.java
+C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\audit\service\LogAuditService.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\AdminSeeder.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\controller\ActivationController.java
 C:\PFA\paint-booth-monitor\java-service\src\main\java\com\projet\auth\controller\AuthController.java

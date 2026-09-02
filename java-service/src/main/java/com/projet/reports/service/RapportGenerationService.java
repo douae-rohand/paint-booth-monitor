@@ -21,6 +21,8 @@ import com.projet.reports.model.enums.TypeRapport;
 import com.projet.reports.pdf.RapportPdfBuilder;
 import com.projet.reports.repository.RapportPdfRepository;
 import com.projet.reports.storage.MinioStorageService;
+import com.projet.audit.annotation.Audite;
+import com.projet.audit.model.enums.ActionAudit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -58,6 +60,7 @@ public class RapportGenerationService {
      * @param superviseur Superviseur demandeur
      * @return RapportPDF généré
      */
+    @Audite(ActionAudit.GENERER_RAPPORT)
     @Transactional
     public RapportPDF genererRapport(
             Long idPointMesure,
