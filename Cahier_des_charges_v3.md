@@ -7,7 +7,7 @@
 
 ## Historique des modifications par rapport aux versions précédentes
 
-| Élément | Version 1 (initiale) | Version 2 | Version 3 (actuelle) |
+| Éléments modifiés | Version 1 (initiale) | Version 2 | Version 3 (actuelle) |
 |---|---|---|---|
 | Nature du projet | Stage | PFA | PFA |
 | Métriques supervisées | Température uniquement | Température et Humidité | Température et Humidité |
@@ -18,6 +18,12 @@
 | KPIs industriels | Non mentionnés | Ajoutés (adaptés) | Ajoutés (adaptés) |
 | Architecture logicielle | Non définie | Backend "à déterminer" | **Architecture polyglotte dès le départ (Python + Java)** |
 | Stratégie de développement | Non définie | Non définie | **Approche directe en microservices distincts** |
+| Canaux de notification | Non définis | Email + WhatsApp + Push | **Email + Web Push (VAPID) + In-App** — WhatsApp abandonné |
+| Configuration destinataires | Table dédiée en base | Table dédiée en base | **Mapping en dur dans le code Java** — table supprimée (V38) |
+| Canal WhatsApp | Prévu | Prévu | **Abandonné** — retiré de l'enum Canal et des contraintes DB (V43) |
+| Audit des actions | Non prévu | Non prévu | **Module audit complet** — 13 actions traçables, consultation Admin |
+| Notifications In-App | Non prévues | Non prévues | **Ajoutées** — WebSocket STOMP, canal IN_APP (V37) |
+| Abonnements push navigateur | Non prévus | Non prévus | **Table abonnement_push_navigateur** (V47), protocole VAPID |
 
 ---
 
@@ -57,7 +63,7 @@ L'objectif du projet est de concevoir une application capable de se connecter à
 * Chatbot RAG pour l'interrogation en langage naturel de l'historique
 * Calcul des KPIs adaptés (taux de conformité, temps moyen entre incidents, temps moyen de retour à la normale)
 * Système d'authentification et gestion des rôles (Superviseur / Admin)
-* Système de notification multicanal (email, WhatsApp, push)
+* Système de notification multicanal (email, Web Push natif navigateur/VAPID, notifications in-app temps réel)
 * Export des données (CSV/Excel)
 * Recherche manuelle dans l'historique par identifiant de caisse (en remplacement de la traçabilité formelle des lots)
 
@@ -91,9 +97,9 @@ Il est essentiel de distinguer deux niveaux de données :
 1. **Le PLC (DB du S7-1200)** : contient uniquement les valeurs **instantanées**, écrasées à chaque cycle de scan de l'automate. Ce n'est pas une source d'historique.
 2. **WinCC** : historise en théorie les données mesurées dans une base **PostgreSQL** de production, gérée et sécurisée par l'équipe IT/OT de Renault. L'étudiante n'y a pas accès dans le cadre du PFA, ce qui exclut ce scénario d'architecture.
 
-**Scénario retenu — Connexion directe au PLC** : lecture périodique via Snap7 (protocole S7 natif) ou OPC UA, avec historisation gérée entièrement côté application (pas de WinCC intermédiaire), puis stockage dans une base de données dédiée au projet.
+**Scénario retenu — Connexion directe au PLC** : lecture périodique via Snap7 (protocole S7 natif) ou OPC UA, avec historisation gérée entièrement côté application (pas de WinCC intermédiaire), puis stockage dans une base de données dédiée au projet. (dans rapport il n'est pas necessaire de mentionnée cela, cela juste a mon titre d'information)
 
-Le choix du protocole de communication (Snap7 vs OPC UA) relève de la responsabilité du binôme automatisme, en lien avec la configuration réelle du PLC et les DB exposées.
+Le choix du protocole de communication : Snap7 decider par le encadrent d'entreprise.
 
 ---
 
@@ -110,9 +116,9 @@ Le système comporte **2 rôles**, confirmés par l'encadrant :
 * Consulter les alertes et anomalies actives et passées
 * Consulter les prédictions de dérive issues du module IA (lecture seule)
 * Interroger le chatbot RAG sur l'historique des données
-* Télécharger le rapport journalier PDF
+* Télécharger le rapport PDF
 * Exporter des données en CSV/Excel
-* Recevoir des notifications d'alerte selon ses préférences de canal
+* Recevoir des notifications d'alerte 
 
 ### 5.2 Admin
 
@@ -121,7 +127,7 @@ Hérite de tous les droits de l'Utilisateur, plus :
 * Gérer les comptes utilisateurs (création, modification, désactivation)
 * Configurer les seuils d'alerte (absolus et dynamiques)
 * Consulter et piloter les résultats du module IA
-* Consulter les logs d'accès et d'audit
+* Consulter les logs d'accès et d'audit (journal des 13 actions sensibles : connexions, gestion des comptes, modifications de configuration, exports, rapports)
 
 L'authentification s'applique à l'ensemble des utilisateurs, sans exception — aucun accès anonyme ou public au système.
 
@@ -151,10 +157,13 @@ Les trois mécanismes fonctionnent en parallèle, en continu, et génèrent chac
 
 ## 7. Système d'alertes et de notifications
 
-* Canaux de notification pris en charge : **email, WhatsApp, push**
-* Chaque utilisateur configure ses préférences de canal (un ou plusieurs canaux actifs simultanément)
+* Canaux de notification pris en charge : **email, Web Push natif navigateur (protocole VAPID, sans dépendance à un service tiers), notifications in-app (WebSocket STOMP)**
+* Le canal WhatsApp initialement prévu a été abandonné — retiré de l'enum Canal et des contraintes de base de données (migration V43)
+* Les préférences de canal sont gérées en code (mapping en dur par type d'événement) — la table `configuration_destinataire` initialement prévue a été supprimée (migration V38)
 * Une alerte est caractérisée par : la métrique concernée, le type (seuil absolu, seuil dynamique, dérive IA), la sévérité (faible, moyenne, critique), un statut (active/résolue)
-* Les notifications ne sont pas limitées aux alertes : le système notifie également d'autres événements (rapport généré, compte créé, seuil modifié)
+* Les notifications couvrent plusieurs types d'événements : alertes créées/résolues, activation de compte superviseur, modification de configuration des seuils
+* Les abonnements Web Push (endpoint + clés de chiffrement du navigateur) sont stockés en base dans la table `abonnement_push_navigateur` — un superviseur peut avoir plusieurs abonnements actifs (plusieurs navigateurs/appareils)
+* Les notifications in-app sont poussées en temps réel via WebSocket STOMP sur le topic `/user/queue/notifications` (personnel par utilisateur)
 
 ---
 
@@ -184,13 +193,17 @@ En remplacement, chaque mesure peut être associée à un **identifiant de caiss
 
 ## 11. Architecture technique retenue (vue d'ensemble)
 
-* **Frontend** : React, prototypage via Lovable, style neumorphisme avec accent orange/gold
+* **Frontend** : React (TanStack Router, TanStack Query), style neumorphisme avec accent orange/gold
 * **Backend** : Architecture **polyglotte** — voir section 13 pour le détail complet
 * **Base de données** : PostgreSQL (extension `pgvector` pour les embeddings du RAG)
 * **IA / RAG** : Python (scikit-learn, LangChain)
 * **Conteneurisation** : Docker / docker-compose
 * **Intégration continue** : GitHub Actions
-* **Connexion PLC** : Snap7 ou OPC UA (choix du protocole porté par le binôme automatisme, implémentation côté service Python)
+* **Connexion PLC** : Snap7
+* **Stockage fichiers** : MinIO (stockage objet S3-compatible pour les rapports PDF générés)
+* **Authentification** : JWT (access token HttpOnly cookie 15 min + refresh token 7 jours avec rotation)
+* **Notifications push** : Web Push natif (protocole VAPID, clés ECDSA P-256, bibliothèque `nl.martijndwars:web-push`) — sans dépendance Firebase/FCM
+* **Migrations base de données** : Flyway (47 migrations au total)
 * **Gestion de projet** : à déterminer
 
 ---
@@ -204,9 +217,10 @@ En remplacement, chaque mesure peut être associée à un **identifiant de caiss
 * Module IA de détection de dérive (Isolation Forest et/ou régression)
 * Chatbot RAG pour l'interrogation de l'historique
 * Calcul et affichage des KPIs adaptés
-* Génération automatique du rapport journalier (PDF)
+* Génération du rapport (PDF)
 * Export des données en CSV/Excel
 * Système d'authentification et de gestion des rôles (Superviseur / Admin)
+* Module d'audit des actions sensibles (journal des événements consultable par l'Admin)
 * Documentation de conception complète (diagrammes UML, MCD/MLD, diagrammes de séquence, diagramme de composants et de déploiement)
 
 ---
@@ -238,7 +252,7 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 │    (API Gateway du système)                                     │
 │  • Authentification & rôles (Spring Security + JWT)             │
 │  • Configuration des seuils par l'Admin (écrit en base)         │
-│  • Dispatch des notifications (email / WhatsApp / push)          │
+│  • Dispatch des notifications (email / push natif / in-app)             │
 │  • Calcul des KPIs (requêtes agrégées sur mesures/alertes)       │
 │  • CRUD utilisateurs, export CSV/Excel, génération rapport PDF   │
 │  • API REST + WebSocket vers le frontend                        │
@@ -284,9 +298,10 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 | Chatbot RAG | Python | Écosystème LangChain/embeddings pensé Python-first |
 | Authentification & rôles | Java | Spring Security offre une gestion de rôles plus fine et mature |
 | Configuration des seuils (côté Admin) | Java | Fonction d'administration, cohérente avec le reste des CRUD |
-| Notifications multicanal | Java | Logique métier de dispatch, indépendante de la donnée brute |
-| KPIs | Java | Requêtes agrégées orientées reporting/présentation |
-| Export CSV/Excel, rapport PDF | Java | Fonctions orientées utilisateur final |
+| Notifications multicanal | Java | Logique métier de dispatch, indépendante de la donnée brute — canaux : EMAIL, Web Push (VAPID), IN_APP (WebSocket) |
+| KPIs | Java | Requêtes agrégées orientées reporting/présentation — filtrées par point de mesure, métrique et période |
+| Export CSV/Excel, rapport PDF | Java | Fonctions orientées utilisateur final — stockage des PDF sur MinIO |
+| Audit des actions sensibles | Java | 13 actions traçables (connexions, gestion comptes, exports, rapports, configurations) |
 | API Gateway vers le frontend | Java | Point d'entrée unique pour l'authentification et les WebSockets |
 
 ### 13.4 Communication inter-services

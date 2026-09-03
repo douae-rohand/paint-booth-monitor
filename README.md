@@ -77,7 +77,7 @@ Par ailleurs, la base PostgreSQL de production historisée par **WinCC** n'est p
 - Lecture périodique des mesures PLC (température, humidité).
 - Historisation, visualisation temps réel et consultation de l'historique.
 - Recherche manuelle par identifiant de caisse ou par plage horaire.
-- Système d'alertes et notifications multicanal (email, WhatsApp, push).
+- Système d'alertes et notifications multicanal (email, push natif navigateur).
 - Module IA, chatbot RAG, KPIs, exports et rapports PDF.
 - Authentification JWT et gestion des rôles.
 

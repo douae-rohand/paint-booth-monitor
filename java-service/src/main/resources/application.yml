@@ -67,3 +67,8 @@ minio:
   access-key: ${MINIO_ACCESS_KEY:}
   secret-key: ${MINIO_SECRET_KEY:}
   bucket: ${MINIO_BUCKET:rapports}
+
+vapid:
+  public-key: ${VAPID_PUBLIC_KEY}
+  private-key: ${VAPID_PRIVATE_KEY}
+  subject: ${VAPID_SUBJECT:mailto:contact@votre-domaine.com}
