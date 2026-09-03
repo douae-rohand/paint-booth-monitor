@@ -12,6 +12,8 @@ import com.projet.measures.model.PointMesure;
 import com.projet.measures.repository.PointMesureRepository;
 import org.springframework.http.HttpStatus;
 import com.projet.notifications.service.NotificationDispatchService;
+import com.projet.audit.annotation.Audite;
+import com.projet.audit.model.enums.ActionAudit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,7 @@ public class SeuilAbsoluService {
         this.notificationDispatchService = notificationDispatchService;
     }
 
+    @Audite(ActionAudit.MODIFICATION_CONFIGURATION_SEUILS)
     @Transactional
     public SeuilAbsoluResponseDTO creer(SeuilAbsoluCreateDTO dto, UUID idAdminConnecte) {
         // Valider PointMesure
@@ -87,6 +90,7 @@ public class SeuilAbsoluService {
         return mapToResponseDTO(saved);
     }
 
+    @Audite(ActionAudit.MODIFICATION_CONFIGURATION_SEUILS)
     @Transactional
     public SeuilAbsoluResponseDTO activer(UUID id) {
         SeuilAbsolu seuil = seuilAbsoluRepository.findById(id)
@@ -115,6 +119,7 @@ public class SeuilAbsoluService {
         return mapToResponseDTO(seuil);
     }
 
+    @Audite(ActionAudit.MODIFICATION_CONFIGURATION_SEUILS)
     @Transactional
     public SeuilAbsoluResponseDTO desactiver(UUID id) {
         SeuilAbsolu seuil = seuilAbsoluRepository.findById(id)

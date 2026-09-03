@@ -45,8 +45,8 @@ export function HistoriqueRapportsListe({ refreshTrigger = 0 }: HistoriqueRappor
       setError(null);
       const data = await listerRapports(page, pageSize);
       setRapports(data.content ?? []);
-      setTotalPages(data.totalPages ?? 0);
-      setTotalElements(data.totalElements ?? 0);
+      setTotalPages(data.page?.totalPages ?? 0);
+      setTotalElements(data.page?.totalElements ?? 0);
     } catch (e: any) {
       console.error('Erreur chargement des rapports :', e);
       setError('Impossible de charger la liste des rapports.');

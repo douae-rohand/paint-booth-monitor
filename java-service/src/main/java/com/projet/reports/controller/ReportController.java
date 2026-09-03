@@ -1,6 +1,8 @@
 package com.projet.reports.controller;
 
 import com.projet.auth.model.Superviseur;
+import com.projet.audit.annotation.Audite;
+import com.projet.audit.model.enums.ActionAudit;
 import com.projet.reports.dto.RapportGenerationRequestDTO;
 import com.projet.reports.dto.RapportPDFResponseDTO;
 import com.projet.reports.model.RapportPDF;
@@ -113,6 +115,7 @@ public class ReportController {
      * @param superviseur Superviseur authentifié
      * @param response HttpServletResponse pour le streaming du fichier
      */
+    @Audite(ActionAudit.TELECHARGEMENT_RAPPORT)
     @GetMapping("/{id}/telecharger")
     public void telechargerRapport(
             @PathVariable UUID id,

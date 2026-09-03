@@ -31,10 +31,12 @@ export interface AlertesParams {
 
 export interface AlertesPage {
   content: AlerteDTO[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
+  page: {
+    totalElements: number;
+    totalPages: number;
+    number: number;
+    size: number;
+  };
   first: boolean;
   last: boolean;
   empty: boolean;

@@ -36,10 +36,12 @@ export interface RapportGenerationRequestDTO {
 
 export interface PaginatedRapportsResponse {
   content: RapportPDFResponse[];
-  totalPages: number;
-  totalElements: number;
-  size: number;
-  number: number;
+  page: {
+    totalPages: number;
+    totalElements: number;
+    size: number;
+    number: number;
+  };
 }
 
 /**

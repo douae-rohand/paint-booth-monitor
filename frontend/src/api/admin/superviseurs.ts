@@ -48,16 +48,19 @@ export interface ActivationCompteDTO {
 
 export interface SuperviseurPageResponse {
   content: SuperviseurListItemDTO[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
+  page: {
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    number: number;
+  };
 }
 
 // ── Superviseur management ───────────────────────────────────────────────────
 export const listSuperviseurs = async (params?: {
   actif?: boolean;
   compteActive?: boolean;
+  inclureAdmin?: boolean;
   page?: number;
   size?: number;
 }): Promise<SuperviseurPageResponse> => {

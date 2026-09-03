@@ -53,7 +53,7 @@ Sert de référence pour la définition des rôles PostgreSQL (`app_java`, `app_
 | Colonnes | Écrites par | Détail |
 |---|---|---|
 | `id_alerte`, `metrique`, `type_alerte`, `severite`, `createdAt` | **Python** | créées à l'ingestion, quand un seuil (absolu/dynamique) ou l'IA détecte une anomalie |
-| `statut` (ACTIVE → RESOLUE) | **Java** | mis à jour quand un Admin/Superviseur traite l'alerte (action `VALIDATION_ANOMALIE` du LogAudit) |
+| `statut` (ACTIVE → RESOLUE) | **Java** | mis à jour quand un Admin/Superviseur résout l'alerte |
 | `updatedAt`, `deletedAt` | **Java** (au moment de la mise à jour du statut) | |
 
 **GRANT nécessaire :**

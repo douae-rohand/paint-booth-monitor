@@ -5,6 +5,9 @@ import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { UseNotificationsReturn } from '@/hooks/useNotifications';
 import type { TypeEvenement } from '@/api/notifications';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { PushNotificationToggle } from './PushNotificationToggle';
+import { useAuth } from '@/hooks/useAuth';
 
 const BELL_COLOR_DURATION_MS = 5000;
 
@@ -56,6 +59,9 @@ export function BellNotifications({ hook }: BellNotificationsProps) {
     marquerLu,
     marquerToutLu,
   } = hook;
+
+  const { isAuthenticated } = useAuth();
+  const pushHook = usePushNotifications(isAuthenticated);
 
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -184,6 +190,8 @@ export function BellNotifications({ hook }: BellNotificationsProps) {
               </ul>
             )}
           </div>
+          {/* Footer : toggle notifications push */}
+          <PushNotificationToggle hook={pushHook} />
         </div>
       )}
     </div>

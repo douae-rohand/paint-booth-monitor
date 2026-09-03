@@ -52,7 +52,7 @@ import java.util.UUID;
 public class NotificationDispatchServiceImpl implements NotificationDispatchService {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationDispatchServiceImpl.class);
-    private static final List<Canal> CANAUX_ACTIFS = List.of(Canal.EMAIL, Canal.IN_APP);
+    private static final List<Canal> CANAUX_ACTIFS = List.of(Canal.EMAIL, Canal.IN_APP, Canal.PUSH);
 
     private final AlerteRepository alerteRepository;
     private final MesureRepository mesureRepository;
@@ -61,6 +61,8 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
     private final NotificationRepository notificationRepository;
     private final EnvoiNotificationRepository envoiNotificationRepository;
     private final NotificationPushService notificationPushService;
+    private final PushNotificationService pushNotificationService;
+    private final NotificationFormatter notificationFormatter;
     private final AlerteBroadcastService alerteBroadcastService;
 
     public NotificationDispatchServiceImpl(
@@ -71,6 +73,8 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
             NotificationRepository notificationRepository,
             EnvoiNotificationRepository envoiNotificationRepository,
             NotificationPushService notificationPushService,
+            PushNotificationService pushNotificationService,
+            NotificationFormatter notificationFormatter,
             AlerteBroadcastService alerteBroadcastService
     ) {
         this.alerteRepository = alerteRepository;
@@ -80,6 +84,8 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
         this.notificationRepository = notificationRepository;
         this.envoiNotificationRepository = envoiNotificationRepository;
         this.notificationPushService = notificationPushService;
+        this.pushNotificationService = pushNotificationService;
+        this.notificationFormatter = notificationFormatter;
         this.alerteBroadcastService = alerteBroadcastService;
     }
 
@@ -271,6 +277,13 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
                             envoi.getIdEnvoi(), saved.getIdNotification(),
                             idDestinataire, typeEvenement, titre,
                             donneesEvenement, saved.getCreatedAt());
+                } else if (canal == Canal.PUSH) {
+                    envoi.setStatutEnvoi(StatutEnvoi.ENVOYE);
+                    envoi.setDateEnvoi(LocalDateTime.now());
+                    envoiNotificationRepository.save(envoi);
+                    // Formater le contenu pour le push (réutilisation de NotificationFormatter)
+                    String contenu = notificationFormatter.formaterContenuAffichage(typeEvenement, donneesEvenement);
+                    pushNotificationService.envoyer(idDestinataire, titre, contenu, null);
                 } else {
                     envoi.setStatutEnvoi(StatutEnvoi.EN_ATTENTE);
                     envoiNotificationRepository.save(envoi);

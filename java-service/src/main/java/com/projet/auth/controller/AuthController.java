@@ -1,11 +1,16 @@
 package com.projet.auth.controller;
 
+import com.projet.audit.model.enums.ActionAudit;
+import com.projet.audit.service.LogAuditService;
 import com.projet.auth.dto.AuthResponse;
 import com.projet.auth.dto.ChangePasswordRequest;
 import com.projet.auth.dto.LoginRequest;
 import com.projet.auth.model.Superviseur;
+import com.projet.auth.repository.SuperviseurRepository;
 import com.projet.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -14,21 +19,32 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+
     private final AuthenticationManager authenticationManager;
     private final AuthService authService;
+    private final LogAuditService logAuditService;
+    private final SuperviseurRepository superviseurRepository;
 
     @Value("${app.security.secure-cookie:false}")
     private boolean secureCookie;
 
-    public AuthController(AuthenticationManager authenticationManager, AuthService authService) {
+    public AuthController(AuthenticationManager authenticationManager,
+                          AuthService authService,
+                          LogAuditService logAuditService,
+                          SuperviseurRepository superviseurRepository) {
         this.authenticationManager = authenticationManager;
         this.authService = authService;
+        this.logAuditService = logAuditService;
+        this.superviseurRepository = superviseurRepository;
     }
 
     @PostMapping("/login")
@@ -38,8 +54,23 @@ public class AuthController {
             HttpServletResponse response) {
         System.out.println("Login request received for username: " + request.getUsername());
 
-        Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+        Authentication auth;
+        try {
+            auth = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+        } catch (AuthenticationException ex) {
+            // Loguer TENTATIVE_CONNEXION_ECHOUEE uniquement si l'email existe en DB
+            // (id_superviseur est NOT NULL dans log_audit)
+            try {
+                superviseurRepository.findByEmail(request.getUsername()).ifPresent(superviseur ->
+                        logAuditService.logger(superviseur.getIdSuperviseur(), ActionAudit.TENTATIVE_CONNEXION_ECHOUEE)
+                );
+            } catch (Exception auditEx) {
+                log.error("[AUDIT] Erreur lors du log de TENTATIVE_CONNEXION_ECHOUEE pour {} : {}",
+                        request.getUsername(), auditEx.getMessage(), auditEx);
+            }
+            throw ex;
+        }
 
         Superviseur user = (Superviseur) auth.getPrincipal();
 
@@ -74,6 +105,9 @@ public class AuthController {
                 .sameSite("Lax")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
+        // Audit: connexion réussie
+        logAuditService.logger(user.getIdSuperviseur(), ActionAudit.CONNEXION);
 
         return ResponseEntity
                 .ok(new AuthResponse(null, user.getUsername(), user.getRole(), user.isMustChangePassword()));
@@ -125,6 +159,13 @@ public class AuthController {
     public ResponseEntity<?> logout(
             @CookieValue(name = "refreshToken", required = false) String refreshToken,
             HttpServletResponse response) {
+
+        // Récupérer l'utilisateur courant avant de révoquer (le SecurityContext est encore actif)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+                && authentication.getPrincipal() instanceof Superviseur superviseur) {
+            logAuditService.logger(superviseur.getIdSuperviseur(), ActionAudit.DECONNEXION);
+        }
 
         if (refreshToken != null && !refreshToken.isEmpty()) {
             authService.revokeRefreshToken(refreshToken);

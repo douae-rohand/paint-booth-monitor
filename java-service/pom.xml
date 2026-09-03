@@ -126,6 +126,12 @@
 			<artifactId>jfreechart</artifactId>
 			<version>1.5.4</version>
 		</dependency>
+		<!-- Web Push (VAPID) pour les notifications navigateur natives -->
+		<dependency>
+			<groupId>nl.martijndwars</groupId>
+			<artifactId>web-push</artifactId>
+			<version>5.1.1</version>
+		</dependency>
 	</dependencies>
 
 	<build>
