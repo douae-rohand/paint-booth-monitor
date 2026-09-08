@@ -31,8 +31,9 @@ Sert de référence pour la définition des rôles PostgreSQL (`app_java`, `app_
 |---|---|---|---|
 | Mesure | Python | Java (KPIs, historique, export) | ✅ Java lecture seule |
 | PredictionIA | Python | Java (affichage frontend) | ✅ Java lecture seule |
-| DocumentEmbedding | Python | Python uniquement | ✅ aucun accès Java requis |
-| ConversationChatbot | Python (produit la paire Q/R) | Java (historique affiché au frontend) | ✅ Java lecture seule |
+| ConversationChatbot | Java (chatbot tool calling, Spring AI) | Java | ✅ propriété Java — _anciennement Python (RAG vectoriel, abandonné en V48)_ |
+
+> **Note (V48)** : les tables `document_embedding`, `embedding_alerte`, `embedding_mesure` et l'extension `pgvector` ont été supprimées suite à l'abandon de l'approche RAG vectoriel. Le futur chatbot est un module Java à appel d'outils (Spring AI), sans besoin de stockage vectoriel.
 
 ## Domaine partagé / configuration (propriété Java, appliqué par Python)
 
@@ -93,10 +94,6 @@ GRANT SELECT, UPDATE (valeur_min_calculee, valeur_max_calculee, date_calcul) ON 
 
 ---
 
-## Point ouvert à trancher
+## Point ouvert résolu
 
-`ConversationChatbot` : le MCD ne précise pas explicitement quel service écrit la ligne (question + réponse). Deux options possibles :
-- **Python écrit directement** (le service RAG a déjà la question et vient de générer la réponse) → le plus simple, retenu ci-dessus par défaut
-- **Java écrit après avoir relayé la réponse de Python** → cohérent avec "Java = point d'entrée unique", mais duplique un aller-retour inutile pour une simple écriture
-
-À confirmer selon ce que tu préfères implémenter en P3.
+`ConversationChatbot` : la table est désormais propriété de Java (chatbot tool calling, Spring AI). Java écrit et lit les échanges question/réponse. Python n'a plus accès à cette table (abandon du RAG vectoriel — V48).

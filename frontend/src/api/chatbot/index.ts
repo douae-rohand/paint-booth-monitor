@@ -1,5 +1,5 @@
 /**
- * CHATBOT API – RAG queries
+ * CHATBOT API — Questions en langage naturel (tool calling, Spring AI)
  * Consumes: POST /api/chatbot/query
  */
 import apiClient from '../../lib/axios';
