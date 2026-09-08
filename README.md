@@ -63,7 +63,7 @@ Par ailleurs, la base PostgreSQL de production historisée par **WinCC** n'est p
 | Supervision | Proposer un dashboard temps réel et un historique graphique (température et humidité) |
 | Alerting | Détecter les anomalies via seuils absolus, seuils dynamiques et module IA |
 | Intelligence artificielle | Anticiper les dérives thermiques et hygrométriques (Isolation Forest, régression) |
-| RAG | Permettre l'interrogation en langage naturel de l'historique via un chatbot |
+| RAG | Permettre l'interrogation en langage naturel de l'historique via un chatbot | Chatbot à appel d'outils (tool calling) — le LLM identifie l'intention, le backend exécute l'outil via les services métier Java existants |
 | Reporting | Générer automatiquement un rapport journalier (PDF) et exporter les données (CSV/Excel) |
 | KPIs | Calculer des indicateurs adaptés au contexte qualité peinture |
 | Sécurité | Authentifier les utilisateurs et distinguer les rôles Utilisateur et Admin |
@@ -78,7 +78,7 @@ Par ailleurs, la base PostgreSQL de production historisée par **WinCC** n'est p
 - Historisation, visualisation temps réel et consultation de l'historique.
 - Recherche manuelle par identifiant de caisse ou par plage horaire.
 - Système d'alertes et notifications multicanal (email, push natif navigateur).
-- Module IA, chatbot RAG, KPIs, exports et rapports PDF.
+- Module IA, chatbot à appel d'outils (tool calling), KPIs, exports et rapports PDF.
 - Authentification JWT et gestion des rôles.
 
 ### Exclus
@@ -97,7 +97,7 @@ Le système repose sur une **architecture polyglotte** à trois couches applicat
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Frontend (React)                          │
-│         Dashboard, historique, alertes, chatbot RAG           │
+│     Dashboard, historique, alertes, chatbot (tool calling)    │
 └───────────────────────────┬─────────────────────────────────┘
                             │ REST + WebSocket (JWT)
                             │ Point d'entrée unique
@@ -105,14 +105,14 @@ Le système repose sur une **architecture polyglotte** à trois couches applicat
 ┌─────────────────────────────────────────────────────────────┐
 │         Service Java - Business & Access (Spring Boot)        │
 │  Auth JWT · KPIs · Rapports · Notifications · API Gateway     │
-│  Proxy REST interne vers Python · WebSocket · LISTEN/NOTIFY   │
+│  Chatbot (Spring AI, tool calling) · WebSocket · LISTEN/NOTIFY│
 └──────────────┬──────────────────────────────┬───────────────┘
                │ REST interne                  │ JDBC
                ▼                               ▼
 ┌──────────────────────────────┐   ┌──────────────────────────┐
 │  Service Python - Data & IA   │   │      PostgreSQL           │
-│  Snap7/OPC UA · Historisation  │◄──│  (+ pgvector pour RAG)    │
-│  Alerting · IA · RAG · NOTIFY  │   └──────────────────────────┘
+│  Snap7/OPC UA · Historisation  │◄──│                           │
+│  Alerting · IA · NOTIFY        │   └──────────────────────────┘
 └──────────────┬───────────────┘
                │ Snap7 / OPC UA
                ▼
@@ -131,7 +131,7 @@ Le système repose sur une **architecture polyglotte** à trois couches applicat
 
 **Flux utilisateur (synchrone)**
 
-`Frontend → Java (auth, droits) → Python (calcul IA / RAG) → Java → Frontend`
+`Frontend → Java (auth, droits, chatbot tool calling) → Frontend`
 
 Le frontend ne communique **jamais** directement avec le service Python.
 
@@ -146,7 +146,7 @@ Le frontend ne communique **jamais** directement avec le service Python.
 | Lecture PLC (Snap7 / OPC UA) | Python | Bibliothèques `python-snap7` et `asyncua` matures pour l'industrie |
 | Historisation et alerting temps réel | Python | Traitement au plus près de la source de données |
 | Module IA (Isolation Forest, régression) | Python | Écosystème scikit-learn |
-| Chatbot RAG (LangChain + pgvector) | Python | Chaîne d'embeddings orientée Python |
+| Chatbot (tool calling, Spring AI) | Java | Données déjà exposées par les services Java existants ; Java déjà point d'entrée unique ; plus de justification technique pour Python une fois LangChain/embeddings écartés |
 | Authentification et rôles | Java | Spring Security, gestion fine des droits |
 | KPIs, exports, rapports PDF | Java | Logique orientée reporting et utilisateur final |
 | Notifications multicanal | Java | Dispatch métier indépendant de la collecte |
@@ -161,8 +161,9 @@ Le frontend ne communique **jamais** directement avec le service Python.
 |---|---|---|
 | Frontend | React, TanStack Start/Router, Tailwind CSS, shadcn/ui, Recharts | Interface neumorphique, dashboard industriel |
 | Gateway | Java 21, Spring Boot 4.1, Spring Security, JWT | API REST, WebSocket, Flyway |
-| Data & IA | Python 3.13+, FastAPI, SQLAlchemy (async), scikit-learn, LangChain | Collecte PLC, IA, RAG |
-| Base de données | PostgreSQL 17 (pgvector/pgvector:pg17) | Extension `pgvector` pour le RAG |
+| Data & IA | Python 3.13+, FastAPI, SQLAlchemy (async), scikit-learn | Collecte PLC, IA, alerting |
+| Gateway & Chatbot | Java 21, Spring Boot 4.1, Spring Security, JWT, Spring AI | Auth, API REST, WebSocket, Flyway, chatbot tool calling |
+| Base de données | PostgreSQL 17 (pgvector/pgvector:pg17) | pgcrypto inclus |
 | Stockage objet | MinIO | Stockage des rapports PDF et fichiers |
 | PLC | Siemens S7-1200, protocole Snap7 (ou OPC UA) | Connexion Ethernet, IP statique |
 | Conteneurisation | Docker, Docker Compose | Orchestration multi-services |
@@ -203,6 +204,7 @@ paint-booth-monitor/
 - **Python 3.13+** et **pip** (développement local du service Python)
 - **Node.js 24+** (développement local du frontend)
 - Accès réseau à l'automate S7-1200 (IP configurée, même sous-réseau)
+- Clé API LLM pour le module chatbot (Spring AI) — [À COMPLÉTER : provider LLM choisi]
 
 ---
 
@@ -287,7 +289,7 @@ Le système distingue **deux rôles**. Aucun accès anonyme n'est autorisé.
 - Consultation du dashboard temps réel et de l'historique.
 - Recherche par identifiant de caisse ou plage horaire.
 - Consultation des KPIs, alertes et prédictions IA (lecture seule).
-- Interrogation du chatbot RAG.
+- Interrogation du chatbot (tool calling).
 - Téléchargement du rapport PDF et export CSV/Excel.
 - Réception des notifications selon ses préférences.
 
@@ -323,7 +325,7 @@ Les seuils dynamiques relèvent de méthodes statistiques classiques ; le module
 - Base de données d'historique des températures et de l'humidité.
 - Tableau de bord temps réel et historique (double métrique).
 - Système d'alerting (seuils absolus, dynamiques, IA).
-- Chatbot RAG pour l'interrogation de l'historique.
+- Chatbot à appel d'outils pour l'interrogation de l'historique.
 - KPIs adaptés au contexte qualité peinture.
 - Rapport journalier PDF et exports CSV/Excel.
 - Authentification et gestion des rôles (Utilisateur / Admin).

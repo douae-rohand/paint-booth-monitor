@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 set -e
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
@@ -14,6 +14,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     \$\$;
 
     GRANT CONNECT ON DATABASE ${POSTGRES_DB} TO ${JAVA_SERVICE_DB_USER}, ${PYTHON_SERVICE_DB_USER};
+    GRANT CREATE ON DATABASE ${POSTGRES_DB} TO ${JAVA_SERVICE_DB_USER};
 EOSQL
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL

@@ -74,14 +74,11 @@ GRANT SELECT         ON mesure TO java_service;
 GRANT SELECT, INSERT ON prediction_ia TO python_service;
 GRANT SELECT         ON prediction_ia TO java_service;
 
--- DocumentEmbedding + tables de liaison : Python uniquement (RAG)
-GRANT SELECT, INSERT, DELETE ON document_embedding  TO python_service;
-GRANT SELECT, INSERT, DELETE ON embedding_mesure    TO python_service;
-GRANT SELECT, INSERT, DELETE ON embedding_alerte    TO python_service;
+-- DocumentEmbedding + tables de liaison : supprimées en V48 (abandon du RAG vectoriel)
+-- python_service n'a plus accès à ces tables (supprimées)
 
--- ConversationChatbot : Python écrit (sessions RAG), Java lit (affichage)
-GRANT SELECT, INSERT ON conversation_chatbot TO python_service;
-GRANT SELECT         ON conversation_chatbot TO java_service;
+-- ConversationChatbot : Java écrit et lit (chatbot tool calling, Spring AI)
+GRANT SELECT, INSERT, UPDATE, DELETE ON conversation_chatbot TO java_service;
 
 -- ============================================================
 -- 7. Entités à cheval — GRANT colonne par colonne

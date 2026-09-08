@@ -1,5 +1,6 @@
 /**
- * useChatbot – send RAG queries and maintain conversation history
+ * useChatbot – envoie des questions au chatbot et maintient l'historique de conversation.
+ * L'endpoint cible est POST /api/chatbot/query (module Java, Spring AI, tool calling).
  */
 import { useState } from 'react';
 import { sendQuery, type ChatMessage, type ChatResponse } from '../api/chatbot';

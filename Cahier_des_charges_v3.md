@@ -14,7 +14,7 @@
 | Volet IA prédictif | Optionnel/avancé | Confirmé | Confirmé |
 | Rôles utilisateurs | Non détaillé | 2 rôles confirmés | 2 rôles confirmés |
 | Traçabilité des lots | Axe validé initialement | Exclue, remplacée par recherche manuelle | Exclue, remplacée par recherche manuelle |
-| Chatbot RAG | Non mentionné | Ajouté | Ajouté |
+| Chatbot RAG | Non mentionné | Ajouté | **Chatbot à appel d'outils (tool calling)** — approche RAG vectoriel abandonnée, module déplacé vers Java (Spring AI) |
 | KPIs industriels | Non mentionnés | Ajoutés (adaptés) | Ajoutés (adaptés) |
 | Architecture logicielle | Non définie | Backend "à déterminer" | **Architecture polyglotte dès le départ (Python + Java)** |
 | Stratégie de développement | Non définie | Non définie | **Approche directe en microservices distincts** |
@@ -43,7 +43,7 @@ L'objectif du projet est de concevoir une application capable de se connecter à
 * Générer automatiquement un rapport journalier (PDF)
 * Intégrer un module d'intelligence artificielle pour la détection d'anomalies et la prédiction de dérive thermique/hygrométrique
 * Mettre en place un système d'alerting à seuils multiples (absolus et dynamiques)
-* Fournir un chatbot RAG permettant l'interrogation en langage naturel de l'historique des données
+* Fournir un chatbot à appel d'outils (tool calling) permettant l'interrogation en langage naturel de l'historique des données
 * Calculer des indicateurs de performance (KPIs) adaptés au contexte qualité peinture
 * Gérer l'authentification et les droits d'accès selon 2 rôles (Superviseur, Admin)
 
@@ -60,7 +60,7 @@ L'objectif du projet est de concevoir une application capable de se connecter à
 * Génération automatique du rapport journalier (PDF)
 * Module de détection d'anomalies à seuils (absolu et dynamique)
 * Module IA (Isolation Forest et/ou modèle de régression) pour la dérive thermique/hygrométrique
-* Chatbot RAG pour l'interrogation en langage naturel de l'historique
+* Chatbot à appel d'outils pour l'interrogation en langage naturel de l'historique
 * Calcul des KPIs adaptés (taux de conformité, temps moyen entre incidents, temps moyen de retour à la normale)
 * Système d'authentification et gestion des rôles (Superviseur / Admin)
 * Système de notification multicanal (email, Web Push natif navigateur/VAPID, notifications in-app temps réel)
@@ -115,7 +115,7 @@ Le système comporte **2 rôles**, confirmés par l'encadrant :
 * Consulter les KPIs
 * Consulter les alertes et anomalies actives et passées
 * Consulter les prédictions de dérive issues du module IA (lecture seule)
-* Interroger le chatbot RAG sur l'historique des données
+* Interroger le chatbot sur l'historique des données
 * Télécharger le rapport PDF
 * Exporter des données en CSV/Excel
 * Recevoir des notifications d'alerte 
@@ -177,9 +177,25 @@ Les indicateurs industriels classiques (OEE, MTBF, MTTR) ne sont pas directement
 
 ---
 
-## 9. Chatbot RAG
+## 9. Chatbot à appel d'outils (Tool Calling)
 
-Module permettant d'interroger en langage naturel l'historique des mesures (température, humidité) et des événements du système (alertes, incidents).
+> **Écart assumé par rapport aux versions antérieures de ce document** : la version initiale décrivait un chatbot RAG vectoriel (embeddings pgvector + LangChain, côté service Python). Cette approche a été abandonnée lors de la conception détaillée — la justification principale de placer le chatbot côté Python était l'écosystème LangChain/embeddings, devenue caduque une fois la recherche par similarité vectorielle écartée. Le chatbot est désormais un module Java (Spring AI), exploitant les services métier existants via le mécanisme de tool calling natif des LLMs.
+
+Le chatbot permet d'interroger en langage naturel l'historique des mesures (température, humidité) et les événements du système (alertes, incidents).
+
+**Principe du tool calling :**
+
+1. Le superviseur pose une question en langage naturel (ex : "Quelle était la température moyenne hier dans la cabine ?").
+2. Le LLM (via Spring AI) identifie l'intention et sélectionne l'outil approprié parmi un ensemble défini (ex : `getMesuresHistorique`, `getAlertesActives`, `getKpis`).
+3. Le backend Java exécute l'outil en appelant le service métier correspondant (déjà existant dans l'application).
+4. Le résultat structuré est retourné au LLM, qui formule une réponse en langage naturel.
+
+**Avantages par rapport au RAG vectoriel :**
+- Les données sont déjà exposées par les services Java existants — aucune duplication ni indexation d'embeddings.
+- Le comportement est déterministe et traçable (appel d'outil explicite, pas de recherche par similarité approximative).
+- Aucune dépendance externe supplémentaire côté Python (LangChain, pgvector).
+
+**[À COMPLÉTER : provider LLM choisi et clé API correspondante]**
 
 ---
 
@@ -195,8 +211,9 @@ En remplacement, chaque mesure peut être associée à un **identifiant de caiss
 
 * **Frontend** : React (TanStack Router, TanStack Query), style neumorphisme avec accent orange/gold
 * **Backend** : Architecture **polyglotte** — voir section 13 pour le détail complet
-* **Base de données** : PostgreSQL (extension `pgvector` pour les embeddings du RAG)
-* **IA / RAG** : Python (scikit-learn, LangChain)
+* **Base de données** : PostgreSQL
+* **IA** : Python (scikit-learn)
+* **Chatbot** : Java (Spring AI, tool calling) — [À COMPLÉTER : provider LLM choisi]
 * **Conteneurisation** : Docker / docker-compose
 * **Intégration continue** : GitHub Actions
 * **Connexion PLC** : Snap7
@@ -215,7 +232,7 @@ En remplacement, chaque mesure peut être associée à un **identifiant de caiss
 * Tableau de bord avec graphes temps réel et historiques (double métrique)
 * Système d'alerting à seuils absolus et dynamiques
 * Module IA de détection de dérive (Isolation Forest et/ou régression)
-* Chatbot RAG pour l'interrogation de l'historique
+* Chatbot à appel d'outils pour l'interrogation de l'historique
 * Calcul et affichage des KPIs adaptés
 * Génération du rapport (PDF)
 * Export des données en CSV/Excel
@@ -238,7 +255,9 @@ Ce découpage reflète des patterns réels observés dans l'industrie (agent de 
 
 ### 13.2 Schéma d'architecture
 
-Le service Java est le **point d'entrée unique** du système : le frontend ne communique jamais directement avec le service Python. Toute demande impliquant l'IA ou le RAG transite par Java, qui relaie en interne vers Python puis retransmet la réponse.
+Le service Java est le **point d'entrée unique** du système : le frontend ne communique jamais directement avec le service Python.
+
+> **Écart assumé par rapport aux versions antérieures** : le schéma initial représentait le chatbot comme relayé de Java vers Python (via appel REST interne). Ce flux a été supprimé — le chatbot (tool calling) est désormais entièrement géré par Java via Spring AI, sans aller-retour vers Python.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -252,18 +271,17 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 │    (API Gateway du système)                                     │
 │  • Authentification & rôles (Spring Security + JWT)             │
 │  • Configuration des seuils par l'Admin (écrit en base)         │
-│  • Dispatch des notifications (email / push natif / in-app)             │
+│  • Dispatch des notifications (email / push natif / in-app)     │
 │  • Calcul des KPIs (requêtes agrégées sur mesures/alertes)       │
 │  • CRUD utilisateurs, export CSV/Excel, génération rapport PDF   │
-│  • API REST + WebSocket vers le frontend                        │
-│  • Relaie en interne vers Python (prédiction IA, requête RAG)    │
+│  • Chatbot (Spring AI, tool calling)                             │
+│  • API REST + WebSocket vers le frontend                         │
+│  • Relaie en interne vers Python (prédiction IA à la demande)    │
 └──────┬────────────────────────────────────────────┬───────────┘
        │ appel REST interne                          │ lit / écrit
-       │ (synchrone, à la demande)                    ▼
+       │ (IA à la demande uniquement)                 ▼
        │                                  ┌────────────────────┐
        │                                  │   PostgreSQL          │
-       │                                  │   (+ extension          │
-       │                                  │    pgvector)             │
        │                                  └────────────────────┘
        │                                            ▲       ▲
        │                                            │       │ NOTIFY (alerte créée)
@@ -272,19 +290,18 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 ┌─────────────────────────────────────────────────────────────┐
 │    Service Python / FastAPI — "Data & Intelligence"           │
 │    (jamais exposé directement au frontend)                     │
-│  • Lecture PLC (Snap7 ou OPC UA) — polling périodique           │
+│  • Lecture PLC (Snap7) — polling périodique                     │
 │  • Écriture des mesures en base                                 │
 │  • Calcul des seuils absolus et dynamiques (au fil de l'eau)     │
 │  • Isolation Forest / régression (module IA)                     │
-│  • Chatbot RAG (LangChain + pgvector)                             │
 │  • NOTIFY PostgreSQL lors de la création d'une alerte             │
-│  • Répond aux appels REST internes venant de Java                 │
+│  • Répond aux appels REST internes venant de Java (IA)           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **Les deux flux de communication à bien distinguer :**
 
-* **Flux "action utilisateur"** (synchrone, initié par le frontend) : `Frontend → Java (vérifie l'auth/les droits) → Python (calcule/répond) → Java → Frontend`. Exemple : une question posée au chatbot RAG, ou la consultation d'une prédiction IA.
+* **Flux "action utilisateur"** (synchrone, initié par le frontend) : `Frontend → Java (vérifie l'auth/les droits) → Frontend`. Pour les prédictions IA à la demande : `Frontend → Java → Python (calcule/répond) → Java → Frontend`. Le chatbot est traité entièrement dans Java (tool calling).
 * **Flux "collecte de données"** (asynchrone, initié en continu par Python, indépendant du frontend) : `PLC → Python (lit, écrit en base, calcule les seuils) → NOTIFY PostgreSQL → Java (LISTEN, déclenche les notifications)`. Python ne parle jamais directement au frontend ni à Java dans ce flux — tout passe par la base de données.
 
 ### 13.3 Répartition détaillée des responsabilités
@@ -295,7 +312,7 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 | Historisation des mesures | Python | Écrit directement à la source de la donnée collectée |
 | Calcul seuils absolus/dynamiques | Python | Calculé au fil de l'eau, au moment de l'ingestion de la mesure |
 | Module IA (Isolation Forest, régression) | Python | Écosystème scikit-learn, aucun équivalent aussi riche en Java |
-| Chatbot RAG | Python | Écosystème LangChain/embeddings pensé Python-first |
+| Chatbot (tool calling, Spring AI) | **Java** | Données déjà exposées par les services Java existants ; Java déjà point d'entrée unique ; plus de justification technique pour Python une fois LangChain/embeddings écartés. _Écart assumé : anciennement attribué à Python (RAG vectoriel)._ |
 | Authentification & rôles | Java | Spring Security offre une gestion de rôles plus fine et mature |
 | Configuration des seuils (côté Admin) | Java | Fonction d'administration, cohérente avec le reste des CRUD |
 | Notifications multicanal | Java | Logique métier de dispatch, indépendante de la donnée brute — canaux : EMAIL, Web Push (VAPID), IN_APP (WebSocket) |
@@ -308,6 +325,6 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 
 * **PostgreSQL LISTEN/NOTIFY** est utilisé comme mécanisme événementiel léger : le service Python exécute un `NOTIFY` après écriture d'une nouvelle alerte, le service Java reste en écoute (`LISTEN`) pour déclencher le dispatch des notifications.
 * Ce choix évite l'introduction d'un message broker dédié (RabbitMQ/Kafka), jugé disproportionné au regard du volume de données et de la criticité temporelle du projet.
-* Les échanges ponctuels (ex : Java interrogeant Python pour une prédiction IA à la demande, ou pour une requête au chatbot RAG) passent par une API REST interne simple entre les deux services.
+* Les échanges ponctuels (ex : Java interrogeant Python pour une prédiction IA à la demande) passent par une API REST interne simple entre les deux services.
 
 

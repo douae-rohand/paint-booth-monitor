@@ -34,8 +34,8 @@ const SLIDES = [
   {
     id: 4,
     title: 'Chatbot',
-    highlight: 'RAG',
-    description: 'Interrogez l\'historique des données en langage naturel grâce à notre chatbot intelligent.',
+    highlight: 'Assistant',
+    description: 'Interrogez l\'historique des données en langage naturel grâce à notre assistant conversationnel intelligent.',
     image: '/images/p4.png',
   },
 ];
