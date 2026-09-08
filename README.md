@@ -35,7 +35,7 @@ L'automate de terrain est un **SIMATIC S7-1200** (CPU 1215C, réf. 6ES7 215-1HG4
 
 Ce projet s'inscrit dans le cadre d'un **PFA** réalisé en binôme :
 
-- **Informatique** : conception et développement de l'application complète (backend, frontend, base de données, modules IA et RAG).
+- **Informatique** : conception et développement de l'application complète (backend, frontend, base de données, modules IA et chatbot).
 - **Automatisme / électronique** : configuration PLC, protocole de communication (Snap7 ou OPC UA), validation terrain des capteurs et des valeurs remontées.
 
 ---
@@ -63,7 +63,7 @@ Par ailleurs, la base PostgreSQL de production historisée par **WinCC** n'est p
 | Supervision | Proposer un dashboard temps réel et un historique graphique (température et humidité) |
 | Alerting | Détecter les anomalies via seuils absolus, seuils dynamiques et module IA |
 | Intelligence artificielle | Anticiper les dérives thermiques et hygrométriques (Isolation Forest, régression) |
-| RAG | Permettre l'interrogation en langage naturel de l'historique via un chatbot | Chatbot à appel d'outils (tool calling) — le LLM identifie l'intention, le backend exécute l'outil via les services métier Java existants |
+| chatbot | Permettre l'interrogation en langage naturel de l'historique | Chatbot à appel d'outils (tool calling) — le LLM identifie l'intention, le backend exécute l'outil via les services métier Java existants |
 | Reporting | Générer automatiquement un rapport journalier (PDF) et exporter les données (CSV/Excel) |
 | KPIs | Calculer des indicateurs adaptés au contexte qualité peinture |
 | Sécurité | Authentifier les utilisateurs et distinguer les rôles Utilisateur et Admin |
@@ -187,7 +187,7 @@ La communication événementielle entre les deux services passe par **PostgreSQL
 paint-booth-monitor/
 ├── frontend/                 # Interface React (dashboard, historique, auth)
 ├── java-service/             # Gateway Spring Boot (auth, KPIs, rapports, WebSocket)
-├── python-service/           # Collecte PLC, IA, alerting, RAG
+├── python-service/           # Collecte PLC, IA, alerting
 ├── docker/                   # Scripts d'initialisation (PostgreSQL)
 ├── docker-compose.yml        # Orchestration des 5 services (postgres, java, python, frontend, minio)
 ├── .env.example              # Variables d'environnement Docker (modèle)
@@ -342,7 +342,7 @@ Compte tenu d'une durée contrainte (environ 8 semaines) et d'un développement 
 1. **Frontend ↔ Java** - authentification JWT, routes protégées, API gateway, gestion des erreurs.
 2. **Configuration transverse** - Docker Compose, variables d'environnement, base PostgreSQL opérationnelle.
 3. **Java ↔ Python** - contrat REST interne, proxy gateway, LISTEN/NOTIFY pour les alertes temps réel.
-4. **Fonctionnalités avancées** - collecte PLC, IA, RAG, KPIs, rapports, CI/CD.
+4. **Fonctionnalités avancées** - collecte PLC, IA, KPIs, rapports, CI/CD.
 
 Cette approche permet de valider rapidement une chaîne bout en bout (connexion, JWT, route protégée) tout en conservant la séparation des responsabilités dès le départ. Le détail des priorités est documenté dans `architecture_polyglotte_priorites.md`.
 
