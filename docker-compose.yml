@@ -69,7 +69,7 @@ services:
   python-service:
     build:
       context: ./python-service
-    container_name: python-ai-rag
+    container_name: python-ai-plc
     restart: unless-stopped
     # network_mode: host — permet l'accès direct au PLC réel (LAN) et au simulateur PLC
     # (127.0.0.1 du conteneur = 127.0.0.1 de l'hôte). Conséquences :
