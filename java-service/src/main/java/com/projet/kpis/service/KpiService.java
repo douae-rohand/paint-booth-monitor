@@ -1,5 +1,6 @@
 package com.projet.kpis.service;
 
+import com.projet.alerting.exception.BusinessException;
 import com.projet.alerting.model.Alerte;
 import com.projet.alerting.model.SeuilAbsolu;
 import com.projet.alerting.model.enums.Metrique;
@@ -9,9 +10,11 @@ import com.projet.alerting.repository.AlerteRepository;
 import com.projet.alerting.repository.SeuilAbsoluRepository;
 import com.projet.kpis.dto.KpiResponseDTO;
 import com.projet.measures.model.Mesure;
+import com.projet.measures.model.PointMesure;
 import com.projet.measures.repository.MesureRepository;
 import com.projet.measures.repository.PointMesureRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -62,6 +65,10 @@ public class KpiService {
      * @return KpiResponseDTO avec les KPIs scopés
      */
     public KpiResponseDTO getKpisParPoint(Long idPointMesure, Metrique metrique, LocalDateTime dateDebut, LocalDateTime dateFin) {
+        // Valider que le point de mesure existe, est actif et non supprimé
+        pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
+                .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
+
         // KPIs scopés par point + métrique + période
         long alertesActives = alerteRepository.countAlertesActivesParPointEtPeriode(idPointMesure, metrique, dateDebut, dateFin);
         long nbPointsEnAnomalie = alerteRepository.countDistinctPointsEnAnomalieParPointEtPeriode(idPointMesure, metrique, dateDebut, dateFin);

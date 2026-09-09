@@ -1,5 +1,6 @@
 package com.projet.alerting.service;
 
+import com.projet.alerting.exception.BusinessException;
 import com.projet.alerting.dto.AlerteDTO;
 import com.projet.alerting.model.Alerte;
 import com.projet.alerting.model.enums.Severite;
@@ -8,10 +9,12 @@ import com.projet.alerting.model.enums.TypeAlerte;
 import com.projet.alerting.repository.AlerteRepository;
 import com.projet.measures.model.Mesure;
 import com.projet.measures.repository.MesureRepository;
+import com.projet.measures.repository.PointMesureRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -29,6 +32,7 @@ public class AlerteConsultationService {
 
     private final AlerteRepository alerteRepository;
     private final MesureRepository mesureRepository;
+    private final PointMesureRepository pointMesureRepository;
 
     /**
      * Récupère l'historique des alertes avec filtres optionnels et pagination.
@@ -51,6 +55,12 @@ public class AlerteConsultationService {
             LocalDateTime dateFin,
             Pageable pageable
     ) {
+        // Si idPointMesure est fourni, valider qu'il correspond à un point existant, actif et non supprimé
+        if (idPointMesure != null) {
+            pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
+                    .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
+        }
+
         int limit = pageable.getPageSize();
         int offset = (int) pageable.getOffset();
 

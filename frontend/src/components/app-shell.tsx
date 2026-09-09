@@ -46,12 +46,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? [...baseNav, { to: "/plc", label: "PLC", icon: Cpu }, { to: "/seuils", label: "Seuils", icon: SlidersHorizontal }, { to: "/superviseurs", label: "Superviseurs", icon: Users }, { to: "/audit", label: "Audit", icon: Shield }]
     : baseNav;
 
-  const today = new Date().toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const [today, setToday] = useState("");
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }));
+  }, []);
 
   const handleLogout = async () => {
     await logout();
