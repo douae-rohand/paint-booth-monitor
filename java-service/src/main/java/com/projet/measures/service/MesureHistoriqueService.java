@@ -1,5 +1,6 @@
 package com.projet.measures.service;
 
+import com.projet.alerting.exception.BusinessException;
 import com.projet.alerting.model.SeuilAbsolu;
 import com.projet.alerting.model.enums.Metrique;
 import com.projet.alerting.repository.SeuilAbsoluRepository;
@@ -14,6 +15,7 @@ import com.projet.measures.repository.MesureRepository;
 import com.projet.measures.repository.PointMesureRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -62,9 +64,9 @@ public class MesureHistoriqueService {
             LocalDateTime dateFin,
             Granularite granulariteDemandee) {
 
-        // Valider que le PointMesure existe
-        PointMesure pointMesure = pointMesureRepository.findById(idPointMesure)
-                .orElseThrow(() -> new IllegalArgumentException("Point de mesure non trouvé avec ID: " + idPointMesure));
+        // Valider que le PointMesure existe, est actif et non supprimé
+        PointMesure pointMesure = pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
+                .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
 
         // Valider que la métrique est applicable au point
         validerMetriqueApplicable(pointMesure, metrique);
@@ -165,6 +167,10 @@ public class MesureHistoriqueService {
             LocalDateTime dateDebut,
             LocalDateTime dateFin,
             Granularite granularite) {
+
+        // Valider que le PointMesure existe, est actif et non supprimé
+        pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
+                .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
 
         String sql;
         switch (granularite) {

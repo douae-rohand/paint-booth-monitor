@@ -136,6 +136,8 @@ public class SeuilAbsoluService {
 
     @Transactional(readOnly = true)
     public SeuilAbsoluResponseDTO getActive(Long pointMesureId, Metrique metrique) {
+        pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(pointMesureId)
+                .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
         return seuilAbsoluRepository.findByPointMesureIdAndMetriqueAndActifTrue(pointMesureId, metrique)
                 .map(this::mapToResponseDTO)
                 .orElse(null);
@@ -143,6 +145,8 @@ public class SeuilAbsoluService {
 
     @Transactional(readOnly = true)
     public List<SeuilAbsoluResponseDTO> getHistory(Long pointMesureId, Metrique metrique) {
+        pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(pointMesureId)
+                .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
         return seuilAbsoluRepository.findByPointMesureIdAndMetriqueOrderByCreatedAtDesc(pointMesureId, metrique)
                 .stream()
                 .map(this::mapToResponseDTO)
