@@ -1,144 +1,151 @@
 -- ============================================================
--- Script de gestion des droits PostgreSQL par service
+-- db/grants.sql — Document de référence des droits PostgreSQL
 -- Projet PFA — Supervision Cabine de Peinture
+-- ============================================================
 --
--- À exécuter manuellement via psql ou pgAdmin,
--- APRÈS que toutes les migrations Flyway aient été appliquées
--- (la dernière migration en date est V47).
+-- Ce fichier ne contient AUCUN SQL exécuté automatiquement.
+-- Il centralise, à titre de référence humaine, l'état complet
+-- des droits accordés aux deux rôles applicatifs (java_service
+-- et python_service), quelle que soit la mécanique qui les
+-- applique réellement (init.sh, Flyway, ou manuel).
 --
--- Rôles supposés déjà créés par docker/postgres/init.sh :
---   java_service, python_service
---
--- Principe appliqué : moindre privilège par service.
---   java_service  → propriétaire de la logique métier
---   python_service → ingestion des mesures, IA, chatbot
+-- Rôles applicatifs :
+--   java_service   → propriétaire de la logique métier
+--   python_service → ingestion PLC, IA, alerting
 -- ============================================================
 
--- ============================================================
--- 1. Droits de connexion et de schéma
--- ============================================================
-
-GRANT CONNECT ON DATABASE supervision_db TO java_service;
-GRANT CONNECT ON DATABASE supervision_db TO python_service;
-
-GRANT USAGE ON SCHEMA public TO java_service;
-GRANT USAGE ON SCHEMA public TO python_service;
 
 -- ============================================================
--- 2. Domaine Auth & Accès (propriété Java, Python sans accès)
+-- SECTION 1 — GRANT génériques
+-- Appliqués automatiquement via docker/postgres/init.sh
+-- (Docker uniquement, au premier démarrage du conteneur)
 -- ============================================================
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON superviseur             TO java_service;
-GRANT SELECT, INSERT, UPDATE, DELETE ON admin                   TO java_service;
-GRANT SELECT, INSERT, UPDATE, DELETE ON refresh_token           TO java_service;
-GRANT SELECT, INSERT, UPDATE, DELETE ON token_reinitialisation  TO java_service;
-GRANT SELECT, INSERT, UPDATE, DELETE ON token_activation        TO java_service;
+-- Connexion à la base
+GRANT CONNECT  ON DATABASE supervision_db TO java_service;
+GRANT CONNECT  ON DATABASE supervision_db TO python_service;
+
+-- DDL : java_service doit pouvoir créer des extensions (pgcrypto) et des tables via Flyway
+GRANT CREATE   ON DATABASE supervision_db TO java_service;
+
+-- Schéma public
+GRANT USAGE, CREATE ON SCHEMA public TO java_service;
+GRANT USAGE         ON SCHEMA public TO python_service;
+
+-- Droits génériques sur les tables/séquences déjà présentes au moment de l'init
+-- (normalement vide, schéma créé depuis zéro)
+GRANT ALL PRIVILEGES                         ON ALL TABLES    IN SCHEMA public TO java_service;
+GRANT ALL PRIVILEGES                         ON ALL SEQUENCES IN SCHEMA public TO java_service;
+GRANT SELECT, INSERT, UPDATE, DELETE         ON ALL TABLES    IN SCHEMA public TO python_service;
+
+-- Règles pour les FUTURES tables/séquences créées par java_service via Flyway
+-- FOR ROLE est essentiel : sans lui la règle s'applique au créateur (postgres),
+-- pas à java_service qui est le vrai créateur des tables Flyway.
+ALTER DEFAULT PRIVILEGES FOR ROLE java_service IN SCHEMA public
+    GRANT ALL ON TABLES TO java_service;
+ALTER DEFAULT PRIVILEGES FOR ROLE java_service IN SCHEMA public
+    GRANT ALL ON SEQUENCES TO java_service;
+ALTER DEFAULT PRIVILEGES FOR ROLE java_service IN SCHEMA public
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO python_service;
+
 
 -- ============================================================
--- 3. Audit (insert-only par conception — pas d'UPDATE ni DELETE)
+-- SECTION 2 — GRANT fins par table / colonne
+-- Appliqués automatiquement via la migration Flyway
+--   V49__grants_fine_grained.sql
+-- (exécutée par java_service APRÈS création de toutes les tables)
 -- ============================================================
+
+-- ── Auth & Accès (propriété java_service) ──────────────────
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON superviseur            TO java_service;
+GRANT SELECT, INSERT, UPDATE, DELETE ON admin                  TO java_service;
+GRANT SELECT, INSERT, UPDATE, DELETE ON refresh_token          TO java_service;
+GRANT SELECT, INSERT, UPDATE, DELETE ON token_reinitialisation TO java_service;
+GRANT SELECT, INSERT, UPDATE, DELETE ON token_activation       TO java_service;
+
+-- ── Audit (insert-only par conception) ─────────────────────
 
 GRANT SELECT, INSERT ON log_audit TO java_service;
--- Python n'a pas accès aux logs d'audit
 
--- ============================================================
--- 4. Notifications (propriété Java)
--- ============================================================
+-- ── Notifications (propriété java_service) ─────────────────
 
--- notification : le message (titre + donnees_evenement JSONB)
-GRANT SELECT, INSERT, UPDATE, DELETE ON notification            TO java_service;
-
--- envoi_notification : association destinataire × canal (EMAIL, PUSH, IN_APP)
--- Note : canal WHATSAPP supprimé en V43
-GRANT SELECT, INSERT, UPDATE, DELETE ON envoi_notification      TO java_service;
-
--- abonnement_push_navigateur : abonnements Web Push VAPID (V47)
+GRANT SELECT, INSERT, UPDATE, DELETE ON notification               TO java_service;
+GRANT SELECT, INSERT, UPDATE, DELETE ON envoi_notification         TO java_service;
 GRANT SELECT, INSERT, UPDATE, DELETE ON abonnement_push_navigateur TO java_service;
--- Python n'a pas accès aux abonnements push
 
--- ============================================================
--- 5. Rapports PDF (propriété Java)
--- ============================================================
+-- ── Rapports PDF (propriété java_service) ──────────────────
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON rapport_pdf TO java_service;
 
--- ============================================================
--- 6. Domaine Data & Intelligence (propriété Python)
--- ============================================================
+-- ── Chatbot (propriété java_service — tool calling, Spring AI)
 
--- Mesure : Python écrit à l'ingestion, Java lit (KPIs, historique, export)
+GRANT SELECT, INSERT, UPDATE, DELETE ON conversation_chatbot TO java_service;
+
+-- ── Mesures (Python écrit, Java lit) ───────────────────────
+
 GRANT SELECT, INSERT ON mesure TO python_service;
 GRANT SELECT         ON mesure TO java_service;
 
--- PredictionIA : Python écrit, Java lit (affichage frontend)
+-- ── PredictionIA (Python écrit, Java lit) ──────────────────
+
 GRANT SELECT, INSERT ON prediction_ia TO python_service;
 GRANT SELECT         ON prediction_ia TO java_service;
 
--- DocumentEmbedding + tables de liaison : supprimées en V48 (abandon du RAG vectoriel)
--- python_service n'a plus accès à ces tables (supprimées)
+-- ── Alerte — GRANT colonne par colonne (entité hybride) ────
+-- Python crée l'alerte, Java met à jour le statut uniquement.
 
--- ConversationChatbot : Java écrit et lit (chatbot tool calling, Spring AI)
-GRANT SELECT, INSERT, UPDATE, DELETE ON conversation_chatbot TO java_service;
+GRANT SELECT, INSERT, UPDATE (statut, updated_at)           ON alerte TO python_service;
+GRANT SELECT, UPDATE (statut, updated_at, deleted_at)       ON alerte TO java_service;
 
--- ============================================================
--- 7. Entités à cheval — GRANT colonne par colonne
--- ============================================================
+-- ── SeuilAbsolu — GRANT colonne par colonne ────────────────
+-- Java administre, Python lit pour appliquer à l'ingestion.
 
--- Alerte : Python crée (ingestion) et résout (statut RESOLUE),
---          Java peut aussi modifier le statut (résolution manuelle)
-GRANT SELECT, INSERT, UPDATE (statut, updated_at)              ON alerte TO python_service;
-GRANT SELECT, UPDATE (statut, updated_at, deleted_at)          ON alerte TO java_service;
-
--- SeuilAbsolu : Java administre (config Admin), Python lit (application à l'ingestion)
 GRANT SELECT, INSERT, UPDATE (actif, date_activation, date_desactivation) ON seuil_absolu TO java_service;
 GRANT SELECT                                                               ON seuil_absolu TO python_service;
 
--- SeuilDynamique : Java administre la marge, Python écrit les valeurs calculées
-GRANT SELECT, INSERT, UPDATE (marge_configuree)                            ON seuil_dynamique TO java_service;
+-- ── SeuilDynamique — GRANT colonne par colonne ─────────────
+-- Java administre la marge, Python écrit les valeurs calculées.
+
+GRANT SELECT, INSERT, UPDATE (marge_configuree)                              ON seuil_dynamique TO java_service;
 GRANT SELECT, UPDATE (valeur_min_calculee, valeur_max_calculee, date_calcul) ON seuil_dynamique TO python_service;
 
--- ============================================================
--- 8. Configuration & Référentiel (propriété Java)
--- ============================================================
+-- ── Configuration & Référentiel ────────────────────────────
 
--- ConfigurationPLC : Java configure (Admin), Python lit au démarrage
+-- ConfigurationPLC : Java configure, Python lit au démarrage.
 GRANT SELECT, INSERT, UPDATE ON configuration_plc TO java_service;
 GRANT SELECT                 ON configuration_plc TO python_service;
 
--- PointMesure : Java administre (CRUD), Python lit (association mesures)
+-- PointMesure : Java administre, Python lit.
 GRANT SELECT, INSERT, UPDATE ON point_mesure TO java_service;
 GRANT SELECT                 ON point_mesure TO python_service;
 
--- ============================================================
--- 9. Séquences
--- ============================================================
+-- ── Séquences ──────────────────────────────────────────────
 
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO java_service;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO python_service;
 
--- ============================================================
--- 10. DEFAULT PRIVILEGES — droits automatiques sur les futures tables
---     Utile si de nouvelles migrations ajoutent des tables après
---     l'exécution de ce script.
--- ============================================================
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO java_service;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT, INSERT ON TABLES TO python_service;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT USAGE, SELECT ON SEQUENCES TO java_service;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT USAGE, SELECT ON SEQUENCES TO python_service;
 
 -- ============================================================
--- 11. Vérification rapide (décommenter pour contrôler)
+-- SECTION 3 — GRANT à appliquer MANUELLEMENT en local
+-- (hors Docker — développement local sans init.sh)
 -- ============================================================
+--
+-- En local, il n'existe pas de mécanisme équivalent à
+-- docker-entrypoint-initdb.d pour exécuter init.sh automatiquement.
+-- Ces deux GRANT sont un prérequis de connexion : un rôle doit
+-- pouvoir se connecter à la base AVANT que Flyway ou Python
+-- ne puissent agir. Ni Flyway ni Python ne peuvent les poser
+-- eux-mêmes (ils nécessitent déjà une connexion active).
+--
+-- À exécuter UNE SEULE FOIS en tant que superuser (postgres) :
+--
+--   psql -U postgres -d supervision_db
+--
+-- puis :
 
--- SELECT grantee, table_name, privilege_type
--- FROM information_schema.role_table_grants
--- WHERE grantee IN ('java_service', 'python_service')
--- ORDER BY table_name, grantee, privilege_type;
+GRANT CONNECT ON DATABASE supervision_db TO java_service;
+GRANT CONNECT ON DATABASE supervision_db TO python_service;
+
+-- (ainsi que GRANT CREATE ON DATABASE supervision_db TO java_service;
+--  pour que Flyway puisse créer les extensions pgcrypto en V1)
