@@ -6,6 +6,7 @@ import com.projet.audit.model.enums.ActionAudit;
 import com.projet.audit.repository.LogAuditRepository;
 import com.projet.auth.model.Superviseur;
 import com.projet.auth.repository.SuperviseurRepository;
+import com.projet.config.MetierValidation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -72,6 +73,9 @@ public class LogAuditService {
             LocalDateTime dateDebut,
             LocalDateTime dateFin,
             Pageable pageable) {
+
+        // Valider la cohérence de la plage de dates (optionnelle, mais ordonnée si fournie)
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
 
         // Convertir la liste d'enum en String[] pour la requête native PostgreSQL
         // Si null ou vide → actionsEmpty=true → la clause IN est ignorée côté SQL

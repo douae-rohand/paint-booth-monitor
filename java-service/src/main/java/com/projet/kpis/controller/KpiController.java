@@ -40,19 +40,13 @@ public class KpiController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateDebut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateFin) {
 
-        KpiResponseDTO response;
-
-        if (pointMesureId != null && metrique != null) {
-            // Scope point+métrique fourni : calculer les KPIs scopés
-            if (dateDebut == null || dateFin == null) {
-                throw new IllegalArgumentException("dateDebut et dateFin sont requis lorsque pointMesureId et metrique sont fournis");
-            }
-            response = kpiService.getKpisParPoint(pointMesureId, metrique, dateDebut, dateFin);
-        } else {
-            // Scope global : retourner uniquement les KPIs globaux
-            response = kpiService.getKpisGlobaux();
+        if (pointMesureId == null || metrique == null || dateDebut == null || dateFin == null) {
+            throw new com.projet.config.BusinessException(
+                    "PARAMS_MANQUANTS",
+                    "pointMesureId, metrique, dateDebut et dateFin sont obligatoires.",
+                    org.springframework.http.HttpStatus.BAD_REQUEST);
         }
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(kpiService.getKpisParPoint(pointMesureId, metrique, dateDebut, dateFin));
     }
 }

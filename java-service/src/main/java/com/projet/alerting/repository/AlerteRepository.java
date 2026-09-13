@@ -42,8 +42,15 @@ public interface AlerteRepository extends JpaRepository<Alerte, UUID>, JpaSpecif
     List<Alerte> findByCreatedAtBetween(LocalDateTime dateDebut, LocalDateTime dateFin);
 
     /**
-     * Compte les alertes ACTIVES pour un point de mesure et une métrique sur une période.
-     * Jointure Alerte → Mesure → PointMesure car Alerte ne porte pas directement l'id_point_mesure.
+     * Compte les alertes ACTIVES en ce moment pour un point de mesure et une métrique.
+     * Instantané indépendant de toute période — compte toutes les alertes de statut ACTIVE,
+     * quelle que soit leur date de création.
+     *
+     * <p>Distinct de l'ancienne variante avec filtre dateDebut/dateFin (supprimée) qui
+     * sous-comptait les alertes créées avant la fenêtre de période sélectionnée.
+     *
+     * <p>Utilisé par KpiService.getKpisParPoint pour le champ alertesActives du DTO,
+     * qui est affiché comme indicateur "en direct" dans KpiSection.
      */
     @Query("""
             SELECT COUNT(a) FROM Alerte a
@@ -51,35 +58,11 @@ public interface AlerteRepository extends JpaRepository<Alerte, UUID>, JpaSpecif
             WHERE m.pointMesure.id = :idPointMesure
               AND a.metrique = :metrique
               AND a.statut = com.projet.alerting.model.enums.StatutAlerte.ACTIVE
-              AND a.createdAt BETWEEN :dateDebut AND :dateFin
               AND a.deletedAt IS NULL
             """)
-    long countAlertesActivesParPointEtPeriode(
+    long countAlertesActivesInstantane(
             @Param("idPointMesure") Long idPointMesure,
-            @Param("metrique") Metrique metrique,
-            @Param("dateDebut") LocalDateTime dateDebut,
-            @Param("dateFin") LocalDateTime dateFin
-    );
-
-    /**
-     * Compte le nombre de points de mesure DISTINCTS ayant eu au moins une alerte active
-     * pour une métrique donnée sur une période.
-     * Retourne 0 ou 1 selon que ce point a eu des alertes actives ou non sur la période.
-     */
-    @Query("""
-            SELECT COUNT(DISTINCT m.pointMesure.id) FROM Alerte a
-            JOIN com.projet.measures.model.Mesure m ON a.idMesure = m.idMesure
-            WHERE m.pointMesure.id = :idPointMesure
-              AND a.metrique = :metrique
-              AND a.statut = com.projet.alerting.model.enums.StatutAlerte.ACTIVE
-              AND a.createdAt BETWEEN :dateDebut AND :dateFin
-              AND a.deletedAt IS NULL
-            """)
-    long countDistinctPointsEnAnomalieParPointEtPeriode(
-            @Param("idPointMesure") Long idPointMesure,
-            @Param("metrique") Metrique metrique,
-            @Param("dateDebut") LocalDateTime dateDebut,
-            @Param("dateFin") LocalDateTime dateFin
+            @Param("metrique") Metrique metrique
     );
 
     /**
@@ -123,6 +106,34 @@ public interface AlerteRepository extends JpaRepository<Alerte, UUID>, JpaSpecif
             @Param("idPointMesure") Long idPointMesure,
             @Param("metrique") Metrique metrique,
             @Param("statut") StatutAlerte statut,
+            @Param("dateDebut") LocalDateTime dateDebut,
+            @Param("dateFin") LocalDateTime dateFin
+    );
+
+    /**
+     * Récupère les alertes RESOLUES filtrées par point de mesure ET métrique,
+     * dont la <em>date de résolution</em> (updatedAt) tombe dans la période.
+     *
+     * <p>Sémantique MTTR correcte : on mesure les résolutions survenues pendant la période,
+     * indépendamment du moment où l'alerte a été créée. Une alerte créée avant dateDebut
+     * mais résolue pendant la période est incluse ; une alerte créée dans la période mais
+     * résolue après dateFin est exclue.
+     *
+     * <p>Différence avec {@link #findByPointMesureAndMetriqueAndStatutAndPeriode} :
+     * ce dernier filtre par createdAt (utilisé pour d'autres contextes).
+     */
+    @Query("""
+            SELECT a FROM Alerte a
+            JOIN com.projet.measures.model.Mesure m ON a.idMesure = m.idMesure
+            WHERE m.pointMesure.id = :idPointMesure
+              AND a.metrique = :metrique
+              AND a.statut = com.projet.alerting.model.enums.StatutAlerte.RESOLUE
+              AND a.updatedAt BETWEEN :dateDebut AND :dateFin
+              AND a.deletedAt IS NULL
+            """)
+    List<Alerte> findAlertesResoluesParPeriodeResolution(
+            @Param("idPointMesure") Long idPointMesure,
+            @Param("metrique") Metrique metrique,
             @Param("dateDebut") LocalDateTime dateDebut,
             @Param("dateFin") LocalDateTime dateFin
     );

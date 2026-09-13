@@ -1,6 +1,6 @@
 package com.projet.measures.dto;
 
-import com.projet.measures.model.enums.Granularite;
+import com.projet.config.model.enums.Granularite;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

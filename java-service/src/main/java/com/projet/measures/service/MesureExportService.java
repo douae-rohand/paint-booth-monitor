@@ -1,7 +1,9 @@
 package com.projet.measures.service;
 
+import com.projet.alerting.model.enums.Metrique;
 import com.projet.audit.annotation.Audite;
 import com.projet.audit.model.enums.ActionAudit;
+import com.projet.config.MetierValidation;
 import com.projet.measures.dto.MesureCabineDTO;
 import com.projet.measures.dto.MesureEtuveDTO;
 import com.projet.measures.model.PointMesure;
@@ -48,10 +50,12 @@ public class MesureExportService {
      * @param dateDebut Date de début de la période (optionnel)
      * @param dateFin Date de fin de la période (optionnel)
      * @param seulementDepassements Si true, ne retourne que les lignes avec au moins un dépassement
+     * @param metrique Métrique spécifique à exporter (optionnel: TEMPERATURE, HUMIDITE ou null pour les deux)
      * @return ByteArray contenant le fichier CSV
      */
     @Audite(ActionAudit.EXPORT_MESURES)
-    public byte[] exportCabineCSV(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+    public byte[] exportCabineCSV(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements, Metrique metrique) {
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
         List<MesureCabineDTO> mesures = getAllHistoriqueCabine(dateDebut, dateFin, seulementDepassements);
         
         if (mesures.isEmpty()) {
@@ -59,24 +63,38 @@ public class MesureExportService {
             return new byte[0];
         }
 
+        List<String> headerList = new ArrayList<>();
+        headerList.add("Date");
+        headerList.add("Heure");
+        if (metrique == null || metrique == Metrique.TEMPERATURE) {
+            headerList.add("Température");
+        }
+        if (metrique == null || metrique == Metrique.HUMIDITE) {
+            headerList.add("Humidité");
+        }
+
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
              OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
              CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.builder()
                      .setDelimiter(';')
-                     .setHeader("Date", "Heure", "Température", "Humidité")
+                     .setHeader(headerList.toArray(new String[0]))
                      .build())) {
 
             for (MesureCabineDTO mesure : mesures) {
-                printer.printRecord(
-                        mesure.timestampCycle().format(DATE_FORMATTER),
-                        mesure.timestampCycle().format(TIME_FORMATTER),
-                        formatDecimal(mesure.temperature()),
-                        formatDecimal(mesure.humidite())
-                );
+                List<Object> record = new ArrayList<>();
+                record.add(mesure.timestampCycle().format(DATE_FORMATTER));
+                record.add(mesure.timestampCycle().format(TIME_FORMATTER));
+                if (metrique == null || metrique == Metrique.TEMPERATURE) {
+                    record.add(formatDecimal(mesure.temperature()));
+                }
+                if (metrique == null || metrique == Metrique.HUMIDITE) {
+                    record.add(formatDecimal(mesure.humidite()));
+                }
+                printer.printRecord(record);
             }
 
             printer.flush();
-            log.info("Export CSV cabine terminé: {} enregistrements", mesures.size());
+            log.info("Export CSV cabine terminé: {} enregistrements (métrique: {})", mesures.size(), metrique);
             return outputStream.toByteArray();
 
         } catch (IOException e) {
@@ -96,6 +114,7 @@ public class MesureExportService {
      */
     @Audite(ActionAudit.EXPORT_MESURES)
     public byte[] exportEtuveCSV(String zone, LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
         List<MesureEtuveDTO> mesures = getAllHistoriqueEtuve(zone, dateDebut, dateFin, seulementDepassements);
         
         if (mesures.isEmpty()) {
@@ -135,10 +154,12 @@ public class MesureExportService {
      * @param dateDebut Date de début de la période (optionnel)
      * @param dateFin Date de fin de la période (optionnel)
      * @param seulementDepassements Si true, ne retourne que les lignes avec au moins un dépassement
+     * @param metrique Métrique spécifique à exporter (optionnel: TEMPERATURE, HUMIDITE ou null pour les deux)
      * @return ByteArray contenant le fichier PDF
      */
     @Audite(ActionAudit.EXPORT_MESURES)
-    public byte[] exportCabinePDF(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+    public byte[] exportCabinePDF(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements, Metrique metrique) {
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
         List<MesureCabineDTO> mesures = getAllHistoriqueCabine(dateDebut, dateFin, seulementDepassements);
         
         if (mesures.isEmpty()) {
@@ -173,7 +194,6 @@ public class MesureExportService {
             document.add(subtitle);
 
             // Période avec style moderne
-            com.lowagie.text.Font labelFont = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 10, com.lowagie.text.Font.BOLD, textColor);
             com.lowagie.text.Font valueFont = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 10, com.lowagie.text.Font.NORMAL, textColor);
             
             String periodeText = "Période: ";
@@ -197,20 +217,28 @@ public class MesureExportService {
             meta.setSpacingAfter(20);
             document.add(meta);
 
+            // Déterminer les en-têtes selon la métrique
+            List<String> headers = new ArrayList<>();
+            headers.add("Date");
+            headers.add("Heure");
+            if (metrique == null || metrique == Metrique.TEMPERATURE) {
+                headers.add("Température");
+            }
+            if (metrique == null || metrique == Metrique.HUMIDITE) {
+                headers.add("Humidité");
+            }
+
             // Tableau avec design moderne
-            com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(4);
+            com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(headers.size());
             table.setWidthPercentage(100);
             table.setSpacingBefore(10);
             table.setSpacingAfter(10);
-            float[] columnWidths = {2f, 2f, 2f, 2f};
-            table.setWidths(columnWidths);
 
             // En-têtes avec fond coloré
             com.lowagie.text.Font headerFont = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 11, com.lowagie.text.Font.BOLD, textColor);
-            table.addCell(createCellWithBg("Date", headerFont, headerBgColor));
-            table.addCell(createCellWithBg("Heure", headerFont, headerBgColor));
-            table.addCell(createCellWithBg("Température", headerFont, headerBgColor));
-            table.addCell(createCellWithBg("Humidité", headerFont, headerBgColor));
+            for (String h : headers) {
+                table.addCell(createCellWithBg(h, headerFont, headerBgColor));
+            }
 
             // Données avec alternance de couleurs
             com.lowagie.text.Font dataFont = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 10, com.lowagie.text.Font.NORMAL, textColor);
@@ -219,21 +247,41 @@ public class MesureExportService {
                 Color rowColor = (i % 2 == 0) ? rowEvenColor : rowOddColor;
                 table.addCell(createCellWithBg(mesure.timestampCycle().format(DATE_FORMATTER), dataFont, rowColor));
                 table.addCell(createCellWithBg(mesure.timestampCycle().format(TIME_FORMATTER), dataFont, rowColor));
-                table.addCell(createCellWithBg(formatDecimal(mesure.temperature()), dataFont, rowColor));
-                table.addCell(createCellWithBg(formatDecimal(mesure.humidite()), dataFont, rowColor));
+                if (metrique == null || metrique == Metrique.TEMPERATURE) {
+                    table.addCell(createCellWithBg(formatDecimal(mesure.temperature()), dataFont, rowColor));
+                }
+                if (metrique == null || metrique == Metrique.HUMIDITE) {
+                    table.addCell(createCellWithBg(formatDecimal(mesure.humidite()), dataFont, rowColor));
+                }
             }
 
             document.add(table);
             document.close();
             writer.close();
 
-            log.info("Export PDF cabine terminé: {} enregistrements", mesures.size());
+            log.info("Export PDF cabine terminé: {} enregistrements (métrique: {})", mesures.size(), metrique);
             return outputStream.toByteArray();
 
         } catch (Exception e) {
             log.error("Erreur lors de l'export PDF cabine", e);
             throw new RuntimeException("Erreur lors de l'export PDF", e);
         }
+    }
+
+    /**
+     * Exporte l'historique des mesures de la cabine en PDF.
+     * Overload conservé pour rétrocompatibilité.
+     */
+    public byte[] exportCabinePDF(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+        return exportCabinePDF(dateDebut, dateFin, seulementDepassements, null);
+    }
+
+    /**
+     * Exporte l'historique des mesures de la cabine en CSV.
+     * Overload conservé pour rétrocompatibilité.
+     */
+    public byte[] exportCabineCSV(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+        return exportCabineCSV(dateDebut, dateFin, seulementDepassements, null);
     }
 
     /**
@@ -247,6 +295,7 @@ public class MesureExportService {
      */
     @Audite(ActionAudit.EXPORT_MESURES)
     public byte[] exportEtuvePDF(String zone, LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
         List<MesureEtuveDTO> mesures = getAllHistoriqueEtuve(zone, dateDebut, dateFin, seulementDepassements);
         
         if (mesures.isEmpty()) {
@@ -349,10 +398,12 @@ public class MesureExportService {
      * @param dateDebut Date de début de la période (optionnel)
      * @param dateFin Date de fin de la période (optionnel)
      * @param seulementDepassements Si true, ne retourne que les lignes avec au moins un dépassement
+     * @param metrique Métrique spécifique à exporter (optionnel: TEMPERATURE, HUMIDITE ou null pour les deux)
      * @return ByteArray contenant le fichier Excel
      */
     @Audite(ActionAudit.EXPORT_MESURES)
-    public byte[] exportCabineExcel(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+    public byte[] exportCabineExcel(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements, Metrique metrique) {
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
         List<MesureCabineDTO> mesures = getAllHistoriqueCabine(dateDebut, dateFin, seulementDepassements);
         
         if (mesures.isEmpty()) {
@@ -387,12 +438,22 @@ public class MesureExportService {
             dataStyle.setBorderLeft(BorderStyle.THIN);
             dataStyle.setBorderRight(BorderStyle.THIN);
             
+            // Déterminer les en-têtes selon la métrique
+            List<String> headersList = new ArrayList<>();
+            headersList.add("Date");
+            headersList.add("Heure");
+            if (metrique == null || metrique == Metrique.TEMPERATURE) {
+                headersList.add("Température");
+            }
+            if (metrique == null || metrique == Metrique.HUMIDITE) {
+                headersList.add("Humidité");
+            }
+
             // Créer l'en-tête
             Row headerRow = sheet.createRow(0);
-            String[] headers = {"Date", "Heure", "Température", "Humidité"};
-            for (int i = 0; i < headers.length; i++) {
+            for (int i = 0; i < headersList.size(); i++) {
                 Cell cell = headerRow.createCell(i);
-                cell.setCellValue(headers[i]);
+                cell.setCellValue(headersList.get(i));
                 cell.setCellStyle(headerStyle);
             }
             
@@ -401,42 +462,55 @@ public class MesureExportService {
                 MesureCabineDTO mesure = mesures.get(i);
                 Row row = sheet.createRow(i + 1);
                 
-                Cell dateCell = row.createCell(0);
+                int colIdx = 0;
+                Cell dateCell = row.createCell(colIdx++);
                 dateCell.setCellValue(mesure.timestampCycle().format(DATE_FORMATTER));
                 dateCell.setCellStyle(dataStyle);
                 
-                Cell heureCell = row.createCell(1);
+                Cell heureCell = row.createCell(colIdx++);
                 heureCell.setCellValue(mesure.timestampCycle().format(TIME_FORMATTER));
                 heureCell.setCellStyle(dataStyle);
                 
-                Cell tempCell = row.createCell(2);
-                tempCell.setCellValue(formatDecimal(mesure.temperature()));
-                tempCell.setCellStyle(dataStyle);
+                if (metrique == null || metrique == Metrique.TEMPERATURE) {
+                    Cell tempCell = row.createCell(colIdx++);
+                    tempCell.setCellValue(formatDecimal(mesure.temperature()));
+                    tempCell.setCellStyle(dataStyle);
+                }
                 
-                Cell humidCell = row.createCell(3);
-                humidCell.setCellValue(formatDecimal(mesure.humidite()));
-                humidCell.setCellStyle(dataStyle);
+                if (metrique == null || metrique == Metrique.HUMIDITE) {
+                    Cell humidCell = row.createCell(colIdx++);
+                    humidCell.setCellValue(formatDecimal(mesure.humidite()));
+                    humidCell.setCellStyle(dataStyle);
+                }
             }
             
             // Ajuster automatiquement les colonnes
-            for (int i = 0; i < headers.length; i++) {
+            for (int i = 0; i < headersList.size(); i++) {
                 sheet.autoSizeColumn(i);
             }
             
             // Activer les filtres
-            sheet.setAutoFilter(new CellRangeAddress(0, mesures.size(), 0, headers.length - 1));
+            sheet.setAutoFilter(new CellRangeAddress(0, mesures.size(), 0, headersList.size() - 1));
             
             // Gel de la première ligne
             sheet.createFreezePane(0, 1);
             
             workbook.write(outputStream);
-            log.info("Export Excel cabine terminé: {} enregistrements", mesures.size());
+            log.info("Export Excel cabine terminé: {} enregistrements (métrique: {})", mesures.size(), metrique);
             return outputStream.toByteArray();
             
         } catch (IOException e) {
             log.error("Erreur lors de l'export Excel cabine", e);
             throw new RuntimeException("Erreur lors de l'export Excel", e);
         }
+    }
+
+    /**
+     * Exporte l'historique des mesures de la cabine en Excel (.xlsx).
+     * Overload conservé pour rétrocompatibilité.
+     */
+    public byte[] exportCabineExcel(LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+        return exportCabineExcel(dateDebut, dateFin, seulementDepassements, null);
     }
 
     /**
@@ -450,6 +524,7 @@ public class MesureExportService {
      */
     @Audite(ActionAudit.EXPORT_MESURES)
     public byte[] exportEtuveExcel(String zone, LocalDateTime dateDebut, LocalDateTime dateFin, boolean seulementDepassements) {
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
         List<MesureEtuveDTO> mesures = getAllHistoriqueEtuve(zone, dateDebut, dateFin, seulementDepassements);
         
         if (mesures.isEmpty()) {

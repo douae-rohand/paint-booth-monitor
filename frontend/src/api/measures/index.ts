@@ -175,7 +175,9 @@ export interface ExportParams {
   seulementDepassements?: boolean;
 }
 
-export interface ExportCabineParams extends ExportParams {}
+export interface ExportCabineParams extends ExportParams {
+  metrique?: Metrique;
+}
 
 export interface ExportEtuveParams extends ExportParams {
   zone?: string;

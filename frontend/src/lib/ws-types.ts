@@ -1,32 +1,18 @@
 /**
  * Types WebSocket STOMP - miroir exact des DTOs gateway Java.
- * Source: com.projet.gateway.dto.{KpiMessage, MesureMessage, StatutTempsReelMessage, AlerteMessage}
+ * Source: com.projet.gateway.dto.{MesureMessage, StatutTempsReelMessage, AlerteMessage}
  * Source: com.projet.gateway.WebSocketConfig (topics)
  *
  * Topics configurés (WebSocketConfig.java) :
  *  /topic/statut-temps-reel      → StatutTempsReelMessage (extends PointMesureStatutDTO)
  *  /topic/mesures/{id}/{metrique} → MesureMessage
- *  /topic/kpis                   → KpiMessage
  *  /topic/alertes                → AlerteMessage
  */
 
 import type { Metrique } from '../api/alerting/seuils';
 import type { MesureStatutDTO } from '../api/measures/index';
 
-// ── KpiMessage (/topic/kpis) ────────────────────────────────────────────────────
-/**
- * Miroir de KpiMessage.java.
- * Publié lors de la création ou résolution d'une alerte.
- * Contient uniquement les KPIs globaux instantanés (pas les KPIs scopés période).
- */
-export interface KpiMessage {
-  /** Nombre d'alertes actives (statut = ACTIVE). */
-  alertesActives: number;
-  /** Nombre de points de mesure en anomalie (≥ 1 alerte active). */
-  nbPointsEnAnomalie: number;
-}
-
-// ── MesureMessage (/topic/mesures/{idPointMesure}/{metrique}) ───────────────────
+// ── MesureMessage (/topic/mesures/{idPointMesure}/{metrique}) ─────────────────
 /**
  * Miroir de MesureMessage.java.
  * Publié lors de l'insertion d'une mesure via PostgreSQL NOTIFY.

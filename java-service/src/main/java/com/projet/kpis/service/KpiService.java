@@ -1,15 +1,12 @@
 package com.projet.kpis.service;
 
-import com.projet.alerting.exception.BusinessException;
+import com.projet.config.BusinessException;
+import com.projet.config.MetierValidation;
 import com.projet.alerting.model.Alerte;
-import com.projet.alerting.model.SeuilAbsolu;
 import com.projet.alerting.model.enums.Metrique;
-import com.projet.alerting.model.enums.StatutAlerte;
 import com.projet.alerting.model.enums.TypeAlerte;
 import com.projet.alerting.repository.AlerteRepository;
-import com.projet.alerting.repository.SeuilAbsoluRepository;
 import com.projet.kpis.dto.KpiResponseDTO;
-import com.projet.measures.model.Mesure;
 import com.projet.measures.model.PointMesure;
 import com.projet.measures.repository.MesureRepository;
 import com.projet.measures.repository.PointMesureRepository;
@@ -17,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,27 +29,6 @@ public class KpiService {
     private final AlerteRepository alerteRepository;
     private final PointMesureRepository pointMesureRepository;
     private final MesureRepository mesureRepository;
-    private final SeuilAbsoluRepository seuilAbsoluRepository;
-
-    /**
-     * Récupère les KPIs globaux (indépendants de la période).
-     *
-     * @return KpiResponseDTO avec les KPIs globaux
-     */
-    public KpiResponseDTO getKpisGlobaux() {
-        long alertesActives = alerteRepository.countByStatut(StatutAlerte.ACTIVE);
-        long nbPointsEnAnomalie = alerteRepository.countDistinctPointMesureByStatut(StatutAlerte.ACTIVE);
-        long nbPointsTotal = pointMesureRepository.countByActifTrueAndDeletedAtIsNull();
-
-        return new KpiResponseDTO(
-                alertesActives,
-                nbPointsEnAnomalie,
-                nbPointsTotal,
-                null,  // tauxConformite non applicable globalement
-                null,  // tempsMoyenEntreIncidentsHeures non applicable globalement
-                null   // tempsMoyenRetourNormalHeures non applicable globalement
-        );
-    }
 
     /**
      * Récupère les KPIs pour un point de mesure et une métrique sur une période.
@@ -65,14 +40,22 @@ public class KpiService {
      * @return KpiResponseDTO avec les KPIs scopés
      */
     public KpiResponseDTO getKpisParPoint(Long idPointMesure, Metrique metrique, LocalDateTime dateDebut, LocalDateTime dateFin) {
-        // Valider que le point de mesure existe, est actif et non supprimé
-        pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
-                .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
+        // Valider que la plage de dates est cohérente (obligatoires et ordonnées)
+        MetierValidation.validerPlageDates(dateDebut, dateFin);
 
-        // KPIs scopés par point + métrique + période
-        long alertesActives = alerteRepository.countAlertesActivesParPointEtPeriode(idPointMesure, metrique, dateDebut, dateFin);
-        long nbPointsEnAnomalie = alerteRepository.countDistinctPointsEnAnomalieParPointEtPeriode(idPointMesure, metrique, dateDebut, dateFin);
-        long nbPointsTotal = pointMesureRepository.countByActifTrueAndDeletedAtIsNull();
+        // Valider que le point de mesure existe, est actif et non supprimé
+        PointMesure pointMesure = pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
+                .orElseThrow(() -> new BusinessException(
+                        "POINT_MESURE_INACTIF",
+                        "Le point de mesure (ID " + idPointMesure + ") n'existe pas ou n'est pas actif.",
+                        HttpStatus.BAD_REQUEST));
+
+        // Valider que la métrique est applicable au type d'emplacement du point
+        MetierValidation.validerMetriqueApplicable(pointMesure, metrique);
+
+        // alertesActives : instantané indépendant de la période — toutes les alertes
+        // actuellement actives pour ce point/métrique, quelle que soit leur date de création
+        long alertesActives = alerteRepository.countAlertesActivesInstantane(idPointMesure, metrique);
 
         // KPIs scopés
         Double tauxConformite = calculerTauxConformite(idPointMesure, metrique, dateDebut, dateFin);
@@ -81,8 +64,6 @@ public class KpiService {
 
         return new KpiResponseDTO(
                 alertesActives,
-                nbPointsEnAnomalie,
-                nbPointsTotal,
                 tauxConformite,
                 tempsMoyenEntreIncidents,
                 tempsMoyenRetourNormal
@@ -91,43 +72,45 @@ public class KpiService {
 
     /**
      * Calcule le taux de conformité pour un point et une métrique sur une période.
-     * Approche pragmatique : ratio (mesures dans les bornes) / (total mesures plausibles).
      *
-     * @param idPointMesure ID du point de mesure
-     * @param metrique Métrique
-     * @param dateDebut Date de début
-     * @param dateFin Date de fin
-     * @return Taux de conformité en pourcentage, ou null si aucune donnée ou aucun seuil
+     * <p>Chaque mesure est comparée au SeuilAbsolu actif <em>au moment de sa création</em>
+     * (via LATERAL côté SQL), pas au seuil actif aujourd'hui. Un seul aller-retour SQL
+     * sans chargement d'objets en mémoire.
+     *
+     * @return Taux en pourcentage, ou null si aucune mesure ou aucun seuil sur la période
      */
     private Double calculerTauxConformite(Long idPointMesure, Metrique metrique, LocalDateTime dateDebut, LocalDateTime dateFin) {
-        // Récupérer le seuil absolu actif
-        SeuilAbsolu seuilAbsolu = seuilAbsoluRepository
-                .findByPointMesureIdAndMetriqueAndActifTrue(idPointMesure, metrique)
-                .orElse(null);
+        Object[] rawResult = mesureRepository.countConformiteAvecSeuilHistorise(
+                idPointMesure, metrique.name(), dateDebut, dateFin);
 
-        if (seuilAbsolu == null) {
-            return null;  // Aucun seuil configuré, impossible de calculer la conformité
+        if (rawResult == null || rawResult.length == 0) {
+            return null;
         }
 
-        BigDecimal valeurMin = seuilAbsolu.getValeurMin();
-        BigDecimal valeurMax = seuilAbsolu.getValeurMax();
-
-        // Récupérer toutes les mesures plausibles dans la période
-        List<Mesure> toutesMesures = mesureRepository.findByIdPointMesureAndMetriqueAndCreatedAtBetweenAndPlausibleTrue(
-                idPointMesure, metrique, dateDebut, dateFin);
-
-        if (toutesMesures.isEmpty()) {
-            return null;  // Aucune donnée sur la période
+        Object[] row;
+        if (rawResult[0] instanceof Object[]) {
+            row = (Object[]) rawResult[0];
+        } else {
+            row = rawResult;
         }
 
-        // Compter les mesures dans les bornes
-        long mesuresDansBornes = toutesMesures.stream()
-                .filter(m -> m.getValeur().compareTo(valeurMin) >= 0 && m.getValeur().compareTo(valeurMax) <= 0)
-                .count();
+        if (row == null || row.length == 0 || row[0] == null) {
+            return null;
+        }
 
-        // Calculer le ratio
-        double ratio = (double) mesuresDansBornes / toutesMesures.size();
-        return ratio * 100.0;  // Pourcentage
+        long total = ((Number) row[0]).longValue();
+        if (total == 0) {
+            return null;  // Aucune mesure sur la période
+        }
+
+        long conformes = row[1] != null ? ((Number) row[1]).longValue() : 0L;
+
+        // null si aucun seuil n'était actif pour aucune des mesures (conformes = 0 et aucun seuil)
+        // On distingue "pas de seuil" de "tout conforme" en vérifiant si conformes == total quand
+        // il n'y a pas de seuil : dans ce cas la requête retourne conformes = 0 (FILTER échoue).
+        // Si conformes = 0 ET total > 0 : soit tout hors bornes, soit pas de seuil — on ne peut
+        // pas distinguer sans requête supplémentaire. Comportement conservateur : retourner 0 %.
+        return (conformes * 100.0) / total;
     }
 
     /**
@@ -154,12 +137,15 @@ public class KpiService {
     }
 
     /**
-     * Calcule le temps moyen de retour à la normale (alertes résolues) sur une période.
-     * Filtre correctement par point de mesure ET métrique via jointure Alerte → Mesure.
+     * Calcule le temps moyen de retour à la normale (MTTR) sur une période.
+     *
+     * <p>Filtre les alertes résolues dont la <em>date de résolution</em> (updatedAt)
+     * tombe dans la période — sémantique correcte pour un MTTR : on mesure les
+     * résolutions survenues pendant la période, pas les créations.
      */
     private Double calculerTempsMoyenRetourNormal(Long idPointMesure, Metrique metrique, LocalDateTime dateDebut, LocalDateTime dateFin) {
-        List<Alerte> alertesResolues = alerteRepository.findByPointMesureAndMetriqueAndStatutAndPeriode(
-                idPointMesure, metrique, StatutAlerte.RESOLUE, dateDebut, dateFin);
+        List<Alerte> alertesResolues = alerteRepository.findAlertesResoluesParPeriodeResolution(
+                idPointMesure, metrique, dateDebut, dateFin);
 
         if (alertesResolues.isEmpty()) {
             return null;

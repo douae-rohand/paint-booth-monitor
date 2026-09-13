@@ -13,7 +13,7 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       {/* KPI Section */}
-      <KpiSection modeFiltre="independant" />
+      <KpiSection />
 
       {/* Chart + statut temps réel */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">

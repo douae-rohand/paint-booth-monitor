@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
+import { extractErrorMessage } from '@/lib/errors';
 import {
   Cpu,
   Plus,
@@ -55,18 +56,6 @@ function formatDate(iso: string | null) {
   });
 }
 
-/** Extract a human-readable message from an axios error ({code, message} backend format) */
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (
-    err &&
-    typeof err === 'object' &&
-    'response' in err
-  ) {
-    const res = (err as { response?: { data?: { message?: string } } }).response;
-    if (res?.data?.message) return res.data.message;
-  }
-  return fallback;
-}
 
 // ─── field-level validation ───────────────────────────────────────────────────
 

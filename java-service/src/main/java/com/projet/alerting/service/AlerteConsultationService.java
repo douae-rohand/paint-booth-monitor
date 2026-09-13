@@ -1,6 +1,7 @@
 package com.projet.alerting.service;
 
-import com.projet.alerting.exception.BusinessException;
+import com.projet.config.BusinessException;
+import com.projet.config.MetierValidation;
 import com.projet.alerting.dto.AlerteDTO;
 import com.projet.alerting.model.Alerte;
 import com.projet.alerting.model.enums.Severite;
@@ -55,10 +56,16 @@ public class AlerteConsultationService {
             LocalDateTime dateFin,
             Pageable pageable
     ) {
+        // Valider la cohérence de la plage de dates (optionnelle, mais ordonnée si fournie)
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
+
         // Si idPointMesure est fourni, valider qu'il correspond à un point existant, actif et non supprimé
         if (idPointMesure != null) {
             pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
-                    .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
+                    .orElseThrow(() -> new BusinessException(
+                            "POINT_MESURE_INACTIF",
+                            "Le point de mesure (ID " + idPointMesure + ") n'existe pas ou n'est pas actif.",
+                            HttpStatus.BAD_REQUEST));
         }
 
         int limit = pageable.getPageSize();

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { extractErrorMessage } from '@/lib/errors';
 import {
   CheckCircle2,
   XCircle,
@@ -49,14 +50,6 @@ function formatDate(iso: string | null) {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const res = (err as { response?: { data?: { message?: string } } }).response;
-    if (res?.data?.message) return res.data.message;
-  }
-  return fallback;
 }
 
 function StatusBadge({ actif }: { actif: boolean }) {

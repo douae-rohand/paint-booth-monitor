@@ -4,7 +4,7 @@ import com.projet.alerting.model.enums.Metrique;
 import com.projet.measures.dto.MesureCabineDTO;
 import com.projet.measures.dto.MesureEtuveDTO;
 import com.projet.measures.dto.MesureHistoriqueResponseDTO;
-import com.projet.measures.model.enums.Granularite;
+import com.projet.config.model.enums.Granularite;
 import com.projet.measures.service.MesureExportService;
 import com.projet.measures.service.MesureHistoriqueService;
 import lombok.RequiredArgsConstructor;
@@ -132,25 +132,26 @@ public class MesureHistoriqueController {
             @RequestParam String format,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateDebut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateFin,
-            @RequestParam(defaultValue = "false") boolean seulementDepassements) {
+            @RequestParam(defaultValue = "false") boolean seulementDepassements,
+            @RequestParam(required = false) Metrique metrique) {
 
-        log.info("GET /api/mesures/historique/cabine/export - format={}, dateDebut={}, dateFin={}, seulementDepassements={}",
-                format, dateDebut, dateFin, seulementDepassements);
+        log.info("GET /api/mesures/historique/cabine/export - format={}, dateDebut={}, dateFin={}, seulementDepassements={}, metrique={}",
+                format, dateDebut, dateFin, seulementDepassements, metrique);
 
         byte[] data;
         String filename;
         String contentType;
 
         if ("csv".equalsIgnoreCase(format)) {
-            data = mesureExportService.exportCabineCSV(dateDebut, dateFin, seulementDepassements);
+            data = mesureExportService.exportCabineCSV(dateDebut, dateFin, seulementDepassements, metrique);
             filename = "mesures_cabine_" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) + ".csv";
             contentType = "text/csv; charset=UTF-8";
         } else if ("pdf".equalsIgnoreCase(format)) {
-            data = mesureExportService.exportCabinePDF(dateDebut, dateFin, seulementDepassements);
+            data = mesureExportService.exportCabinePDF(dateDebut, dateFin, seulementDepassements, metrique);
             filename = "mesures_cabine_" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) + ".pdf";
             contentType = "application/pdf";
         } else if ("xlsx".equalsIgnoreCase(format)) {
-            data = mesureExportService.exportCabineExcel(dateDebut, dateFin, seulementDepassements);
+            data = mesureExportService.exportCabineExcel(dateDebut, dateFin, seulementDepassements, metrique);
             filename = "mesures_cabine_" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) + ".xlsx";
             contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         } else {

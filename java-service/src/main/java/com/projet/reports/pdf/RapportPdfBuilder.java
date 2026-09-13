@@ -5,7 +5,7 @@ import com.projet.alerting.model.enums.Metrique;
 import com.projet.alerting.model.enums.TypeAlerte;
 import com.projet.measures.dto.MesureHistoriqueDTO;
 import com.projet.kpis.dto.KpiResponseDTO;
-import com.projet.measures.model.enums.Granularite;
+import com.projet.config.model.enums.Granularite;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;

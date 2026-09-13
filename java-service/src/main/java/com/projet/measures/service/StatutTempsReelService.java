@@ -5,6 +5,7 @@ import com.projet.alerting.model.SeuilDynamique;
 import com.projet.alerting.model.enums.Metrique;
 import com.projet.alerting.repository.SeuilAbsoluRepository;
 import com.projet.alerting.repository.SeuilDynamiqueRepository;
+import com.projet.config.MetierValidation;
 import com.projet.measures.dto.PointMesureStatutDTO;
 import com.projet.measures.model.Mesure;
 import com.projet.measures.model.PointMesure;
@@ -44,7 +45,7 @@ public class StatutTempsReelService {
 
         for (PointMesure point : pointsActifs) {
             // Déterminer les métriques applicables selon le type d'emplacement
-            List<Metrique> metriquesApplicables = getMetriquesApplicables(point.getTypeEmplacement());
+            List<Metrique> metriquesApplicables = MetierValidation.metriquesApplicables(point.getTypeEmplacement());
 
             List<PointMesureStatutDTO.MesureStatutDTO> mesuresStatut = new ArrayList<>();
 
@@ -64,27 +65,6 @@ public class StatutTempsReelService {
         }
 
         return result;
-    }
-
-    /**
-     * Détermine les métriques applicables selon le type d'emplacement.
-     * CABINE → [TEMPERATURE, HUMIDITE]
-     * ETUVE → [TEMPERATURE]
-     *
-     * @param typeEmplacement Type d'emplacement
-     * @return Liste des métriques applicables
-     */
-    private List<Metrique> getMetriquesApplicables(String typeEmplacement) {
-        List<Metrique> metriques = new ArrayList<>();
-
-        if ("CABINE".equalsIgnoreCase(typeEmplacement)) {
-            metriques.add(Metrique.TEMPERATURE);
-            metriques.add(Metrique.HUMIDITE);
-        } else if ("ETUVE".equalsIgnoreCase(typeEmplacement)) {
-            metriques.add(Metrique.TEMPERATURE);
-        }
-
-        return metriques;
     }
 
     /**

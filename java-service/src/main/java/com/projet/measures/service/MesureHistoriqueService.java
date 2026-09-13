@@ -1,6 +1,7 @@
 package com.projet.measures.service;
 
-import com.projet.alerting.exception.BusinessException;
+import com.projet.config.BusinessException;
+import com.projet.config.MetierValidation;
 import com.projet.alerting.model.SeuilAbsolu;
 import com.projet.alerting.model.enums.Metrique;
 import com.projet.alerting.repository.SeuilAbsoluRepository;
@@ -8,9 +9,9 @@ import com.projet.measures.dto.MesureCabineDTO;
 import com.projet.measures.dto.MesureEtuveDTO;
 import com.projet.measures.dto.MesureHistoriqueDTO;
 import com.projet.measures.dto.MesureHistoriqueResponseDTO;
-import com.projet.measures.exception.MetriqueNonApplicableAuPointException;
 import com.projet.measures.model.PointMesure;
-import com.projet.measures.model.enums.Granularite;
+import com.projet.config.model.enums.Granularite;
+import com.projet.config.GranulariteUtils;
 import com.projet.measures.repository.MesureRepository;
 import com.projet.measures.repository.PointMesureRepository;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +55,7 @@ public class MesureHistoriqueService {
      * @param dateFin Date de fin de la période
      * @param granulariteDemandee Granularité demandée (optionnel, uniquement utilisé pour periode=7j)
      * @return MesureHistoriqueResponseDTO avec les points agrégés et le seuil absolu actif
-     * @throws MetriqueNonApplicableAuPointException si la métrique n'est pas applicable au point
+     * @throws BusinessException code {@code "METRIQUE_NON_APPLICABLE"} (400) si la métrique n'est pas applicable au point
      */
     public MesureHistoriqueResponseDTO getHistorique(
             Long idPointMesure,
@@ -64,12 +65,18 @@ public class MesureHistoriqueService {
             LocalDateTime dateFin,
             Granularite granulariteDemandee) {
 
+        // Valider la cohérence de la plage de dates (optionnelle, mais ordonnée si fournie)
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
+
         // Valider que le PointMesure existe, est actif et non supprimé
         PointMesure pointMesure = pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
-                .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new BusinessException(
+                        "POINT_MESURE_INACTIF",
+                        "Le point de mesure (ID " + idPointMesure + ") n'existe pas ou n'est pas actif.",
+                        HttpStatus.BAD_REQUEST));
 
         // Valider que la métrique est applicable au point
-        validerMetriqueApplicable(pointMesure, metrique);
+        MetierValidation.validerMetriqueApplicable(pointMesure, metrique);
 
         // Déterminer la granularité à appliquer
         Granularite granulariteAppliquee = determinerGranularite(periode, dateDebut, dateFin, granulariteDemandee);
@@ -109,44 +116,7 @@ public class MesureHistoriqueService {
             LocalDateTime dateFin,
             Granularite granulariteDemandee) {
 
-        switch (periode) {
-            case "24h":
-                return Granularite.TRENTE_MIN;
-
-            case "7j":
-                // Utiliser la granularité demandée si fournie, sinon HORAIRE par défaut
-                if (granulariteDemandee != null) {
-                    if (granulariteDemandee == Granularite.HORAIRE || granulariteDemandee == Granularite.JOURNALIERE) {
-                        return granulariteDemandee;
-                    }
-                    log.warn("Granularité demandée invalide pour période 7j: {}, utilisation de HORAIRE par défaut", granulariteDemandee);
-                }
-                return Granularite.HORAIRE;
-
-            case "30j":
-                return Granularite.JOURNALIERE;
-
-            case "6mois":
-            case "1an":
-                return Granularite.MENSUELLE;
-
-            case "personnalise":
-                // Déduire automatiquement selon l'écart
-                long jours = ChronoUnit.DAYS.between(dateDebut, dateFin);
-                if (jours <= 1) {
-                    return Granularite.TRENTE_MIN;
-                } else if (jours <= 7) {
-                    return Granularite.HORAIRE;
-                } else if (jours <= 31) {
-                    return Granularite.JOURNALIERE;
-                } else {
-                    return Granularite.MENSUELLE;
-                }
-
-            default:
-                log.warn("Période inconnue: {}, utilisation de JOURNALIERE par défaut", periode);
-                return Granularite.JOURNALIERE;
-        }
+        return GranulariteUtils.determinerDepuisPeriode(periode, dateDebut, dateFin, granulariteDemandee);
     }
 
     /**
@@ -168,9 +138,16 @@ public class MesureHistoriqueService {
             LocalDateTime dateFin,
             Granularite granularite) {
 
-        // Valider que le PointMesure existe, est actif et non supprimé
-        pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
-                .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
+        // Valider la cohérence de la plage de dates (optionnelle, mais ordonnée si fournie)
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
+
+        // Valider que le PointMesure existe, est actif et non supprimé, et que la métrique est applicable
+        PointMesure pointMesure = pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
+                .orElseThrow(() -> new BusinessException(
+                        "POINT_MESURE_INACTIF",
+                        "Le point de mesure (ID " + idPointMesure + ") n'existe pas ou n'est pas actif.",
+                        HttpStatus.BAD_REQUEST));
+        MetierValidation.validerMetriqueApplicable(pointMesure, metrique);
 
         String sql;
         switch (granularite) {
@@ -251,26 +228,6 @@ public class MesureHistoriqueService {
     }
 
     /**
-     * Valide qu'une métrique est applicable à un point de mesure.
-     * CABINE → [TEMPERATURE, HUMIDITE]
-     * ETUVE → [TEMPERATURE]
-     *
-     * @param pointMesure Point de mesure
-     * @param metrique Métrique à valider
-     * @throws MetriqueNonApplicableAuPointException si non applicable
-     */
-    private void validerMetriqueApplicable(PointMesure pointMesure, Metrique metrique) {
-        String typeEmplacement = pointMesure.getTypeEmplacement();
-
-        if ("ETUVE".equalsIgnoreCase(typeEmplacement) && metrique == Metrique.HUMIDITE) {
-            throw new MetriqueNonApplicableAuPointException(
-                    String.format("La métrique %s n'est pas applicable au point de mesure %s (type: %s)",
-                            metrique, pointMesure.getNom(), typeEmplacement)
-            );
-        }
-    }
-
-    /**
      * Récupère l'historique des mesures de la cabine avec pivot température/humidité par cycle.
      *
      * @param dateDebut Date de début de la période (optionnel)
@@ -284,6 +241,9 @@ public class MesureHistoriqueService {
             LocalDateTime dateFin,
             boolean seulementDepassements,
             Pageable pageable) {
+
+        // Valider la cohérence de la plage de dates (optionnelle, mais ordonnée si fournie)
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
 
         // Résoudre l'ID du PointMesure cabine (type_emplacement = 'CABINE', actif = true)
         List<PointMesure> cabines = pointMesureRepository.findByTypeEmplacement("CABINE");
@@ -351,6 +311,9 @@ public class MesureHistoriqueService {
             LocalDateTime dateFin,
             boolean seulementDepassements,
             Pageable pageable) {
+
+        // Valider la cohérence de la plage de dates (optionnelle, mais ordonnée si fournie)
+        MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
 
         // Résoudre les IDs des points de mesure étuve
         List<Long> idsZones = null;

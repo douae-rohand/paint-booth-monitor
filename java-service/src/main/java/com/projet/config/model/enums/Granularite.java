@@ -1,8 +1,7 @@
-package com.projet.measures.model.enums;
+package com.projet.config.model.enums;
 
 /**
- * Enum pour la granularité d'agrégation des mesures historiques.
- * Module: measures
+ * Enum pour la granularité d'agrégation des mesures (transverse à l'application).
  */
 public enum Granularite {
     /**

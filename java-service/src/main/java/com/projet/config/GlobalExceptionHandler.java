@@ -93,10 +93,16 @@ public class GlobalExceptionHandler {
                 .body(new ApiErrorResponse(404, ex.getMessage()));
     }
 
-    @ExceptionHandler(com.projet.alerting.exception.BusinessException.class)
-    public ResponseEntity<ApiErrorResponse> handleBusinessException(com.projet.alerting.exception.BusinessException ex) {
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiErrorResponse(400, "CHATBOT_PARAMETRE_INVALIDE", "Un paramètre fourni dans la requête est invalide ou mal formaté."));
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiErrorResponse> handleBusinessException(BusinessException ex) {
         return ResponseEntity.status(ex.getStatus())
-                .body(new ApiErrorResponse(ex.getStatus().value(), ex.getMessage()));
+                .body(new ApiErrorResponse(ex.getStatus().value(), ex.getCode(), ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

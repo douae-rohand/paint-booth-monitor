@@ -303,6 +303,57 @@ public interface MesureRepository extends JpaRepository<Mesure, UUID> {
     );
 
     /**
+     * Calcule le taux de conformité pour un point de mesure et une métrique sur une période.
+     *
+     * <p>Chaque mesure est comparée au SeuilAbsolu qui était <em>actif au moment de sa création</em>
+     * (fenêtre temporelle : {@code date_activation <= mesure.created_at AND
+     * (date_desactivation IS NULL OR date_desactivation > mesure.created_at)}),
+     * via un {@code LEFT JOIN LATERAL} identique au pattern utilisé dans
+     * {@link #findHistoriqueCabine} et {@link #findHistoriqueEtuve}.
+     *
+     * <p>Retourne un {@code Object[2]} :
+     * <ul>
+     *   <li>index 0 : total des mesures plausibles sur la période ({@code Long})</li>
+     *   <li>index 1 : nombre de mesures dans les bornes du seuil historisé ({@code Long})</li>
+     * </ul>
+     * Retourne {@code null} ou un tableau avec index 0 = 0 s'il n'y a aucune mesure.
+     *
+     * @param idPointMesure ID du point de mesure
+     * @param metrique      Nom de la métrique (String, ex. "TEMPERATURE")
+     * @param dateDebut     Début de la période
+     * @param dateFin       Fin de la période
+     */
+    @Query(value = """
+        SELECT
+            COUNT(*) AS total,
+            COUNT(*) FILTER (
+                WHERE seuil.valeur_min IS NOT NULL
+                  AND m.valeur >= seuil.valeur_min
+                  AND m.valeur <= seuil.valeur_max
+            ) AS conformes
+        FROM mesure m
+        LEFT JOIN LATERAL (
+            SELECT sa.valeur_min, sa.valeur_max
+            FROM seuil_absolu sa
+            WHERE sa.id_point_mesure = CAST(:idPointMesure AS bigint)
+              AND sa.metrique = CAST(:metrique AS varchar)
+              AND sa.date_activation <= m.created_at
+              AND (sa.date_desactivation IS NULL OR sa.date_desactivation > m.created_at)
+            LIMIT 1
+        ) seuil ON true
+        WHERE m.id_point_mesure = CAST(:idPointMesure AS bigint)
+          AND m.metrique = CAST(:metrique AS varchar)
+          AND m.plausible = true
+          AND m.created_at BETWEEN CAST(:dateDebut AS timestamp) AND CAST(:dateFin AS timestamp)
+        """, nativeQuery = true)
+    Object[] countConformiteAvecSeuilHistorise(
+        @Param("idPointMesure") Long idPointMesure,
+        @Param("metrique") String metrique,
+        @Param("dateDebut") LocalDateTime dateDebut,
+        @Param("dateFin") LocalDateTime dateFin
+    );
+
+    /**
      * Calcule les statistiques (min, max, moyenne) pour un point de mesure et une métrique sur une période.
      *
      * @param idPointMesure ID du point de mesure
