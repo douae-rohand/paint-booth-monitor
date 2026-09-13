@@ -98,7 +98,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
             DonneesAlerte donnees = resoudreDonneesAlerte(alerte);
 
             // Broadcast global (dashboard temps réel) — données déjà résolues, pas de 2ème chargement
-            alerteBroadcastService.publierAlerteEtKpis(
+            alerteBroadcastService.publierAlerte(
                     alerte, "CREATION",
                     donnees.idPointMesureLong(),
                     donnees.nomPointMesure()
@@ -119,7 +119,7 @@ public class NotificationDispatchServiceImpl implements NotificationDispatchServ
             DonneesAlerte donnees = resoudreDonneesAlerte(alerte);
 
             // Broadcast global
-            alerteBroadcastService.publierAlerteEtKpis(
+            alerteBroadcastService.publierAlerte(
                     alerte, "RESOLUTION", null, null);
 
             // Notifications personnelles

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { extractErrorMessage } from '@/lib/errors';
 import { AlertTriangle, CheckCircle, Clock, Activity, Calendar as CalendarIcon } from 'lucide-react';
 import { getKpis, type KpiResponseDTO, type KpiParams } from '@/api/kpis';
 import { useDashboardWebSocket } from '@/hooks/useDashboardWebSocket';
@@ -12,16 +13,6 @@ import type { DateRange } from 'react-day-picker';
 import type { PointMesure, Metrique } from '@/api/alerting/seuils';
 import { usePointMesures } from '@/hooks/useSeuils';
 
-interface KpiSectionProps {
-  modeFiltre?: 'global' | 'independant';
-  filtreGlobal?: {
-    idPointMesure?: number;
-    metrique?: Metrique;
-    dateDebut?: string;
-    dateFin?: string;
-  };
-}
-
 const PERIODES = [
   { key: '24h',   label: '24h',    days: 1   },
   { key: '7j',    label: '7j',     days: 7   },
@@ -30,13 +21,13 @@ const PERIODES = [
   { key: '1an',   label: '1 an',   days: 365 },
 ];
 
-export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSectionProps) {
-  const [kpis, setKpis]               = useState<KpiResponseDTO | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState<string | null>(null);
+export function KpiSection() {
+  const [kpis, setKpis]             = useState<KpiResponseDTO | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint]   = useState<PointMesure | null>(null);
   const [selectedMetrique, setMetrique]     = useState<Metrique | null>(null);
-  const [periode, setPeriode]         = useState('30j');
+  const [periode, setPeriode]       = useState('30j');
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
 
   // ── Protection anti-chevauchement ────────────────────────────────────────
@@ -53,8 +44,6 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
 
   const { connected, subscribeToAlertes } = useDashboardWebSocket();
   const { data: pointMesures } = usePointMesures();
-
-  const isGlobalMode = modeFiltre === 'global' && filtreGlobal?.idPointMesure;
 
   // Nettoyage au démontage — évite tout setState après unmount
   useEffect(() => {
@@ -96,8 +85,11 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
   }, [periode, customRange]);
 
   // ── Fetch KPIs (avec gestion anti-chevauchement) ──────────────────────────
+  // Le fetch n'est effectué que si un point ET une métrique sont sélectionnés.
+  // Le backend exige désormais les 4 paramètres — pas de mode global.
   const fetchKpis = useCallback(async () => {
-    // Si un fetch est déjà en cours, armer un refetch pour après
+    if (!selectedPoint || !selectedMetrique) return;
+
     if (fetchInProgress.current) {
       pendingRefetch.current = true;
       return;
@@ -112,20 +104,17 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
         setError(null);
       }
 
-      let params: KpiParams = {};
-      if (selectedPoint && selectedMetrique) {
-        params = {
-          pointMesureId: selectedPoint.id,
-          metrique: selectedMetrique,
-          ...getDates(),
-        };
-      }
+      const params: KpiParams = {
+        pointMesureId: selectedPoint.id,
+        metrique: selectedMetrique,
+        ...getDates(),
+      };
 
       const data = await getKpis(params);
       if (isMounted.current) setKpis(data);
     } catch (e) {
       console.error('Erreur fetch KPIs:', e);
-      if (isMounted.current) setError('Impossible de charger les KPIs');
+      if (isMounted.current) setError(extractErrorMessage(e, 'Impossible de charger les KPIs'));
     } finally {
       fetchInProgress.current = false;
       if (isMounted.current) setLoading(false);
@@ -149,9 +138,7 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
   // Un debounce de 400 ms absorbe les cascades de résolutions rapprochées.
   useEffect(() => {
     const unsubscribe = subscribeToAlertes(() => {
-      // Annuler le timer précédent si un nouveau signal arrive dans les 400 ms
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
-
       debounceTimer.current = setTimeout(() => {
         if (isMounted.current) fetchKpis();
       }, 400);
@@ -162,13 +149,6 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, [subscribeToAlertes, fetchKpis]);
-
-  // Sync avec filtre global (réservé au mode global, non utilisé en mode indépendant)
-  useEffect(() => {
-    if (isGlobalMode && filtreGlobal) {
-      // Le filtre global gère les IDs en amont
-    }
-  }, [isGlobalMode, filtreGlobal]);
 
   // ── Rendu ─────────────────────────────────────────────────────────────────
 
@@ -193,95 +173,88 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
     );
   }
 
-  const scopeActive = selectedPoint && selectedMetrique;
-
   return (
     <div className="space-y-4">
-      {/* Header avec sélecteurs — mode indépendant uniquement */}
-      {modeFiltre === 'independant' && (
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              KPIs
-            </span>
-            {connected && (
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <PointMesureMetriqueSelector
-              selectedPointMesure={selectedPoint}
-              selectedMetrique={selectedMetrique}
-              onPointMesureChange={setSelectedPoint}
-              onMetriqueChange={setMetrique}
-              variant="inline"
-            />
-            {/* Sélecteur période */}
-            <div className="neu-inset flex gap-1 rounded-2xl p-1">
-              {PERIODES.map((p) => (
+      {/* Header avec sélecteurs */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            KPIs
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <PointMesureMetriqueSelector
+            selectedPointMesure={selectedPoint}
+            selectedMetrique={selectedMetrique}
+            onPointMesureChange={setSelectedPoint}
+            onMetriqueChange={setMetrique}
+            variant="inline"
+          />
+          {/* Sélecteur période */}
+          <div className="neu-inset flex gap-1 rounded-2xl p-1">
+            {PERIODES.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => {
+                  setPeriode(p.key);
+                  setCustomRange(undefined);
+                }}
+                className={
+                  'rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ' +
+                  (periode === p.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground')
+                }
+              >
+                {p.label}
+              </button>
+            ))}
+            <Popover>
+              <PopoverTrigger asChild>
                 <button
-                  key={p.key}
                   onClick={() => {
-                    setPeriode(p.key);
+                    setPeriode('custom');
                     setCustomRange(undefined);
                   }}
                   className={
-                    'rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ' +
-                    (periode === p.key
+                    'flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ' +
+                    (periode === 'custom'
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground')
                   }
                 >
-                  {p.label}
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {periode === 'custom' && customRange?.from
+                    ? customRange.to
+                      ? `${format(customRange.from, 'd MMM', { locale: fr })} - ${format(customRange.to, 'd MMM', { locale: fr })}`
+                      : format(customRange.from, 'd MMM yyyy', { locale: fr })
+                    : 'Personnalisé'}
                 </button>
-              ))}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    onClick={() => {
-                      setPeriode('custom');
-                      setCustomRange(undefined);
-                    }}
-                    className={
-                      'flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ' +
-                      (periode === 'custom'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground')
-                    }
-                  >
-                    <CalendarIcon className="h-3.5 w-3.5" />
-                    {periode === 'custom' && customRange?.from
-                      ? customRange.to
-                        ? `${format(customRange.from, 'd MMM', { locale: fr })} - ${format(customRange.to, 'd MMM', { locale: fr })}`
-                        : format(customRange.from, 'd MMM yyyy', { locale: fr })
-                      : 'Personnalisé'}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="range"
-                    selected={customRange}
-                    defaultMonth={new Date()}
-                    onSelect={(r) => {
-                      setCustomRange(r);
-                      if (r?.from) setPeriode('custom');
-                    }}
-                    locale={fr}
-                    numberOfMonths={1}
-                    className="p-3 pointer-events-auto"
-                    modifiers={{ today: undefined }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  defaultMonth={new Date()}
+                  onSelect={(r) => {
+                    setCustomRange(r);
+                    if (r?.from) setPeriode('custom');
+                  }}
+                  locale={fr}
+                  numberOfMonths={1}
+                  className="p-3 pointer-events-auto"
+                  modifiers={{ today: undefined }}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Cartes KPI */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
-        {/* Alertes Actives */}
+        {/* Alertes Actives — instantané en temps réel, indépendant de la période */}
         <div className="neu-card p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -290,8 +263,11 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
             <h3 className="text-2xl font-bold tracking-tight text-[color:var(--danger)]">
               {kpis.alertesActives}
             </h3>
-            <p className="text-xs text-muted-foreground">
-              {kpis.nbPointsEnAnomalie} {scopeActive ? 'sur ce point/métrique' : 'points en anomalie'}
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              {connected && (
+                <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              )}
+              En temps réel
             </p>
           </div>
           <div className="neu-pressable p-3 rounded-2xl">
@@ -299,27 +275,17 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
           </div>
         </div>
 
-        {/* Taux de Conformité */}
+        {/* Taux de Conformité — agrégat sur la période sélectionnée */}
         <div className="neu-card p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Taux de Conformité
             </p>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {kpis.tauxConformite != null
-                ? `${Math.round(kpis.tauxConformite)}%`
-                : scopeActive
-                  ? '--'
-                  : kpis.nbPointsTotal > 0
-                    ? `${Math.round(((kpis.nbPointsTotal - kpis.nbPointsEnAnomalie) / kpis.nbPointsTotal) * 100)}%`
-                    : '--'}
+              {kpis.tauxConformite != null ? `${Math.round(kpis.tauxConformite)}%` : '--'}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {kpis.tauxConformite != null
-                ? 'Sur la période sélectionnée'
-                : scopeActive
-                  ? 'Aucun seuil configuré'
-                  : 'Vue globale'}
+              {kpis.tauxConformite != null ? 'Sur la période sélectionnée' : 'Aucun seuil configuré'}
             </p>
           </div>
           <div className="neu-pressable p-3 rounded-2xl">
@@ -327,40 +293,36 @@ export function KpiSection({ modeFiltre = 'independant', filtreGlobal }: KpiSect
           </div>
         </div>
 
-        {/* Temps Moyen Incidents */}
+        {/* Temps Moyen Incidents — MTBI sur la période, alertes SEUIL_ABSOLU uniquement */}
         <div className="neu-card p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Temps Moyen Incidents
             </p>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {scopeActive && kpis.tempsMoyenEntreIncidentsHeures != null
+              {kpis.tempsMoyenEntreIncidentsHeures != null
                 ? formatDureeHeures(kpis.tempsMoyenEntreIncidentsHeures)
                 : '--'}
             </h3>
-            <p className="text-xs text-muted-foreground">
-              {scopeActive ? 'Entre alertes SEUIL_ABSOLU' : 'Sélectionnez un point de mesure'}
-            </p>
+            <p className="text-xs text-muted-foreground">Seuils absolus · sur la période</p>
           </div>
           <div className="neu-pressable p-3 rounded-2xl">
             <Clock className="h-5 w-5 text-chart-2" />
           </div>
         </div>
 
-        {/* Temps Retour Normal */}
+        {/* Temps Retour Normal — MTTR sur la période, filtré par date de résolution */}
         <div className="neu-card p-5 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Temps Retour Normal
             </p>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {scopeActive && kpis.tempsMoyenRetourNormalHeures != null
+              {kpis.tempsMoyenRetourNormalHeures != null
                 ? formatDureeHeures(kpis.tempsMoyenRetourNormalHeures)
                 : '--'}
             </h3>
-            <p className="text-xs text-muted-foreground">
-              {scopeActive ? 'Après résolution' : 'Sélectionnez un point de mesure'}
-            </p>
+            <p className="text-xs text-muted-foreground">Après résolution · sur la période</p>
           </div>
           <div className="neu-pressable p-3 rounded-2xl">
             <Activity className="h-5 w-5 text-chart-3" />

@@ -1,5 +1,6 @@
 package com.projet.alerting.service;
 
+import com.projet.config.MetierValidation;
 import com.projet.alerting.dto.DetailJourAlertesDTO;
 import com.projet.alerting.dto.HeatmapJourDTO;
 import com.projet.alerting.dto.TopAlerteDTO;
@@ -46,6 +47,9 @@ public class AlerteStatsService {
      * @return Liste des top alertes
      */
     public List<TopAlerteDTO> getTopAlertes(LocalDateTime dateDebut, LocalDateTime dateFin, Long idPointMesure, int limit) {
+        // Valider que la plage de dates est cohérente (obligatoires et ordonnées)
+        MetierValidation.validerPlageDates(dateDebut, dateFin);
+
         // Récupérer toutes les alertes de la période
         List<Alerte> alertes = alerteRepository.findByCreatedAtBetween(dateDebut, dateFin);
 

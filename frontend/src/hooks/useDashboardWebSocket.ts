@@ -53,17 +53,6 @@ export const useDashboardWebSocket = () => {
   }, [subscribe]);
 
   /**
-   * S'abonner au topic des KPIs.
-   * Topic : /topic/kpis
-   */
-  const subscribeToKpis = useCallback((handler: (data: unknown) => void) => {
-    const topic = '/topic/kpis';
-    const unsubscribe = subscribe(topic, handler);
-    subscriptionsRef.current.set(topic, unsubscribe);
-    return unsubscribe;
-  }, [subscribe]);
-
-  /**
    * S'abonner au topic des alertes.
    * Topic : /topic/alertes
    */
@@ -79,7 +68,6 @@ export const useDashboardWebSocket = () => {
     subscribeToMesures,
     unsubscribeFromMesures,
     subscribeToStatutTempsReel,
-    subscribeToKpis,
     subscribeToAlertes,
   };
 };

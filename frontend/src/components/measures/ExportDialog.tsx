@@ -5,8 +5,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Download, Loader2 } from "lucide-react";
-import { cn, formatHeureAvecMillisecondes } from "@/lib/utils";
+import { CalendarIcon, Clock, Download, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { exportHistoriqueCabine, exportHistoriqueEtuve } from "@/api/measures/index";
 
@@ -19,8 +19,11 @@ interface ExportDialogProps {
 
 export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: ExportDialogProps) => {
   const [format, setFormat] = useState<"csv" | "pdf" | "xlsx">("csv");
+  const [metriqueSelection, setMetriqueSelection] = useState<"ALL" | "TEMPERATURE" | "HUMIDITE">("ALL");
   const [scope, setScope] = useState<"all" | "period">("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [heureDebut, setHeureDebut] = useState<string>("00:00");
+  const [heureFin, setHeureFin] = useState<string>("23:59");
   const [loading, setLoading] = useState(false);
 
   const handleExport = async () => {
@@ -31,11 +34,20 @@ export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: Ex
         seulementDepassements: false,
       };
 
-      if (scope === "period" && dateRange?.from && dateRange?.to) {
-        const endOfRange = new Date(dateRange.to);
-        endOfRange.setHours(23, 59, 59, 999);
-        params.dateDebut = dateRange.from.toISOString();
-        params.dateFin = endOfRange.toISOString();
+      if (typePoint === "CABINE" && metriqueSelection !== "ALL") {
+        params.metrique = metriqueSelection;
+      }
+
+      if (scope === "period" && dateRange?.from) {
+        const start = new Date(dateRange.from);
+        const [hStart, mStart] = heureDebut.split(":").map(Number);
+        start.setHours(isNaN(hStart) ? 0 : hStart, isNaN(mStart) ? 0 : mStart, 0, 0);
+        params.dateDebut = start.toISOString();
+
+        const endDate = dateRange.to ? new Date(dateRange.to) : new Date(dateRange.from);
+        const [hEnd, mEnd] = heureFin.split(":").map(Number);
+        endDate.setHours(isNaN(hEnd) ? 23 : hEnd, isNaN(mEnd) ? 59 : mEnd, 59, 999);
+        params.dateFin = endDate.toISOString();
       }
 
       if (typePoint === "ETUVE" && selectedZone && selectedZone !== "all") {
@@ -67,7 +79,6 @@ export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: Ex
       onOpenChange(false);
     } catch (error) {
       console.error("Erreur lors de l'export:", error);
-      // TODO: Afficher une notification d'erreur
     } finally {
       setLoading(false);
     }
@@ -75,8 +86,11 @@ export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: Ex
 
   const handleClose = () => {
     setFormat("csv");
+    setMetriqueSelection("ALL");
     setScope("all");
     setDateRange(undefined);
+    setHeureDebut("00:00");
+    setHeureFin("23:59");
     onOpenChange(false);
   };
 
@@ -111,6 +125,27 @@ export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: Ex
             </RadioGroup>
           </div>
 
+          {/* Choix des métriques pour Cabine */}
+          {typePoint === "CABINE" && (
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Métriques à exporter</Label>
+              <RadioGroup value={metriqueSelection} onValueChange={(val) => setMetriqueSelection(val as any)}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="ALL" id="metrique-all" />
+                  <Label htmlFor="metrique-all" className="cursor-pointer">Température et Humidité</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="TEMPERATURE" id="metrique-temp" />
+                  <Label htmlFor="metrique-temp" className="cursor-pointer">Température uniquement</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="HUMIDITE" id="metrique-hum" />
+                  <Label htmlFor="metrique-hum" className="cursor-pointer">Humidité uniquement</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
+
           {/* Périmètre */}
           <div className="space-y-3">
             <Label className="text-base font-medium">Périmètre</Label>
@@ -125,9 +160,9 @@ export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: Ex
               </div>
             </RadioGroup>
 
-            {/* Sélecteur de période */}
+            {/* Sélecteur de période & horaire */}
             {scope === "period" && (
-              <div className="pt-3">
+              <div className="space-y-3 pt-3">
                 <Popover>
                   <PopoverTrigger asChild>
                     <button
@@ -160,6 +195,39 @@ export const ExportDialog = ({ open, onOpenChange, typePoint, selectedZone }: Ex
                     />
                   </PopoverContent>
                 </Popover>
+
+                {/* Sélection horaire */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-primary" />
+                      Heure de début
+                    </Label>
+                    <div className="neu-inset rounded-2xl px-3 py-1.5 border border-border/50">
+                      <input
+                        type="time"
+                        value={heureDebut}
+                        onChange={(e) => setHeureDebut(e.target.value)}
+                        className="w-full border-0 bg-transparent text-xs font-medium focus:outline-none focus:ring-0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-primary" />
+                      Heure de fin
+                    </Label>
+                    <div className="neu-inset rounded-2xl px-3 py-1.5 border border-border/50">
+                      <input
+                        type="time"
+                        value={heureFin}
+                        onChange={(e) => setHeureFin(e.target.value)}
+                        className="w-full border-0 bg-transparent text-xs font-medium focus:outline-none focus:ring-0"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -29,6 +29,13 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  ai:
+    openai:
+      base-url: ${SPRING_AI_OPENAI_BASE_URL:https://integrate.api.nvidia.com}
+      api-key: ${NVIDIA_API_KEY:nvapi-dummy-key}
+      chat:
+        options:
+          model: ${SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL:openai/gpt-oss-20b}
 
 python-service:
   url: ${PYTHON_SERVICE_URL:http://localhost:8000}

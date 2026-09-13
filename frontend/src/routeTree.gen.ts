@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ReinitialiserMotDePasseRouteImport } from './routes/reinitialiser-mot-de-passe'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedAlertesRouteImport } from './routes/_authenticated/alertes'
+import { Route as AuthenticatedAnalyseFichierRouteImport } from './routes/_authenticated/analyse-fichier'
 import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated/audit'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
@@ -58,6 +59,12 @@ const AuthenticatedAlertesRoute = AuthenticatedAlertesRouteImport.update({
   path: '/alertes',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAnalyseFichierRoute =
+  AuthenticatedAnalyseFichierRouteImport.update({
+    id: '/analyse-fichier',
+    path: '/analyse-fichier',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAuditRoute = AuthenticatedAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -102,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/alertes': typeof AuthenticatedAlertesRoute
+  '/analyse-fichier': typeof AuthenticatedAnalyseFichierRoute
   '/audit': typeof AuthenticatedAuditRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
@@ -116,6 +124,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/alertes': typeof AuthenticatedAlertesRoute
+  '/analyse-fichier': typeof AuthenticatedAnalyseFichierRoute
   '/audit': typeof AuthenticatedAuditRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/history': typeof AuthenticatedHistoryRoute
@@ -133,6 +142,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reinitialiser-mot-de-passe': typeof ReinitialiserMotDePasseRoute
   '/_authenticated/alertes': typeof AuthenticatedAlertesRoute
+  '/_authenticated/analyse-fichier': typeof AuthenticatedAnalyseFichierRoute
   '/_authenticated/audit': typeof AuthenticatedAuditRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reinitialiser-mot-de-passe'
     | '/alertes'
+    | '/analyse-fichier'
     | '/audit'
     | '/dashboard'
     | '/history'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reinitialiser-mot-de-passe'
     | '/alertes'
+    | '/analyse-fichier'
     | '/audit'
     | '/dashboard'
     | '/history'
@@ -181,6 +193,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reinitialiser-mot-de-passe'
     | '/_authenticated/alertes'
+    | '/_authenticated/analyse-fichier'
     | '/_authenticated/audit'
     | '/_authenticated/dashboard'
     | '/_authenticated/history'
@@ -250,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAlertesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/analyse-fichier': {
+      id: '/_authenticated/analyse-fichier'
+      path: '/analyse-fichier'
+      fullPath: '/analyse-fichier'
+      preLoaderRoute: typeof AuthenticatedAnalyseFichierRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/audit': {
       id: '/_authenticated/audit'
       path: '/audit'
@@ -304,6 +324,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAlertesRoute: typeof AuthenticatedAlertesRoute
+  AuthenticatedAnalyseFichierRoute: typeof AuthenticatedAnalyseFichierRoute
   AuthenticatedAuditRoute: typeof AuthenticatedAuditRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
@@ -316,6 +337,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAlertesRoute: AuthenticatedAlertesRoute,
+  AuthenticatedAnalyseFichierRoute: AuthenticatedAnalyseFichierRoute,
   AuthenticatedAuditRoute: AuthenticatedAuditRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,

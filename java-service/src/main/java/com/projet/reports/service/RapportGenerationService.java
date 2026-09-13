@@ -3,15 +3,18 @@ package com.projet.reports.service;
 import com.projet.alerting.model.Alerte;
 import com.projet.alerting.model.SeuilAbsolu;
 import com.projet.alerting.model.enums.Metrique;
+import com.projet.alerting.model.enums.StatutAlerte;
 import com.projet.alerting.model.enums.TypeAlerte;
 import com.projet.alerting.repository.AlerteRepository;
 import com.projet.alerting.repository.SeuilAbsoluRepository;
 import com.projet.auth.model.Superviseur;
+import com.projet.config.MetierValidation;
 import com.projet.kpis.dto.KpiResponseDTO;
 import com.projet.kpis.service.KpiService;
 import com.projet.measures.dto.MesureHistoriqueDTO;
 import com.projet.measures.model.PointMesure;
-import com.projet.measures.model.enums.Granularite;
+import com.projet.config.model.enums.Granularite;
+import com.projet.config.GranulariteUtils;
 import com.projet.measures.repository.MesureRepository;
 import com.projet.measures.repository.PointMesureRepository;
 import com.projet.measures.service.MesureHistoriqueService;
@@ -76,13 +79,8 @@ public class RapportGenerationService {
         PointMesure pointMesure = pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)
                 .orElseThrow(() -> new IllegalArgumentException("Point de mesure non trouvé ou inactif: " + idPointMesure));
 
-        // Validation des dates
-        if (dateDebut == null || dateFin == null) {
-            throw new IllegalArgumentException("Les dates de début et de fin sont obligatoires");
-        }
-        if (dateDebut.isAfter(dateFin)) {
-            throw new IllegalArgumentException("La date de début doit être antérieure à la date de fin");
-        }
+        // Validation des dates (BusinessException avec codes distincts)
+        MetierValidation.validerPlageDates(dateDebut, dateFin);
 
         // Créer l'entité RapportPDF avec statut EN_COURS
         RapportPDF rapport = new RapportPDF();
@@ -95,8 +93,8 @@ public class RapportGenerationService {
         rapport = rapportPdfRepository.save(rapport);
 
         try {
-            // Déterminer les métriques associées au point
-            List<Metrique> metriques = determinerMetriques(pointMesure);
+            // Déterminer les métriques associées au point (via utilitaire transverse)
+            List<Metrique> metriques = MetierValidation.metriquesApplicables(pointMesure.getTypeEmplacement());
 
             // Construire le contexte de génération
             RapportPdfBuilder.RapportContext context = new RapportPdfBuilder.RapportContext();
@@ -107,7 +105,7 @@ public class RapportGenerationService {
             context.setNomDemandeur(superviseur.getPrenom() + " " + superviseur.getNom());
 
             // Granularité déterminée une seule fois — transmise au builder pour le format de l'axe X
-            Granularite granularite = determinerGranularite(dateDebut, dateFin);
+            Granularite granularite = GranulariteUtils.determinerDepuisEcart(dateDebut, dateFin);
             context.setGranularite(granularite);
 
             // Récupérer les données pour chaque métrique
@@ -221,38 +219,6 @@ public class RapportGenerationService {
             rapport.setStatutGeneration(StatutGeneration.ECHEC);
             rapportPdfRepository.save(rapport);
             throw new RuntimeException("Erreur lors de la génération du rapport: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Détermine les métriques applicables à un point de mesure.
-     * CABINE → TEMPERATURE + HUMIDITE
-     * ETUVE → TEMPERATURE
-     */
-    private List<Metrique> determinerMetriques(PointMesure pointMesure) {
-        if ("CABINE".equalsIgnoreCase(pointMesure.getTypeEmplacement())) {
-            return List.of(Metrique.TEMPERATURE, Metrique.HUMIDITE);
-        } else if ("ETUVE".equalsIgnoreCase(pointMesure.getTypeEmplacement())) {
-            return List.of(Metrique.TEMPERATURE);
-        } else {
-            throw new IllegalArgumentException("Type d'emplacement non supporté: " + pointMesure.getTypeEmplacement());
-        }
-    }
-
-    /**
-     * Détermine la granularité d'agrégation selon la durée de la période.
-     * Réutilisation de la logique de MesureHistoriqueService.determinerGranularite.
-     */
-    private Granularite determinerGranularite(LocalDateTime dateDebut, LocalDateTime dateFin) {
-        long jours = java.time.temporal.ChronoUnit.DAYS.between(dateDebut, dateFin);
-        if (jours <= 1) {
-            return Granularite.TRENTE_MIN;
-        } else if (jours <= 7) {
-            return Granularite.HORAIRE;
-        } else if (jours <= 31) {
-            return Granularite.JOURNALIERE;
-        } else {
-            return Granularite.MENSUELLE;
         }
     }
 }

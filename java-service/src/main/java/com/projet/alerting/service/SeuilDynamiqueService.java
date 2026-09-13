@@ -3,7 +3,7 @@ package com.projet.alerting.service;
 import com.projet.alerting.dto.SeuilDynamiqueCreateDTO;
 import com.projet.alerting.dto.SeuilDynamiqueResponseDTO;
 import com.projet.alerting.dto.SeuilDynamiqueUpdateDTO;
-import com.projet.alerting.exception.BusinessException;
+import com.projet.config.BusinessException;
 import com.projet.alerting.model.SeuilDynamique;
 import com.projet.alerting.model.enums.Metrique;
 import com.projet.alerting.repository.SeuilDynamiqueRepository;
@@ -45,19 +45,31 @@ public class SeuilDynamiqueService {
     public SeuilDynamiqueResponseDTO creer(SeuilDynamiqueCreateDTO dto, UUID idAdminConnecte) {
         // Valider PointMesure
         PointMesure pm = pointMesureRepository.findById(dto.getIdPointMesure())
-                .orElseThrow(() -> new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new BusinessException(
+                        "POINT_MESURE_INACTIF",
+                        "Le point de mesure (ID " + dto.getIdPointMesure() + ") n'existe pas ou n'est pas actif.",
+                        HttpStatus.BAD_REQUEST));
         if (!pm.isActif() || pm.getDeletedAt() != null) {
-            throw new BusinessException("POINT_MESURE_INACTIF", HttpStatus.BAD_REQUEST);
+            throw new BusinessException(
+                    "POINT_MESURE_INACTIF",
+                    "Le point de mesure (ID " + dto.getIdPointMesure() + ") n'est pas actif.",
+                    HttpStatus.BAD_REQUEST);
         }
 
         // Valider l'unicité
         if (seuilDynamiqueRepository.existsByPointMesureIdAndMetrique(dto.getIdPointMesure(), dto.getMetrique())) {
-            throw new BusinessException("SEUIL_DYNAMIQUE_DEJA_EXISTANT", HttpStatus.BAD_REQUEST);
+            throw new BusinessException(
+                    "SEUIL_DYNAMIQUE_DEJA_EXISTANT",
+                    "Un seuil dynamique existe déjà pour ce point de mesure et cette métrique.",
+                    HttpStatus.BAD_REQUEST);
         }
 
         // Trouver l'admin
         Admin admin = adminRepository.findById(idAdminConnecte)
-                .orElseThrow(() -> new BusinessException("ADMIN_NON_TROUVE", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(
+                        "ADMIN_NON_TROUVE",
+                        "L'administrateur connecté (ID " + idAdminConnecte + ") est introuvable.",
+                        HttpStatus.NOT_FOUND));
 
         // Créer l'entité
         SeuilDynamique seuil = new SeuilDynamique();
@@ -75,7 +87,10 @@ public class SeuilDynamiqueService {
     @Transactional
     public SeuilDynamiqueResponseDTO modifierMarge(UUID id, SeuilDynamiqueUpdateDTO dto) {
         SeuilDynamique seuil = seuilDynamiqueRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("SEUIL_DYNAMIQUE_NON_TROUVE", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(
+                        "SEUIL_DYNAMIQUE_NON_TROUVE",
+                        "Le seuil dynamique (ID " + id + ") est introuvable.",
+                        HttpStatus.NOT_FOUND));
 
         seuil.setMargeConfiguree(dto.getMargeConfiguree());
         seuil.setUpdatedAt(LocalDateTime.now());

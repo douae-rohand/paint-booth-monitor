@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Cpu, History, LayoutDashboard, LogOut, SlidersHorizontal, Users, AlertTriangle, FileText, Shield } from "lucide-react";
+import { Cpu, History, LayoutDashboard, LogOut, SlidersHorizontal, Users, AlertTriangle, FileText, Shield, LineChart } from "lucide-react";
 import { type ReactNode, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { getAlertesActives } from "@/api/alerting";
@@ -7,12 +7,14 @@ import { useDashboardWebSocket } from "@/hooks/useDashboardWebSocket";
 import { useNotifications } from "@/hooks/useNotifications";
 import { BellNotifications } from "@/components/notifications/BellNotifications";
 import { NotificationToast } from "@/components/notifications/NotificationToast";
+import { CoatSenseWidget } from "@/components/chatbot/CoatSenseWidget";
 
 const baseNav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/history", label: "Historique", icon: History },
   { to: "/alertes", label: "Alertes", icon: AlertTriangle },
   { to: "/rapports", label: "Rapports", icon: FileText },
+  { to: "/analyse-fichier", label: "Analyse de fichier", icon: LineChart },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -113,6 +115,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         notification={notificationsHook.dernierePush}
         onDismiss={notificationsHook.acquitterPush}
       />
+
+      {/* Widget Chatbot CoatSense — position fixed bottom-right */}
+      <CoatSenseWidget />
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
