@@ -1,6 +1,6 @@
-# Système de Supervision et Historisation des Températures et de l'Humidité – Cabine de Peinture (S7-1200)
+# Système de Supervision et Historisation des Températures et de l'Humidité - Cabine de Peinture (S7-1200)
 
-**Version 3 — Document mis à jour suite aux échanges de conception sur l'architecture logicielle**
+**Version 3 - Document mis à jour suite aux échanges de conception sur l'architecture logicielle**
 **Projet : PFA (Projet de Fin d'Année)**
 
 ---
@@ -14,15 +14,15 @@
 | Volet IA prédictif | Optionnel/avancé | Confirmé | Confirmé |
 | Rôles utilisateurs | Non détaillé | 2 rôles confirmés | 2 rôles confirmés |
 | Traçabilité des lots | Axe validé initialement | Exclue, remplacée par recherche manuelle | Exclue, remplacée par recherche manuelle |
-| Chatbot RAG | Non mentionné | Ajouté | **Chatbot à appel d'outils (tool calling)** — approche RAG vectoriel abandonnée, module déplacé vers Java (Spring AI) |
+| Chatbot RAG | Non mentionné | Ajouté | **Chatbot à appel d'outils (tool calling)** - approche RAG vectoriel abandonnée, module déplacé vers Java (Spring AI) |
 | KPIs industriels | Non mentionnés | Ajoutés (adaptés) | Ajoutés (adaptés) |
 | Architecture logicielle | Non définie | Backend "à déterminer" | **Architecture polyglotte dès le départ (Python + Java)** |
 | Stratégie de développement | Non définie | Non définie | **Approche directe en microservices distincts** |
-| Canaux de notification | Non définis | Email + WhatsApp + Push | **Email + Web Push (VAPID) + In-App** — WhatsApp abandonné |
-| Configuration destinataires | Table dédiée en base | Table dédiée en base | **Mapping en dur dans le code Java** — table supprimée (V38) |
-| Canal WhatsApp | Prévu | Prévu | **Abandonné** — retiré de l'enum Canal et des contraintes DB (V43) |
-| Audit des actions | Non prévu | Non prévu | **Module audit complet** — 13 actions traçables, consultation Admin |
-| Notifications In-App | Non prévues | Non prévues | **Ajoutées** — WebSocket STOMP, canal IN_APP (V37) |
+| Canaux de notification | Non définis | Email + WhatsApp + Push | **Email + Web Push (VAPID) + In-App** - WhatsApp abandonné |
+| Configuration destinataires | Table dédiée en base | Table dédiée en base | **Mapping en dur dans le code Java** - table supprimée (V38) |
+| Canal WhatsApp | Prévu | Prévu | **Abandonné** - retiré de l'enum Canal et des contraintes DB (V43) |
+| Audit des actions | Non prévu | Non prévu | **Module audit complet** - 13 actions traçables, consultation Admin |
+| Notifications In-App | Non prévues | Non prévues | **Ajoutées** - WebSocket STOMP, canal IN_APP (V37) |
 | Abonnements push navigateur | Non prévus | Non prévus | **Table abonnement_push_navigateur** (V47), protocole VAPID |
 
 ---
@@ -97,7 +97,7 @@ Il est essentiel de distinguer deux niveaux de données :
 1. **Le PLC (DB du S7-1200)** : contient uniquement les valeurs **instantanées**, écrasées à chaque cycle de scan de l'automate. Ce n'est pas une source d'historique.
 2. **WinCC** : historise en théorie les données mesurées dans une base **PostgreSQL** de production, gérée et sécurisée par l'équipe IT/OT de Renault. L'étudiante n'y a pas accès dans le cadre du PFA, ce qui exclut ce scénario d'architecture.
 
-**Scénario retenu — Connexion directe au PLC** : lecture périodique via Snap7 (protocole S7 natif) ou OPC UA, avec historisation gérée entièrement côté application (pas de WinCC intermédiaire), puis stockage dans une base de données dédiée au projet. (dans rapport il n'est pas necessaire de mentionnée cela, cela juste a mon titre d'information)
+**Scénario retenu - Connexion directe au PLC** : lecture périodique via Snap7 (protocole S7 natif) ou OPC UA, avec historisation gérée entièrement côté application (pas de WinCC intermédiaire), puis stockage dans une base de données dédiée au projet. (dans rapport il n'est pas necessaire de mentionnée cela, cela juste a mon titre d'information)
 
 Le choix du protocole de communication : Snap7 decider par le encadrent d'entreprise.
 
@@ -129,11 +129,11 @@ Hérite de tous les droits de l'Utilisateur, plus :
 * Consulter et piloter les résultats du module IA
 * Consulter les logs d'accès et d'audit (journal des 13 actions sensibles : connexions, gestion des comptes, modifications de configuration, exports, rapports)
 
-L'authentification s'applique à l'ensemble des utilisateurs, sans exception — aucun accès anonyme ou public au système.
+L'authentification s'applique à l'ensemble des utilisateurs, sans exception - aucun accès anonyme ou public au système.
 
 ---
 
-## 6. Système de détection d'anomalies — architecture à 3 mécanismes indépendants
+## 6. Système de détection d'anomalies - architecture à 3 mécanismes indépendants
 
 La détection d'anomalies repose sur **trois mécanismes distincts et complémentaires** :
 
@@ -158,11 +158,11 @@ Les trois mécanismes fonctionnent en parallèle, en continu, et génèrent chac
 ## 7. Système d'alertes et de notifications
 
 * Canaux de notification pris en charge : **email, Web Push natif navigateur (protocole VAPID, sans dépendance à un service tiers), notifications in-app (WebSocket STOMP)**
-* Le canal WhatsApp initialement prévu a été abandonné — retiré de l'enum Canal et des contraintes de base de données (migration V43)
-* Les préférences de canal sont gérées en code (mapping en dur par type d'événement) — la table `configuration_destinataire` initialement prévue a été supprimée (migration V38)
+* Le canal WhatsApp initialement prévu a été abandonné - retiré de l'enum Canal et des contraintes de base de données (migration V43)
+* Les préférences de canal sont gérées en code (mapping en dur par type d'événement) - la table `configuration_destinataire` initialement prévue a été supprimée (migration V38)
 * Une alerte est caractérisée par : la métrique concernée, le type (seuil absolu, seuil dynamique, dérive IA), la sévérité (faible, moyenne, critique), un statut (active/résolue)
 * Les notifications couvrent plusieurs types d'événements : alertes créées/résolues, activation de compte superviseur, modification de configuration des seuils
-* Les abonnements Web Push (endpoint + clés de chiffrement du navigateur) sont stockés en base dans la table `abonnement_push_navigateur` — un superviseur peut avoir plusieurs abonnements actifs (plusieurs navigateurs/appareils)
+* Les abonnements Web Push (endpoint + clés de chiffrement du navigateur) sont stockés en base dans la table `abonnement_push_navigateur` - un superviseur peut avoir plusieurs abonnements actifs (plusieurs navigateurs/appareils)
 * Les notifications in-app sont poussées en temps réel via WebSocket STOMP sur le topic `/user/queue/notifications` (personnel par utilisateur)
 
 ---
@@ -171,15 +171,15 @@ Les trois mécanismes fonctionnent en parallèle, en continu, et génèrent chac
 
 Les indicateurs industriels classiques (OEE, MTBF, MTTR) ne sont pas directement applicables : ce système ne supervise pas des pannes d'équipement mais une grandeur physique de process liée à la qualité du produit fini. Les indicateurs ont donc été adaptés et déclinés **par métrique** (température et humidité séparément) :
 
-* **Taux de conformité thermique / hygrométrique** — pourcentage du temps où la métrique est restée dans la plage acceptable sur une période donnée
-* **Temps moyen entre incidents (thermiques / hygrométriques)** — durée moyenne entre deux dépassements de seuil ou dérives détectées
-* **Temps moyen de retour à la normale** — durée moyenne entre le déclenchement d'une alerte et le retour dans la plage normale
+* **Taux de conformité thermique / hygrométrique** - pourcentage du temps où la métrique est restée dans la plage acceptable sur une période donnée
+* **Temps moyen entre incidents (thermiques / hygrométriques)** - durée moyenne entre deux dépassements de seuil ou dérives détectées
+* **Temps moyen de retour à la normale** - durée moyenne entre le déclenchement d'une alerte et le retour dans la plage normale
 
 ---
 
 ## 9. Chatbot à appel d'outils (Tool Calling)
 
-> **Écart assumé par rapport aux versions antérieures de ce document** : la version initiale décrivait un chatbot RAG vectoriel (embeddings pgvector + LangChain, côté service Python). Cette approche a été abandonnée lors de la conception détaillée — la justification principale de placer le chatbot côté Python était l'écosystème LangChain/embeddings, devenue caduque une fois la recherche par similarité vectorielle écartée. Le chatbot est désormais un module Java (Spring AI), exploitant les services métier existants via le mécanisme de tool calling natif des LLMs.
+> **Écart assumé par rapport aux versions antérieures de ce document** : la version initiale décrivait un chatbot RAG vectoriel (embeddings pgvector + LangChain, côté service Python). Cette approche a été abandonnée lors de la conception détaillée - la justification principale de placer le chatbot côté Python était l'écosystème LangChain/embeddings, devenue caduque une fois la recherche par similarité vectorielle écartée. Le chatbot est désormais un module Java (Spring AI), exploitant les services métier existants via le mécanisme de tool calling natif des LLMs.
 
 Le chatbot permet d'interroger en langage naturel l'historique des mesures (température, humidité) et les événements du système (alertes, incidents).
 
@@ -191,7 +191,7 @@ Le chatbot permet d'interroger en langage naturel l'historique des mesures (temp
 4. Le résultat structuré est retourné au LLM, qui formule une réponse en langage naturel.
 
 **Avantages par rapport au RAG vectoriel :**
-- Les données sont déjà exposées par les services Java existants — aucune duplication ni indexation d'embeddings.
+- Les données sont déjà exposées par les services Java existants - aucune duplication ni indexation d'embeddings.
 - Le comportement est déterministe et traçable (appel d'outil explicite, pas de recherche par similarité approximative).
 - Aucune dépendance externe supplémentaire côté Python (LangChain, pgvector).
 
@@ -199,7 +199,7 @@ Le chatbot permet d'interroger en langage naturel l'historique des mesures (temp
 
 ---
 
-## 10. Traçabilité — clarification du périmètre
+## 10. Traçabilité - clarification du périmètre
 
 La traçabilité formelle des lots de production (association automatique entre un lot identifié et ses conditions de température/humidité) est **exclue** du périmètre, en l'absence d'un retour qualité véhicule exploitable côté Renault.
 
@@ -210,16 +210,16 @@ En remplacement, chaque mesure peut être associée à un **identifiant de caiss
 ## 11. Architecture technique retenue (vue d'ensemble)
 
 * **Frontend** : React (TanStack Router, TanStack Query), style neumorphisme avec accent orange/gold
-* **Backend** : Architecture **polyglotte** — voir section 13 pour le détail complet
+* **Backend** : Architecture **polyglotte** - voir section 13 pour le détail complet
 * **Base de données** : PostgreSQL
 * **IA** : Python (scikit-learn)
-* **Chatbot** : Java (Spring AI, tool calling) — [À COMPLÉTER : provider LLM choisi]
+* **Chatbot** : Java (Spring AI, tool calling) - [À COMPLÉTER : provider LLM choisi]
 * **Conteneurisation** : Docker / docker-compose
 * **Intégration continue** : GitHub Actions
 * **Connexion PLC** : Snap7
 * **Stockage fichiers** : MinIO (stockage objet S3-compatible pour les rapports PDF générés)
 * **Authentification** : JWT (access token HttpOnly cookie 15 min + refresh token 7 jours avec rotation)
-* **Notifications push** : Web Push natif (protocole VAPID, clés ECDSA P-256, bibliothèque `nl.martijndwars:web-push`) — sans dépendance Firebase/FCM
+* **Notifications push** : Web Push natif (protocole VAPID, clés ECDSA P-256, bibliothèque `nl.martijndwars:web-push`) - sans dépendance Firebase/FCM
 * **Migrations base de données** : Flyway (47 migrations au total)
 * **Gestion de projet** : à déterminer
 
@@ -242,14 +242,14 @@ En remplacement, chaque mesure peut être associée à un **identifiant de caiss
 
 ---
 
-## 13. Architecture logicielle détaillée — approche polyglotte
+## 13. Architecture logicielle détaillée - approche polyglotte
 
 ### 13.1 Principe et justification
 
 Le backend est réparti sur **deux services** répartis par affinité technique plutôt que par découpage arbitraire, chacun exploitant l'écosystème le plus mature pour sa responsabilité :
 
-* **Service "Data & Intelligence" (Python / FastAPI)** — tout ce qui touche au matériel et à l'intelligence artificielle
-* **Service "Business & Access" (Java / Spring Boot)** — tout ce qui touche à l'utilisateur et à la logique métier/accès
+* **Service "Data & Intelligence" (Python / FastAPI)** - tout ce qui touche au matériel et à l'intelligence artificielle
+* **Service "Business & Access" (Java / Spring Boot)** - tout ce qui touche à l'utilisateur et à la logique métier/accès
 
 Ce découpage reflète des patterns réels observés dans l'industrie (agent de collecte/IA en Python côté edge, couche applicative en Java/C# côté business), notamment dans des contextes industriels comparables au périmètre Renault de ce projet.
 
@@ -257,7 +257,7 @@ Ce découpage reflète des patterns réels observés dans l'industrie (agent de 
 
 Le service Java est le **point d'entrée unique** du système : le frontend ne communique jamais directement avec le service Python.
 
-> **Écart assumé par rapport aux versions antérieures** : le schéma initial représentait le chatbot comme relayé de Java vers Python (via appel REST interne). Ce flux a été supprimé — le chatbot (tool calling) est désormais entièrement géré par Java via Spring AI, sans aller-retour vers Python.
+> **Écart assumé par rapport aux versions antérieures** : le schéma initial représentait le chatbot comme relayé de Java vers Python (via appel REST interne). Ce flux a été supprimé - le chatbot (tool calling) est désormais entièrement géré par Java via Spring AI, sans aller-retour vers Python.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -267,7 +267,7 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
                          │ (SEUL point d'entrée du système)
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│    Service Java / Spring Boot — "Business & Access"            │
+│    Service Java / Spring Boot - "Business & Access"           │
 │    (API Gateway du système)                                     │
 │  • Authentification & rôles (Spring Security + JWT)             │
 │  • Configuration des seuils par l'Admin (écrit en base)         │
@@ -288,9 +288,9 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
        │                                            │ lit/écrit  │
        ▼                                            │       │
 ┌─────────────────────────────────────────────────────────────┐
-│    Service Python / FastAPI — "Data & Intelligence"           │
+│    Service Python / FastAPI - "Data & Intelligence"           │
 │    (jamais exposé directement au frontend)                     │
-│  • Lecture PLC (Snap7) — polling périodique                     │
+│  • Lecture PLC (Snap7) - polling périodique                     │
 │  • Écriture des mesures en base                                 │
 │  • Calcul des seuils absolus et dynamiques (au fil de l'eau)     │
 │  • Isolation Forest / régression (module IA)                     │
@@ -302,7 +302,7 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 **Les deux flux de communication à bien distinguer :**
 
 * **Flux "action utilisateur"** (synchrone, initié par le frontend) : `Frontend → Java (vérifie l'auth/les droits) → Frontend`. Pour les prédictions IA à la demande : `Frontend → Java → Python (calcule/répond) → Java → Frontend`. Le chatbot est traité entièrement dans Java (tool calling).
-* **Flux "collecte de données"** (asynchrone, initié en continu par Python, indépendant du frontend) : `PLC → Python (lit, écrit en base, calcule les seuils) → NOTIFY PostgreSQL → Java (LISTEN, déclenche les notifications)`. Python ne parle jamais directement au frontend ni à Java dans ce flux — tout passe par la base de données.
+* **Flux "collecte de données"** (asynchrone, initié en continu par Python, indépendant du frontend) : `PLC → Python (lit, écrit en base, calcule les seuils) → NOTIFY PostgreSQL → Java (LISTEN, déclenche les notifications)`. Python ne parle jamais directement au frontend ni à Java dans ce flux - tout passe par la base de données.
 
 ### 13.3 Répartition détaillée des responsabilités
 
@@ -315,9 +315,9 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 | Chatbot (tool calling, Spring AI) | **Java** | Données déjà exposées par les services Java existants ; Java déjà point d'entrée unique ; plus de justification technique pour Python une fois LangChain/embeddings écartés. _Écart assumé : anciennement attribué à Python (RAG vectoriel)._ |
 | Authentification & rôles | Java | Spring Security offre une gestion de rôles plus fine et mature |
 | Configuration des seuils (côté Admin) | Java | Fonction d'administration, cohérente avec le reste des CRUD |
-| Notifications multicanal | Java | Logique métier de dispatch, indépendante de la donnée brute — canaux : EMAIL, Web Push (VAPID), IN_APP (WebSocket) |
-| KPIs | Java | Requêtes agrégées orientées reporting/présentation — filtrées par point de mesure, métrique et période |
-| Export CSV/Excel, rapport PDF | Java | Fonctions orientées utilisateur final — stockage des PDF sur MinIO |
+| Notifications multicanal | Java | Logique métier de dispatch, indépendante de la donnée brute - canaux : EMAIL, Web Push (VAPID), IN_APP (WebSocket) |
+| KPIs | Java | Requêtes agrégées orientées reporting/présentation - filtrées par point de mesure, métrique et période |
+| Export CSV/Excel, rapport PDF | Java | Fonctions orientées utilisateur final - stockage des PDF sur MinIO |
 | Audit des actions sensibles | Java | 13 actions traçables (connexions, gestion comptes, exports, rapports, configurations) |
 | API Gateway vers le frontend | Java | Point d'entrée unique pour l'authentification et les WebSockets |
 

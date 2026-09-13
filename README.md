@@ -359,4 +359,5 @@ Cette approche permet de valider rapidement une chaîne bout en bout (connexion,
 
 ## Licence
 
-Projet académique - Projet de Fin d'Année (PFA). Usage réservé au cadre pédagogique et au contexte industriel du projet.
+Ce projet est distribué sous la licence [MIT](LICENSE). Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
