@@ -344,7 +344,7 @@ Compte tenu d'une durée contrainte (environ 8 semaines) et d'un développement 
 3. **Java ↔ Python** - contrat REST interne, proxy gateway, LISTEN/NOTIFY pour les alertes temps réel.
 4. **Fonctionnalités avancées** - collecte PLC, IA, KPIs, rapports, CI/CD.
 
-Cette approche permet de valider rapidement une chaîne bout en bout (connexion, JWT, route protégée) tout en conservant la séparation des responsabilités dès le départ. Le détail des priorités est documenté dans `architecture_polyglotte_priorites.md`.
+Cette approche permet de valider rapidement une chaîne bout en bout (connexion, JWT, route protégée) tout en conservant la séparation des responsabilités dès le départ.
 
 ---
 
@@ -352,8 +352,8 @@ Cette approche permet de valider rapidement une chaîne bout en bout (connexion,
 
 | Document | Contenu |
 |---|---|
-| [`Cahier_des_charges_v3.md`](Cahier_des_charges_v3.md) | Spécifications fonctionnelles complètes (v3) |
-| [`architecture_polyglotte_priorites.md`](architecture_polyglotte_priorites.md) | Hiérarchie du code et plan de développement priorisé |
+| [`Cahier_des_charges.md`](Cahier_des_charges.md) | Spécifications fonctionnelles complètes |
+| [`GUIDE_INSTALLATION.md`](GUIDE_INSTALLATION.md) | Guide d'installation et de déploiement |
 
 ---
 
