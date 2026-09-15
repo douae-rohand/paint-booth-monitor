@@ -90,6 +90,17 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- Testcontainers — infrastructure de test d'intégration -->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<!-- Apache Commons CSV pour l'export CSV -->
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -148,6 +159,14 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<!-- Testcontainers BOM — version unique pour tous les modules Testcontainers -->
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>1.21.2</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
@@ -167,6 +186,51 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<!--
+				maven-surefire-plugin : exécute uniquement les tests unitaires (*Test.java).
+				Les tests d'intégration (*IT.java) sont exclus ici et pris en charge par failsafe.
+			-->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<includes>
+						<include>**/*Test.java</include>
+					</includes>
+					<excludes>
+						<exclude>**/*IT.java</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+			<!--
+				maven-failsafe-plugin : exécute uniquement les tests d'intégration (*IT.java)
+				aux phases integration-test et verify (mvn verify).
+				Les tests unitaires (*Test.java) sont exclus ici.
+			-->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<configuration>
+					<includes>
+						<include>**/*IT.java</include>
+					</includes>
+					<excludes>
+						<exclude>**/*Test.java</exclude>
+					</excludes>
+					<systemPropertyVariables>
+						<!-- Contournement compatibilité Testcontainers / Docker Desktop sur Windows -->
+						<DOCKER_API_VERSION>1.55</DOCKER_API_VERSION>
+					</systemPropertyVariables>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

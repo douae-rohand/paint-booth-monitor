@@ -1,0 +1,87 @@
+# Profil de test — utilisé exclusivement par les tests automatisés.
+#
+# Les valeurs de datasource (URL, user, password) sont intentionnellement laissées
+# vides ici : elles sont injectées dynamiquement par AbstractIntegrationTest via
+# @DynamicPropertySource à partir du conteneur PostgreSQL Testcontainers.
+#
+# Toutes les autres variables qui n'ont pas de valeur par défaut dans application.yml
+# reçoivent ici des valeurs factices suffisantes pour démarrer le contexte Spring.
+
+spring:
+  config:
+    # Ne pas tenter d'importer le fichier .env en contexte de test
+    import: ""
+
+  datasource:
+    # URL/user/password injectés par @DynamicPropertySource dans AbstractIntegrationTest
+    url: ""
+    username: ""
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  ai:
+    openai:
+      base-url: https://integrate.api.nvidia.com
+      api-key: nvapi-test-dummy-key
+      chat:
+        options:
+          model: openai/gpt-oss-20b
+
+# JWT — clé factice de 64 caractères base64 (longueur suffisante pour HS512)
+jwt:
+  secret: dGVzdC1zZWNyZXQtY2xleS10ZXN0LXNlY3JldC1jbGV5LXRlc3Qtc2VjcmV0LWNsZXktdGVzdA==
+  expiration: 86400000
+
+# SendGrid — clé factice (aucun email réel envoyé en test)
+sendgrid:
+  api-key: SG.test-dummy-api-key-for-tests-only
+  sender-email: test@test.invalid
+  sender-name: Test Suite
+
+# Worker email — désactivé en test (cron impossible à déclencher = jamais)
+email:
+  worker:
+    batch-size: 20
+    max-tentatives: 5
+    cron: "0 0 3 1 1 ?"    # 1er janvier à 3h du matin — ne se déclenchera jamais en test
+
+# MinIO — endpoint factice (aucun upload réel en test)
+minio:
+  endpoint: http://localhost:9999
+  access-key: test-access-key
+  secret-key: test-secret-key
+  bucket: test-rapports
+
+# VAPID — clés factices (aucune notification push réelle en test)
+# Format : clés P-256 base64url valides structurellement (65 et 32 octets)
+vapid:
+  public-key: BH-nHknLiq_JHW-JEIaWPdcz_DuISrT6bTW6cP3fzjyNYaG1yLSuvgzbHYk-XvShYtAam-9X1N7G3nXTV_4zzr4
+  private-key: o89JFPpDymxO1R-10GVTo79OCV6QCV_s2ga3UvGn45I
+  subject: mailto:test@test.invalid
+
+app:
+  frontend-url: http://localhost:5173
+  auth:
+    reset-token-expiration-minutes: 15
+    activation-token-expiration-hours: 24
+  security:
+    secure-cookie: false
+  cors:
+    allowed-origins: http://localhost:5173
+  admin:
+    initial-email: admin@test.invalid
+    initial-password: TestPassword123!
+
+python-service:
+  url: http://localhost:8000
