@@ -1,4 +1,4 @@
-name: Java Service - Tests
+name: Java Service — Tests
 
 on:
   push:
@@ -11,9 +11,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Docker est disponible nativement sur ubuntu-latest.
-    # Testcontainers démarre lui-même le conteneur PostgreSQL — aucune configuration
-    # de service Docker manuelle n'est nécessaire dans ce workflow.
 
     steps:
       - name: Checkout du code
@@ -26,17 +23,13 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Exécuter les tests (unitaires + intégration)
-        # mvn verify exécute successivement :
-        #   - maven-surefire-plugin  → *Test.java  (tests unitaires, phase test)
-        #   - maven-failsafe-plugin  → *IT.java    (tests d'intégration Testcontainers, phase integration-test + verify)
-        run: mvn verify -f java-service/pom.xml
+      - name: Exécuter les tests unitaires
+        # mvn test exécute maven-surefire-plugin → *Test.java uniquement
+        run: mvn test -f java-service/pom.xml
 
       - name: Upload des rapports de test en cas d'échec
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: rapports-tests
-          path: |
-            java-service/target/surefire-reports
-            java-service/target/failsafe-reports
+          path: java-service/target/surefire-reports

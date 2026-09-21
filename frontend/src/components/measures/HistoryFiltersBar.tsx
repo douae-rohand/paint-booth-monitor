@@ -1,4 +1,4 @@
-import { AlertTriangle, Calendar as CalendarIcon, Search } from "lucide-react";
+import { AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,8 +13,6 @@ export type Zone = "Zone 1" | "Zone 2" | "Zone 3" | "Zone 4" | "Zone 5";
 export const ZONES: Zone[] = ["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5"];
 
 export interface HistoryFiltersProps {
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
   dateMode: "exact" | "range";
   onDateModeChange: (mode: "exact" | "range") => void;
   exactDate: Date | undefined;
@@ -30,8 +28,6 @@ export interface HistoryFiltersProps {
 }
 
 export function HistoryFiltersBar({
-  searchQuery,
-  onSearchChange,
   dateMode,
   onDateModeChange,
   exactDate,
@@ -46,30 +42,8 @@ export function HistoryFiltersBar({
   showZoneFilter = false,
 }: HistoryFiltersProps) {
   return (
-    <div className="space-y-4">
-      {/* Row 1: Search + Only Exceed Toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        {/* Caisse ID Search */}
-        <div className="neu-inset flex flex-1 max-w-md items-center gap-2 px-4 h-10 rounded-2xl">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Rechercher une caisse par son ID (ex: CAT-0003)..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full border-0 bg-transparent p-0 text-sm outline-none placeholder:text-muted-foreground focus:ring-0"
-          />
-        </div>
-
-        {/* Only exceed */}
-        <div className="neu-pressable flex items-center gap-3 rounded-2xl px-4 h-10">
-          <AlertTriangle className="h-4 w-4 text-[color:var(--danger)]" />
-          <span className="text-xs font-semibold">Seulement les dépassements</span>
-          <Switch checked={onlyExceed} onCheckedChange={onOnlyExceedChange} />
-        </div>
-      </div>
-
-      {/* Row 2: Date Filters + Zone Filter */}
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Gauche : filtres de date (mode + picker + reset + zone) */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Mode toggle */}
         <div className="neu-inset flex gap-1 rounded-2xl p-1 h-10 items-center">
@@ -162,6 +136,13 @@ export function HistoryFiltersBar({
             </Select>
           </div>
         )}
+      </div>
+
+      {/* Droite : toggle dépassements */}
+      <div className="neu-pressable flex items-center gap-3 rounded-2xl px-4 h-10 shrink-0">
+        <AlertTriangle className="h-4 w-4 text-[color:var(--danger)]" />
+        <span className="text-xs font-semibold">Seulement les dépassements</span>
+        <Switch checked={onlyExceed} onCheckedChange={onOnlyExceedChange} />
       </div>
     </div>
   );

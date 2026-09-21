@@ -35,7 +35,7 @@ spring:
       api-key: ${NVIDIA_API_KEY:nvapi-dummy-key}
       chat:
         options:
-          model: ${SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL:openai/gpt-oss-20b}
+          model: ${SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL:nvidia/nemotron-3.5-lightning-30b-a3b}
 
 python-service:
   url: ${PYTHON_SERVICE_URL:http://localhost:8000}

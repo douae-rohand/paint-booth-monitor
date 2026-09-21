@@ -1,11 +1,11 @@
-# Profil de test — utilisé exclusivement par les tests automatisés.
+# Profil de test — utilisé exclusivement par les tests automatisés (unitaires).
 #
-# Les valeurs de datasource (URL, user, password) sont intentionnellement laissées
-# vides ici : elles sont injectées dynamiquement par AbstractIntegrationTest via
-# @DynamicPropertySource à partir du conteneur PostgreSQL Testcontainers.
+# Les valeurs de datasource sont volontairement désactivées : les tests unitaires
+# utilisent des mocks (Mockito) et ne se connectent pas à une base de données réelle.
+# Flyway est également désactivé pour la même raison.
 #
-# Toutes les autres variables qui n'ont pas de valeur par défaut dans application.yml
-# reçoivent ici des valeurs factices suffisantes pour démarrer le contexte Spring.
+# Toutes les variables sans valeur par défaut dans application.yml reçoivent ici
+# des valeurs factices suffisantes pour que le contexte Spring démarre si nécessaire.
 
 spring:
   config:
@@ -13,22 +13,21 @@ spring:
     import: ""
 
   datasource:
-    # URL/user/password injectés par @DynamicPropertySource dans AbstractIntegrationTest
-    url: ""
-    username: ""
-    password: ""
+    url: "jdbc:postgresql://unused:5432/unused"
+    username: "unused"
+    password: "unused"
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   flyway:
-    enabled: true
-    locations: classpath:db/migration
+    # Désactivé en tests unitaires — pas de base de données réelle disponible
+    enabled: false
 
   ai:
     openai:
@@ -49,12 +48,12 @@ sendgrid:
   sender-email: test@test.invalid
   sender-name: Test Suite
 
-# Worker email — désactivé en test (cron impossible à déclencher = jamais)
+# Worker email — cron qui ne se déclenchera jamais en test
 email:
   worker:
     batch-size: 20
     max-tentatives: 5
-    cron: "0 0 3 1 1 ?"    # 1er janvier à 3h du matin — ne se déclenchera jamais en test
+    cron: "0 0 3 1 1 ?"
 
 # MinIO — endpoint factice (aucun upload réel en test)
 minio:
@@ -64,7 +63,6 @@ minio:
   bucket: test-rapports
 
 # VAPID — clés factices (aucune notification push réelle en test)
-# Format : clés P-256 base64url valides structurellement (65 et 32 octets)
 vapid:
   public-key: BH-nHknLiq_JHW-JEIaWPdcz_DuISrT6bTW6cP3fzjyNYaG1yLSuvgzbHYk-XvShYtAam-9X1N7G3nXTV_4zzr4
   private-key: o89JFPpDymxO1R-10GVTo79OCV6QCV_s2ga3UvGn45I

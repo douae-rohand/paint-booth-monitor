@@ -82,7 +82,6 @@ export function HistoryTable({
               <tr className="text-left">
                 <Th>Date</Th>
                 <Th>Heure</Th>
-                <Th>Caisse ID</Th>
                 {typePoint === "ETUVE" && <Th>Zone</Th>}
                 <Th>{METRIC_LABELS.TEMPERATURE}</Th>
                 {typePoint === "CABINE" && <Th>{METRIC_LABELS.HUMIDITE}</Th>}
@@ -198,10 +197,6 @@ function Row({ row, typePoint, striped }: { row: MesureCabineDTO | MesureEtuveDT
     : (row as MesureEtuveDTO).dateMesure;
   
   const date = new Date(dateStr);
-  const caisseId = typePoint === "CABINE" 
-    ? (row as MesureCabineDTO).caisseId 
-    : null;
-  
   const zone = typePoint === "ETUVE" 
     ? (row as MesureEtuveDTO).zone 
     : null;
@@ -234,9 +229,6 @@ function Row({ row, typePoint, striped }: { row: MesureCabineDTO | MesureEtuveDT
       </td>
       <td className="px-5 py-3.5 text-muted-foreground">
         {formatHeureAvecMillisecondes(date)}
-      </td>
-      <td className="px-5 py-3.5 font-mono text-xs text-muted-foreground/80">
-        {caisseId ?? "—"}
       </td>
       {typePoint === "ETUVE" && zone && (
         <td className="px-5 py-3.5">
