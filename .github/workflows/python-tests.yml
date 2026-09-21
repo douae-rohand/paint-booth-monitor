@@ -1,0 +1,40 @@
+name: Python Service - Tests
+
+on:
+  push:
+    paths:
+      - 'python-service/**'
+  pull_request:
+    paths:
+      - 'python-service/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_SERVICE_DB_USER: test_user
+      PYTHON_SERVICE_DB_PASSWORD: test_password
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: '5432'
+      POSTGRES_DB: test_db
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: 'python-service/requirements*.txt'
+
+      - name: Installer les dépendances
+        run: |
+          cd python-service
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Exécuter les tests unitaires
+        run: |
+          cd python-service
+          pytest -v

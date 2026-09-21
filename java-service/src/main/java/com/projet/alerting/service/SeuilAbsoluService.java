@@ -45,17 +45,11 @@ public class SeuilAbsoluService {
     @Transactional
     public SeuilAbsoluResponseDTO creer(SeuilAbsoluCreateDTO dto, UUID idAdminConnecte) {
         // Valider PointMesure
-        PointMesure pm = pointMesureRepository.findById(dto.getIdPointMesure())
+        PointMesure pm = pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(dto.getIdPointMesure())
                 .orElseThrow(() -> new BusinessException(
                         "POINT_MESURE_INACTIF",
                         "Le point de mesure (ID " + dto.getIdPointMesure() + ") n'existe pas ou n'est pas actif.",
                         HttpStatus.BAD_REQUEST));
-        if (!pm.isActif() || pm.getDeletedAt() != null) {
-            throw new BusinessException(
-                    "POINT_MESURE_INACTIF",
-                    "Le point de mesure (ID " + dto.getIdPointMesure() + ") n'est pas actif.",
-                    HttpStatus.BAD_REQUEST);
-        }
 
         // Valider valeurMin < valeurMax
         if (dto.getValeurMin() == null || dto.getValeurMax() == null ||

@@ -53,14 +53,23 @@ public class AlerteStatsService {
         // Récupérer toutes les alertes de la période
         List<Alerte> alertes = alerteRepository.findByCreatedAtBetween(dateDebut, dateFin);
 
+        // Récupérer en une seule requête toutes les mesures associées (élimination N+1)
+        List<UUID> mesureIds = alertes.stream()
+                .map(Alerte::getIdMesure)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<UUID, Mesure> mesuresMap = mesureIds.isEmpty() ? Collections.emptyMap() :
+                mesureRepository.findAllById(mesureIds).stream()
+                        .collect(Collectors.toMap(Mesure::getIdMesure, m -> m));
+
         // Filtrer par point de mesure si fourni
         if (idPointMesure != null) {
             alertes = alertes.stream()
                     .filter(a -> {
-                        // Nécessite jointure avec Mesure pour filtrer par pointMesure
-                        // Pour simplifier, on récupère la mesure liée
-                        Mesure mesure = mesureRepository.findById(a.getIdMesure()).orElse(null);
-                        return mesure != null && mesure.getPointMesure().getId().equals(idPointMesure);
+                        Mesure mesure = mesuresMap.get(a.getIdMesure());
+                        return mesure != null && mesure.getPointMesure() != null && idPointMesure.equals(mesure.getPointMesure().getId());
                     })
                     .collect(Collectors.toList());
         }
@@ -69,8 +78,8 @@ public class AlerteStatsService {
         Map<String, Long> groupedCount = alertes.stream()
                 .collect(Collectors.groupingBy(
                         a -> {
-                            Mesure mesure = mesureRepository.findById(a.getIdMesure()).orElse(null);
-                            if (mesure == null) return "unknown";
+                            Mesure mesure = mesuresMap.get(a.getIdMesure());
+                            if (mesure == null || mesure.getPointMesure() == null) return "unknown";
                             return mesure.getPointMesure().getId() + "_" + a.getMetrique();
                         },
                         Collectors.counting()
@@ -125,12 +134,23 @@ public class AlerteStatsService {
         List<Alerte> alertes = alerteRepository.findByTypeAlerteAndCreatedAtBetween(
                 TypeAlerte.SEUIL_ABSOLU, dateDebut, dateFin);
 
+        // Récupérer en une seule requête toutes les mesures associées (élimination N+1)
+        List<UUID> mesureIds = alertes.stream()
+                .map(Alerte::getIdMesure)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<UUID, Mesure> mesuresMap = mesureIds.isEmpty() ? Collections.emptyMap() :
+                mesureRepository.findAllById(mesureIds).stream()
+                        .collect(Collectors.toMap(Mesure::getIdMesure, m -> m));
+
         // Filtrer par point et métrique si fournis
         if (idPointMesure != null || metrique != null) {
             alertes = alertes.stream()
                     .filter(a -> {
-                        Mesure mesure = mesureRepository.findById(a.getIdMesure()).orElse(null);
-                        if (mesure == null) return false;
+                        Mesure mesure = mesuresMap.get(a.getIdMesure());
+                        if (mesure == null || mesure.getPointMesure() == null) return false;
                         if (idPointMesure != null && !mesure.getPointMesure().getId().equals(idPointMesure)) {
                             return false;
                         }
@@ -176,12 +196,23 @@ public class AlerteStatsService {
         // Récupérer les alertes SEUIL_ABSOLU du jour
         List<Alerte> alertes = alerteRepository.findByTypeAlerteAndCreatedAtBetween(TypeAlerte.SEUIL_ABSOLU, dateDebut, dateFin);
 
+        // Récupérer en une seule requête toutes les mesures associées (élimination N+1)
+        List<UUID> mesureIds = alertes.stream()
+                .map(Alerte::getIdMesure)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<UUID, Mesure> mesuresMap = mesureIds.isEmpty() ? Collections.emptyMap() :
+                mesureRepository.findAllById(mesureIds).stream()
+                        .collect(Collectors.toMap(Mesure::getIdMesure, m -> m));
+
         // Filtrer par point de mesure et/ou métrique si fournis
         if (idPointMesure != null || metrique != null) {
             alertes = alertes.stream()
                     .filter(a -> {
-                        Mesure mesure = mesureRepository.findById(a.getIdMesure()).orElse(null);
-                        if (mesure == null) return false;
+                        Mesure mesure = mesuresMap.get(a.getIdMesure());
+                        if (mesure == null || mesure.getPointMesure() == null) return false;
                         if (idPointMesure != null && !mesure.getPointMesure().getId().equals(idPointMesure)) {
                             return false;
                         }
@@ -199,8 +230,8 @@ public class AlerteStatsService {
         Map<String, DetailJourAlertesDTO.DetailAlerteDTO> groupedDetails = new HashMap<>();
 
         for (Alerte alerte : alertes) {
-            Mesure mesure = mesureRepository.findById(alerte.getIdMesure()).orElse(null);
-            if (mesure == null) continue;
+            Mesure mesure = mesuresMap.get(alerte.getIdMesure());
+            if (mesure == null || mesure.getPointMesure() == null) continue;
 
             String key = mesure.getPointMesure().getId() + "_" + alerte.getMetrique();
 
@@ -213,12 +244,9 @@ public class AlerteStatsService {
                 dto.setNombreDepassements(1L);
                 dto.setValeurMaxAtteinte(mesure.getValeur());
 
-                // Récupérer le seuil configuré (approximation : seuil actuellement actif)
-                // Note: Dans une implémentation idéale, on récupérerait le seuil au moment de l'alerte
-                // en comparant date_creation avec date_activation/date_desactivation du SeuilAbsolu
-                SeuilAbsolu seuilAbsolu = seuilAbsoluRepository
-                        .findByPointMesureIdAndMetriqueAndActifTrue(mesure.getPointMesure().getId(), alerte.getMetrique())
-                        .orElse(null);
+                // Récupérer le seuil réellement actif AU MOMENT DE L'ALERTE (fenêtre temporelle historisée)
+                LocalDateTime horodatageAlerte = alerte.getCreatedAt() != null ? alerte.getCreatedAt() : mesure.getCreatedAt();
+                SeuilAbsolu seuilAbsolu = findSeuilActifAuMoment(mesure.getPointMesure().getId(), alerte.getMetrique(), horodatageAlerte);
 
                 if (seuilAbsolu != null) {
                     DetailJourAlertesDTO.SeuilConfigureDTO seuilDTO = new DetailJourAlertesDTO.SeuilConfigureDTO();
@@ -242,5 +270,19 @@ public class AlerteStatsService {
         List<DetailJourAlertesDTO.DetailAlerteDTO> details = new ArrayList<>(groupedDetails.values());
 
         return new DetailJourAlertesDTO(date, nombreTotal, details);
+    }
+
+    /**
+     * Recherche le SeuilAbsolu actif au moment précis de l'alerte.
+     * En cas d'absence d'historique temporel pour cet horodatage, repli sur le seuil actuellement actif.
+     */
+    private SeuilAbsolu findSeuilActifAuMoment(Long pointMesureId, Metrique metrique, LocalDateTime timestamp) {
+        if (timestamp != null) {
+            List<SeuilAbsolu> seuils = seuilAbsoluRepository.findSeuilAtTimestamp(pointMesureId, metrique, timestamp);
+            if (!seuils.isEmpty()) {
+                return seuils.get(0);
+            }
+        }
+        return seuilAbsoluRepository.findByPointMesureIdAndMetriqueAndActifTrue(pointMesureId, metrique).orElse(null);
     }
 }

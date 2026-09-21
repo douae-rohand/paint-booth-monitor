@@ -229,7 +229,6 @@ export function AlertesHistoryTable() {
                 <SelectItem value="">Tous</SelectItem>
                 <SelectItem value="SEUIL_ABSOLU">Seuil absolu</SelectItem>
                 <SelectItem value="SEUIL_DYNAMIQUE">Seuil dynamique</SelectItem>
-                <SelectItem value="DERIVE_IA">Dérive IA</SelectItem>
               </SelectContent>
             </Select>
           </div>

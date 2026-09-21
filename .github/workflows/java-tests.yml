@@ -1,0 +1,35 @@
+name: Java Service - Tests
+
+on:
+  push:
+    paths:
+      - 'java-service/**'
+  pull_request:
+    paths:
+      - 'java-service/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 21 Temurin
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Exécuter les tests unitaires
+        # mvn test exécute maven-surefire-plugin → *Test.java uniquement
+        run: mvn test -f java-service/pom.xml
+
+      - name: Upload des rapports de test en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapports-tests
+          path: java-service/target/surefire-reports

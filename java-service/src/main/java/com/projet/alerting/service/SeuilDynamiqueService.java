@@ -44,17 +44,11 @@ public class SeuilDynamiqueService {
     @Transactional
     public SeuilDynamiqueResponseDTO creer(SeuilDynamiqueCreateDTO dto, UUID idAdminConnecte) {
         // Valider PointMesure
-        PointMesure pm = pointMesureRepository.findById(dto.getIdPointMesure())
+        PointMesure pm = pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(dto.getIdPointMesure())
                 .orElseThrow(() -> new BusinessException(
                         "POINT_MESURE_INACTIF",
                         "Le point de mesure (ID " + dto.getIdPointMesure() + ") n'existe pas ou n'est pas actif.",
                         HttpStatus.BAD_REQUEST));
-        if (!pm.isActif() || pm.getDeletedAt() != null) {
-            throw new BusinessException(
-                    "POINT_MESURE_INACTIF",
-                    "Le point de mesure (ID " + dto.getIdPointMesure() + ") n'est pas actif.",
-                    HttpStatus.BAD_REQUEST);
-        }
 
         // Valider l'unicité
         if (seuilDynamiqueRepository.existsByPointMesureIdAndMetrique(dto.getIdPointMesure(), dto.getMetrique())) {
@@ -108,7 +102,10 @@ public class SeuilDynamiqueService {
     public SeuilDynamiqueResponseDTO get(Long pointMesureId, Metrique metrique) {
         return seuilDynamiqueRepository.findByPointMesureIdAndMetrique(pointMesureId, metrique)
                 .map(this::mapToResponseDTO)
-                .orElse(null);
+                .orElseThrow(() -> new BusinessException(
+                        "SEUIL_DYNAMIQUE_NON_TROUVE",
+                        "Aucun seuil dynamique configuré pour ce point de mesure et cette métrique.",
+                        HttpStatus.NOT_FOUND));
     }
 
     private SeuilDynamiqueResponseDTO mapToResponseDTO(SeuilDynamique seuil) {

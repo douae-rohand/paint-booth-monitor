@@ -59,6 +59,42 @@ public class AlerteConsultationService {
         // Valider la cohérence de la plage de dates (optionnelle, mais ordonnée si fournie)
         MetierValidation.validerPlageDatesOptionnelles(dateDebut, dateFin);
 
+        // Valider les filtres enum optionnels — une valeur fournie mais hors enum → 400 explicite
+        // plutôt qu'un résultat vide silencieux avec HTTP 200
+        if (statut != null) {
+            try {
+                StatutAlerte.valueOf(statut);
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(
+                        "FILTRE_ALERTE_INVALIDE",
+                        "Valeur invalide pour le filtre 'statut' : \"" + statut + "\". "
+                                + "Valeurs acceptées : ACTIVE, RESOLUE.",
+                        HttpStatus.BAD_REQUEST);
+            }
+        }
+        if (typeAlerte != null) {
+            try {
+                TypeAlerte.valueOf(typeAlerte);
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(
+                        "FILTRE_ALERTE_INVALIDE",
+                        "Valeur invalide pour le filtre 'typeAlerte' : \"" + typeAlerte + "\". "
+                                + "Valeurs acceptées : SEUIL_ABSOLU, SEUIL_DYNAMIQUE, DERIVE_IA.",
+                        HttpStatus.BAD_REQUEST);
+            }
+        }
+        if (severite != null) {
+            try {
+                Severite.valueOf(severite);
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(
+                        "FILTRE_ALERTE_INVALIDE",
+                        "Valeur invalide pour le filtre 'severite' : \"" + severite + "\". "
+                                + "Valeurs acceptées : FAIBLE, MOYENNE, CRITIQUE.",
+                        HttpStatus.BAD_REQUEST);
+            }
+        }
+
         // Si idPointMesure est fourni, valider qu'il correspond à un point existant, actif et non supprimé
         if (idPointMesure != null) {
             pointMesureRepository.findByIdAndActifTrueAndDeletedAtIsNull(idPointMesure)

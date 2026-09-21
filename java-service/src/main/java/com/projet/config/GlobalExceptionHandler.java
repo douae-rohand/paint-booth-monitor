@@ -8,10 +8,15 @@ import com.projet.auth.exception.SuperviseurNonTrouveException;
 import com.projet.auth.exception.TokenInvalideOuExpireException;
 import com.projet.auth.exception.CompteNonActiveException;
 import com.projet.config.exception.ConfigurationPLCNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AccountExpiredException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.CredentialsExpiredException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -29,6 +34,53 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ApiErrorResponse(401, "Invalid username or password"));
+    }
+
+    /**
+     * Compte désactivé par un administrateur (Superviseur.actif = false).
+     * isEnabled() et isAccountNonLocked() retournent false → DaoAuthenticationProvider
+     * lève DisabledException avant LockedException.
+     */
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiErrorResponse> handleDisabled(DisabledException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiErrorResponse(401, "COMPTE_DESACTIVE",
+                        "Votre compte a été désactivé. Contactez un administrateur."));
+    }
+
+    /**
+     * Compte verrouillé (isAccountNonLocked() = false).
+     * Actuellement même origine que DisabledException (actif = false),
+     * traité séparément pour couvrir un futur mécanisme de verrouillage distinct
+     * (ex. tentatives d'échec répétées).
+     */
+    @ExceptionHandler(LockedException.class)
+    public ResponseEntity<ApiErrorResponse> handleLocked(LockedException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiErrorResponse(401, "COMPTE_VERROUILLE",
+                        "Votre compte est verrouillé. Contactez un administrateur."));
+    }
+
+    /**
+     * Compte expiré (isAccountNonExpired() = false, i.e. deletedAt != null).
+     */
+    @ExceptionHandler(AccountExpiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccountExpired(AccountExpiredException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiErrorResponse(401, "COMPTE_EXPIRE",
+                        "Votre compte a expiré. Contactez un administrateur."));
+    }
+
+    /**
+     * Identifiants expirés (isCredentialsNonExpired() = false).
+     * Actuellement toujours true dans l'implémentation, prévu pour un futur
+     * mécanisme d'expiration de mot de passe.
+     */
+    @ExceptionHandler(CredentialsExpiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleCredentialsExpired(CredentialsExpiredException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiErrorResponse(401, "IDENTIFIANTS_EXPIRES",
+                        "Vos identifiants ont expiré. Veuillez renouveler votre mot de passe."));
     }
 
     @ExceptionHandler(UsernameNotFoundException.class)
@@ -103,6 +155,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleBusinessException(BusinessException ex) {
         return ResponseEntity.status(ex.getStatus())
                 .body(new ApiErrorResponse(ex.getStatus().value(), ex.getCode(), ex.getMessage()));
+    }
+
+    /**
+     * Violation de contrainte base de données (unicité, clé étrangère, etc.).
+     * Handler générique — couvre tous les cas de DataIntegrityViolationException,
+     * quelle que soit la table ou la contrainte concernée.
+     * Retourne 409 plutôt que 500 pour exposer une erreur exploitable au client.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(409, "CONFLIT_DONNEES",
+                        "Cette ressource existe déjà ou entre en conflit avec une contrainte existante."));
     }
 
     @ExceptionHandler(Exception.class)

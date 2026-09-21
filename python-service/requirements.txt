@@ -6,4 +6,3 @@ sqlalchemy==2.0.51
 psycopg2-binary==2.9.12
 asyncpg==0.31.0
 python-snap7==3.1.0
-scikit-learn==1.9.0

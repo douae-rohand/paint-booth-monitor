@@ -2,18 +2,18 @@
  * useReports – list and download daily PDF reports
  */
 import { useState, useEffect } from 'react';
-import { getReports, downloadReport, type Report } from '../api/reports';
+import { listerRapports, telechargerRapport, type RapportPDFResponse } from '../api/reports';
 
 export const useReports = () => {
-  const [data, setData] = useState<Report[]>([]);
+  const [data, setData] = useState<RapportPDFResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
       try {
-        const result = await getReports();
-        setData(result);
+        const result = await listerRapports();
+        setData(result.content);
       } catch (e) {
         setError(e as Error);
       } finally {
@@ -24,14 +24,9 @@ export const useReports = () => {
   }, []);
 
   const download = async (reportId: string, filename: string) => {
-    const blob = await downloadReport(reportId);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    await telechargerRapport(reportId, filename);
   };
 
   return { data, loading, error, download };
 };
+

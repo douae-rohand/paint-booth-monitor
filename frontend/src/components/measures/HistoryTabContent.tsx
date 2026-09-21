@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { HistoryFiltersBar, type HistoryFiltersProps } from "./HistoryFiltersBar";
 import { HistoryTable } from "./HistoryTable";
 import { useHistoriqueCabine, useHistoriqueEtuve } from "@/hooks/useMeasures";
-import { useDebounce } from "@/hooks/useDebounce";
 import { useNouvellesMesuresDisponibles } from "@/hooks/useNouvellesMesuresDisponibles";
 import { NewDataBanner } from "./NewDataBanner";
 import { ExportDialog } from "./ExportDialog";
@@ -20,7 +19,6 @@ export interface HistoryTabContentProps {
 }
 
 export function HistoryTabContent({ typePoint, showZoneFilter = false }: HistoryTabContentProps) {
-  const [searchQuery, setSearchQuery] = useState("");
   const [dateMode, setDateMode] = useState<"exact" | "range">("range");
   const [exactDate, setExactDate] = useState<Date | undefined>();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -187,11 +185,6 @@ export function HistoryTabContent({ typePoint, showZoneFilter = false }: History
 
       <div className="shrink-0">
         <HistoryFiltersBar
-          searchQuery={searchQuery}
-          onSearchChange={(value) => {
-            setSearchQuery(value);
-            handleFilterChange();
-          }}
           dateMode={dateMode}
           onDateModeChange={setDateMode}
           exactDate={exactDate}
