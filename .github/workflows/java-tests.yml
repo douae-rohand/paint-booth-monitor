@@ -1,4 +1,4 @@
-name: Java Service — Tests
+name: Java Service - Tests
 
 on:
   push:

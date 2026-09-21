@@ -11,6 +11,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      PYTHON_SERVICE_DB_USER: test_user
+      PYTHON_SERVICE_DB_PASSWORD: test_password
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: '5432'
+      POSTGRES_DB: test_db
 
     steps:
       - name: Checkout du code
