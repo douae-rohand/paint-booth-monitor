@@ -1,4 +1,4 @@
-# Système de Supervision et Historisation - Cabine de Peinture (S7-1200)
+# Système de supervision et d’historisation en temps réel de la température et de l’humidité d’une cabine de peinture et d’une étuve industrielles
 
 Application de supervision industrielle permettant la collecte, l'historisation, l'analyse et la restitution des mesures de **température** et d'**humidité** d'une cabine de peinture, connectée à un automate **Siemens S7-1200**.
 
@@ -42,15 +42,14 @@ Ce projet s'inscrit dans le cadre d'un **PFA** réalisé en binôme :
 
 ## Problématique
 
-Les données de température et d'humidité sont visualisées localement sur l'IHM de la cabine, sans :
+Les données de température et d'humidité de la cabine de peinture et des zones de l'étuve sont visualisées localement sur l'IHM, sans :
 
 - historisation exploitable sur le long terme ;
 - analyse a posteriori des dérives ou des incidents ;
 - alerting structuré en cas de dépassement de seuils ;
-- restitution consolidée (rapports, exports, KPIs) pour les équipes qualité et production ;
-- interrogation intelligente de l'historique en langage naturel.
+- restitution consolidée (rapports, exports, KPIs) pour les équipes qualité et production.
 
-Par ailleurs, la base PostgreSQL de production historisée par **WinCC** n'est pas accessible dans le cadre du PFA. Le scénario retenu est une **connexion directe au PLC** (lecture périodique via Snap7 ou OPC UA), avec historisation entièrement gérée par l'application développée.
+Le scénario retenu est une **connexion directe au PLC** (lecture périodique via le protocole Snap7), avec historisation entièrement gérée par l'application développée.
 
 ---
 
@@ -61,12 +60,11 @@ Par ailleurs, la base PostgreSQL de production historisée par **WinCC** n'est p
 | Connexion PLC | Établir une communication fiable entre le poste de supervision et l'automate S7-1200 |
 | Historisation | Stocker les mesures horodatées dans PostgreSQL |
 | Supervision | Proposer un dashboard temps réel et un historique graphique (température et humidité) |
-| Alerting | Détecter les anomalies via seuils absolus, seuils dynamiques et module IA |
-| Intelligence artificielle | Anticiper les dérives thermiques et hygrométriques (Isolation Forest, régression) |
-| chatbot | Permettre l'interrogation en langage naturel de l'historique | Chatbot à appel d'outils (tool calling) — le LLM identifie l'intention, le backend exécute l'outil via les services métier Java existants |
+| Alerting | Détecter les anomalies via seuils absolus (critiques) et seuils dynamiques par moyenne mobile |
+| Chatbot | Permettre l'interrogation en langage naturel de l'historique — Chatbot à appel d'outils (tool calling) via Spring AI |
 | Reporting | Générer automatiquement un rapport journalier (PDF) et exporter les données (CSV/Excel) |
 | KPIs | Calculer des indicateurs adaptés au contexte qualité peinture |
-| Sécurité | Authentifier les utilisateurs et distinguer les rôles Utilisateur et Admin |
+| Sécurité | Authentifier les utilisateurs et distinguer les rôles Superviseur et Admin |
 
 ---
 
@@ -77,14 +75,13 @@ Par ailleurs, la base PostgreSQL de production historisée par **WinCC** n'est p
 - Lecture périodique des mesures PLC (température, humidité).
 - Historisation, visualisation temps réel et consultation de l'historique.
 - Recherche manuelle par identifiant de caisse ou par plage horaire.
-- Système d'alertes et notifications multicanal (email, push natif navigateur).
-- Module IA, chatbot à appel d'outils (tool calling), KPIs, exports et rapports PDF.
+- Système d'alertes à 2 niveaux (seuils absolus, seuils dynamiques) et notifications multicanal (email, push natif navigateur, in-app WebSocket).
+- Chatbot à appel d'outils (tool calling), KPIs, exports et rapports PDF.
 - Authentification JWT et gestion des rôles.
 
 ### Exclus
 
 - Traçabilité formelle automatique des lots de production (absence de retour qualité véhicule exploitable).
-- Accès à la base WinCC / PostgreSQL de production Renault.
 
 En remplacement de la traçabilité des lots, chaque mesure peut porter un **identifiant de caisse** optionnel, permettant une recherche manuelle dans l'historique.
 
@@ -96,25 +93,25 @@ Le système repose sur une **architecture polyglotte** à trois couches applicat
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Frontend (React)                          │
-│     Dashboard, historique, alertes, chatbot (tool calling)    │
+│                     Frontend (React)                        │
+│     Dashboard, historique, alertes, chatbot (tool calling)  │
 └───────────────────────────┬─────────────────────────────────┘
                             │ REST + WebSocket (JWT)
                             │ Point d'entrée unique
                             ▼
-┌─────────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────────┐
 │         Service Java - Business & Access (Spring Boot)        │
 │  Auth JWT · KPIs · Rapports · Notifications · API Gateway     │
 │  Chatbot (Spring AI, tool calling) · WebSocket · LISTEN/NOTIFY│
-└──────────────┬──────────────────────────────┬───────────────┘
-               │ REST interne                  │ JDBC
-               ▼                               ▼
+└───────────────────────────────────────────────────────────────┘
+                                        │ JDBC (R/W)
+                                        ▼
 ┌──────────────────────────────┐   ┌──────────────────────────┐
-│  Service Python - Data & IA   │   │      PostgreSQL           │
-│  Snap7/OPC UA · Historisation  │◄──│                           │
-│  Alerting · IA · NOTIFY        │   └──────────────────────────┘
-└──────────────┬───────────────┘
-               │ Snap7 / OPC UA
+│  Service Python - Data &     │   │      PostgreSQL          │
+│  Ingestion                   │◄──┤                          │
+│  Snap7 · Ingestion · Alerting│──►│                          │
+└──────────────┬───────────────┘   └──────────────────────────┘
+               │ Snap7
                ▼
         ┌─────────────┐
         │  S7-1200    │
@@ -122,8 +119,8 @@ Le système repose sur une **architecture polyglotte** à trois couches applicat
         └─────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│                      MinIO (Stockage)                         │
-│              Rapports PDF · Fichiers · Assets                  │
+│                      MinIO (Stockage)                       │
+│              Rapports PDF · Fichiers · Assets               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -144,12 +141,11 @@ Le frontend ne communique **jamais** directement avec le service Python.
 | Responsabilité | Service | Justification |
 |---|---|---|
 | Lecture PLC (Snap7 / OPC UA) | Python | Bibliothèques `python-snap7` et `asyncua` matures pour l'industrie |
-| Historisation et alerting temps réel | Python | Traitement au plus près de la source de données |
-| Module IA (Isolation Forest, régression) | Python | Écosystème scikit-learn |
-| Chatbot (tool calling, Spring AI) | Java | Données déjà exposées par les services Java existants ; Java déjà point d'entrée unique ; plus de justification technique pour Python une fois LangChain/embeddings écartés |
+| Historisation et alerting temps réel | Python | Traitement au plus près de la source de données (seuils absolus et dynamiques) |
+| Chatbot (tool calling, Spring AI) | Java | Données déjà exposées par les services Java existants ; Java déjà point d'entrée unique |
 | Authentification et rôles | Java | Spring Security, gestion fine des droits |
 | KPIs, exports, rapports PDF | Java | Logique orientée reporting et utilisateur final |
-| Notifications multicanal | Java | Dispatch métier indépendant de la collecte |
+| Notifications multicanal | Java | Dispatch métier indépendant de la collecte (Email, Push VAPID, WebSocket In-App) |
 | API Gateway et WebSocket | Java | Point d'entrée unique, sécurisation centralisée |
 | Stockage fichiers (rapports PDF) | MinIO | Stockage objet S3-compatible pour les documents générés |
 
@@ -160,10 +156,9 @@ Le frontend ne communique **jamais** directement avec le service Python.
 | Composant | Technologie | Version / remarque |
 |---|---|---|
 | Frontend | React, TanStack Start/Router, Tailwind CSS, shadcn/ui, Recharts | Interface neumorphique, dashboard industriel |
-| Gateway | Java 21, Spring Boot 4.1, Spring Security, JWT | API REST, WebSocket, Flyway |
-| Data & IA | Python 3.13+, FastAPI, SQLAlchemy (async), scikit-learn | Collecte PLC, IA, alerting |
-| Gateway & Chatbot | Java 21, Spring Boot 4.1, Spring Security, JWT, Spring AI | Auth, API REST, WebSocket, Flyway, chatbot tool calling |
-| Base de données | PostgreSQL 17 (pgvector/pgvector:pg17) | pgcrypto inclus |
+| Gateway & Chatbot | Java 21, Spring Boot, Spring Security, JWT, Spring AI | Auth, API REST, WebSocket, Flyway, chatbot tool calling |
+| Data & Ingestion | Python 3.13+, FastAPI, SQLAlchemy (async) | Collecte PLC, ingestion, alerting (seuils absolus et dynamiques) |
+| Base de données | PostgreSQL 17 | Données horodatées et tables applicatives |
 | Stockage objet | MinIO | Stockage des rapports PDF et fichiers |
 | PLC | Siemens S7-1200, protocole Snap7 (ou OPC UA) | Connexion Ethernet, IP statique |
 | Conteneurisation | Docker, Docker Compose | Orchestration multi-services |
@@ -174,7 +169,7 @@ Le frontend ne communique **jamais** directement avec le service Python.
 
 Le découpage Python / Java s'appuie sur l'**affinité technique** de chaque écosystème plutôt que sur un découpage arbitraire :
 
-- Python pour tout ce qui touche au matériel (PLC), à l'ingestion de données et à l'intelligence artificielle.
+- Python pour tout ce qui touche au matériel (PLC), à l'ingestion de données et au calcul des seuils au fil de l'eau.
 - Java pour tout ce qui touche à l'utilisateur, à la sécurité, au reporting et à la logique métier transverse.
 
 La communication événementielle entre les deux services passe par **PostgreSQL LISTEN/NOTIFY**, évitant l'introduction d'un broker de messages (RabbitMQ, Kafka) disproportionné pour le volume et la criticité temporelle du projet.
@@ -190,9 +185,8 @@ paint-booth-monitor/
 ├── python-service/           # Collecte PLC, IA, alerting
 ├── docker/                   # Scripts d'initialisation (PostgreSQL)
 ├── docker-compose.yml        # Orchestration des 5 services (postgres, java, python, frontend, minio)
-├── .env.example              # Variables d'environnement Docker (modèle)
-├── Cahier_des_charges_v3.md  # Spécifications fonctionnelles et techniques
-└── architecture_polyglotte_priorites.md  # Plan de développement priorisé
+├── .env.example              # Variables d'environnement Docker (modèle) 
+└── Cahier_des_charges.md     # Spécifications fonctionnelles et techniques
 ```
 
 ---
@@ -288,7 +282,7 @@ Le système distingue **deux rôles**. Aucun accès anonyme n'est autorisé.
 
 - Consultation du dashboard temps réel et de l'historique.
 - Recherche par identifiant de caisse ou plage horaire.
-- Consultation des KPIs, alertes et prédictions IA (lecture seule).
+- Consultation des KPIs et des alertes (lecture seule).
 - Interrogation du chatbot (tool calling).
 - Téléchargement du rapport PDF et export CSV/Excel.
 - Réception des notifications selon ses préférences.
@@ -298,7 +292,6 @@ Le système distingue **deux rôles**. Aucun accès anonyme n'est autorisé.
 - Tous les droits superviseur.
 - Gestion des comptes superviseur.
 - Configuration des seuils d'alerte (absolus et dynamiques).
-- Configuration des destinataires et canaux de notification.
 - Consultation des logs d'accès et d'audit.
 
 L'authentification repose sur **JWT** (Spring Security côté Java). Le frontend attache le token à chaque requête via l'en-tête `Authorization: Bearer`.
@@ -307,15 +300,14 @@ L'authentification repose sur **JWT** (Spring Security côté Java). Le frontend
 
 ## Détection d'anomalies
 
-Trois mécanismes indépendants et complémentaires fonctionnent en parallèle :
+La détection d'anomalies repose sur **deux mécanismes de seuils complémentaires** fonctionnant en parallèle :
 
 | Mécanisme | Principe | Sévérité typique |
 |---|---|---|
 | Seuils absolus | Limites fixes définies par l'Admin (specs qualité peinture) | Critique |
 | Seuils dynamiques | Bornes recalculées périodiquement (moyenne mobile ± marge) | Moyenne |
-| Module IA | Isolation Forest et/ou régression (scikit-learn) | Variable |
 
-Les seuils dynamiques relèvent de méthodes statistiques classiques ; le module IA couvre les algorithmes d'apprentissage automatique proprement dits.
+Les seuils dynamiques calculés sur la moyenne mobile glissante permettent de détecter les dérives de comportement du process avant que les limites critiques ne soient franchies.
 
 ---
 
@@ -324,11 +316,11 @@ Les seuils dynamiques relèvent de méthodes statistiques classiques ; le module
 - Application connectée à l'automate S7-1200.
 - Base de données d'historique des températures et de l'humidité.
 - Tableau de bord temps réel et historique (double métrique).
-- Système d'alerting (seuils absolus, dynamiques, IA).
+- Système d'alerting à 2 niveaux (seuils absolus, dynamiques).
 - Chatbot à appel d'outils pour l'interrogation de l'historique.
 - KPIs adaptés au contexte qualité peinture.
 - Rapport journalier PDF et exports CSV/Excel.
-- Authentification et gestion des rôles (Utilisateur / Admin).
+- Authentification et gestion des rôles (Superviseur / Admin).
 - Documentation de conception (UML, MCD/MLD, diagrammes de séquence, composants, déploiement).
 
 ---

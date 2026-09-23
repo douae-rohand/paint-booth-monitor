@@ -1,37 +1,10 @@
-# Système de Supervision et Historisation des Températures et de l'Humidité - Cabine de Peinture (S7-1200)
-
-**Version 3 - Document mis à jour suite aux échanges de conception sur l'architecture logicielle**
-**Projet : PFA (Projet de Fin d'Année)**
-
----
-
-## Historique des modifications par rapport aux versions précédentes
-
-| Éléments modifiés | Version 1 (initiale) | Version 2 | Version 3 (actuelle) |
-|---|---|---|---|
-| Nature du projet | Stage | PFA | PFA |
-| Métriques supervisées | Température uniquement | Température et Humidité | Température et Humidité |
-| Volet IA prédictif | Optionnel/avancé | Confirmé | Confirmé |
-| Rôles utilisateurs | Non détaillé | 2 rôles confirmés | 2 rôles confirmés |
-| Traçabilité des lots | Axe validé initialement | Exclue, remplacée par recherche manuelle | Exclue, remplacée par recherche manuelle |
-| Chatbot RAG | Non mentionné | Ajouté | **Chatbot à appel d'outils (tool calling)** - approche RAG vectoriel abandonnée, module déplacé vers Java (Spring AI) |
-| KPIs industriels | Non mentionnés | Ajoutés (adaptés) | Ajoutés (adaptés) |
-| Architecture logicielle | Non définie | Backend "à déterminer" | **Architecture polyglotte dès le départ (Python + Java)** |
-| Stratégie de développement | Non définie | Non définie | **Approche directe en microservices distincts** |
-| Canaux de notification | Non définis | Email + WhatsApp + Push | **Email + Web Push (VAPID) + In-App** - WhatsApp abandonné |
-| Configuration destinataires | Table dédiée en base | Table dédiée en base | **Mapping en dur dans le code Java** - table supprimée (V38) |
-| Canal WhatsApp | Prévu | Prévu | **Abandonné** - retiré de l'enum Canal et des contraintes DB (V43) |
-| Audit des actions | Non prévu | Non prévu | **Module audit complet** - 13 actions traçables, consultation Admin |
-| Notifications In-App | Non prévues | Non prévues | **Ajoutées** - WebSocket STOMP, canal IN_APP (V37) |
-| Abonnements push navigateur | Non prévus | Non prévus | **Table abonnement_push_navigateur** (V47), protocole VAPID |
-
----
+# Système de supervision et d’historisation en temps réel de la température et de l’humidité d’une cabine de peinture et d’une étuve industrielles
 
 ## 1. Contexte et problématique
 
-La cabine de peinture nécessite un suivi rigoureux de la température **et de l'humidité** afin de garantir la qualité du processus de production. Actuellement, ces données sont visualisées localement sur l'IHM, sans historisation exploitable ni possibilité d'analyse a posteriori.
+La cabine de peinture et l'étuve nécessitent un suivi rigoureux de la température **et de l'humidité** afin de garantir la qualité du processus de production. Actuellement, ces données sont visualisées localement sur l'IHM, sans historisation exploitable ni possibilité d'analyse a posteriori.
 
-L'objectif du projet est de concevoir une application capable de se connecter à l'automate Siemens S7-1200, de récupérer en temps réel les valeurs de température et d'humidité de la cabine de peinture, de les historiser, de les représenter graphiquement, de produire automatiquement un rapport journalier, et d'intégrer un volet d'analyse intelligente (IA) pour la détection d'anomalies et la prédiction de dérives.
+L'objectif du projet est de concevoir une application capable de se connecter à l'automate Siemens S7-1200, de récupérer en temps réel les valeurs de température et d'humidité de la cabine de peinture et de l'étuve, de les historiser, de les représenter graphiquement, de produire automatiquement un rapport journalier, et d'intégrer un système robuste de détection d'anomalies (seuils absolus et dynamiques) et d'assistance via un chatbot intelligent.
 
 ---
 
@@ -41,8 +14,7 @@ L'objectif du projet est de concevoir une application capable de se connecter à
 * Historiser les données mesurées dans une base de données horodatée (PostgreSQL)
 * Développer une interface de supervision avec courbes et tendances (temps réel et historique)
 * Générer automatiquement un rapport journalier (PDF)
-* Intégrer un module d'intelligence artificielle pour la détection d'anomalies et la prédiction de dérive thermique/hygrométrique
-* Mettre en place un système d'alerting à seuils multiples (absolus et dynamiques)
+* Mettre en place un système d'alerting à seuils multiples (seuils absolus critiques et seuils dynamiques par moyenne mobile)
 * Fournir un chatbot à appel d'outils (tool calling) permettant l'interrogation en langage naturel de l'historique des données
 * Calculer des indicateurs de performance (KPIs) adaptés au contexte qualité peinture
 * Gérer l'authentification et les droits d'accès selon 2 rôles (Superviseur, Admin)
@@ -59,7 +31,6 @@ L'objectif du projet est de concevoir une application capable de se connecter à
 * Génération des graphes et courbes de tendance (température et humidité)
 * Génération automatique du rapport journalier (PDF)
 * Module de détection d'anomalies à seuils (absolu et dynamique)
-* Module IA (Isolation Forest et/ou modèle de régression) pour la dérive thermique/hygrométrique
 * Chatbot à appel d'outils pour l'interrogation en langage naturel de l'historique
 * Calcul des KPIs adaptés (taux de conformité, temps moyen entre incidents, temps moyen de retour à la normale)
 * Système d'authentification et gestion des rôles (Superviseur / Admin)
@@ -67,7 +38,7 @@ L'objectif du projet est de concevoir une application capable de se connecter à
 * Export des données (CSV/Excel)
 * Recherche manuelle dans l'historique par identifiant de caisse (en remplacement de la traçabilité formelle des lots)
 
-### 3.2 Automatisme / Électronique (binôme)
+### 3.2 Automatisme / Électronique
 
 * Étude de la configuration existante du S7-1200 (adressage, DB, mnémoniques des variables de température et d'humidité)
 * Choix et mise en œuvre du protocole de communication (Snap7 ou OPC UA)
@@ -90,16 +61,15 @@ C'est un CPU moderne, nativement supporté par TIA Portal, sans problématique d
 
 **Connexion physique** : liaison Ethernet entre le PC et l'automate, avec configuration d'une IP statique sur le même sous-réseau, puis scan via la fonctionnalité "Accessible devices" de TIA Portal.
 
-### Architecture de la donnée (clarification importante)
+### Architecture de la donnée
 
-Il est essentiel de distinguer deux niveaux de données :
+Le système collecte et historise les données de **deux équipements majeurs** :
+1. **La cabine de peinture** : supervision de la température et de l'humidité relative.
+2. **L'étuve industrielle** : supervision de la température sur 5 zones distinctes.
 
-1. **Le PLC (DB du S7-1200)** : contient uniquement les valeurs **instantanées**, écrasées à chaque cycle de scan de l'automate. Ce n'est pas une source d'historique.
-2. **WinCC** : historise en théorie les données mesurées dans une base **PostgreSQL** de production, gérée et sécurisée par l'équipe IT/OT de Renault. L'étudiante n'y a pas accès dans le cadre du PFA, ce qui exclut ce scénario d'architecture.
+**Scénario retenu - Connexion directe au PLC** : lecture périodique via Snap7 (protocole S7 natif) directement sur l'automate S7-1200, avec historisation gérée entièrement côté application puis stockage dans la base de données PostgreSQL dédiée au projet.
 
-**Scénario retenu - Connexion directe au PLC** : lecture périodique via Snap7 (protocole S7 natif) ou OPC UA, avec historisation gérée entièrement côté application (pas de WinCC intermédiaire), puis stockage dans une base de données dédiée au projet. (dans rapport il n'est pas necessaire de mentionnée cela, cela juste a mon titre d'information)
-
-Le choix du protocole de communication : Snap7 decider par le encadrent d'entreprise.
+Le choix du protocole de communication (Snap7) a été validé par l'encadrant d'entreprise.
 
 ---
 
@@ -114,7 +84,6 @@ Le système comporte **2 rôles**, confirmés par l'encadrant :
 * Consulter l'historique et les courbes de tendance sur une période donnée, avec recherche possible par identifiant de caisse
 * Consulter les KPIs
 * Consulter les alertes et anomalies actives et passées
-* Consulter les prédictions de dérive issues du module IA (lecture seule)
 * Interroger le chatbot sur l'historique des données
 * Télécharger le rapport PDF
 * Exporter des données en CSV/Excel
@@ -126,16 +95,15 @@ Hérite de tous les droits de l'Utilisateur, plus :
 
 * Gérer les comptes utilisateurs (création, modification, désactivation)
 * Configurer les seuils d'alerte (absolus et dynamiques)
-* Consulter et piloter les résultats du module IA
 * Consulter les logs d'accès et d'audit (journal des 13 actions sensibles : connexions, gestion des comptes, modifications de configuration, exports, rapports)
 
 L'authentification s'applique à l'ensemble des utilisateurs, sans exception - aucun accès anonyme ou public au système.
 
 ---
 
-## 6. Système de détection d'anomalies - architecture à 3 mécanismes indépendants
+## 6. Système de détection d'anomalies - architecture à 2 mécanismes de seuils
 
-La détection d'anomalies repose sur **trois mécanismes distincts et complémentaires** :
+La détection d'anomalies repose sur **deux mécanismes distincts et complémentaires** :
 
 ### 6.1 Seuils absolus
 
@@ -145,13 +113,9 @@ Limites physiques/qualité fixes, définies une fois par l'Admin sur la base des
 
 Bornes recalculées automatiquement à intervalle régulier (ex : toutes les heures), basées sur une moyenne mobile des mesures récentes ± une marge configurée par l'Admin. Objectif : détecter une dérive progressive de comportement **avant** qu'elle n'atteigne le seuil absolu. Dépassement → alerte de sévérité **moyenne**.
 
-### 6.3 Module IA (détection par apprentissage automatique)
+> Clarification terminologique : les seuils dynamiques et la moyenne mobile relèvent de méthodes statistiques et permettent de détecter les dérives de processus. Les modèles d'IA complexes (dérive IA) ont été écartés pour privilégier cette approche robuste et explicable.
 
-Réservé aux véritables algorithmes de machine learning : **Isolation Forest** (détection d'anomalies non supervisée) et/ou **modèle de régression** (prédiction de la valeur à court terme, avec comparaison à la valeur réelle mesurée). Ce module est structuré via une interface commune, permettant de changer d'algorithme ou d'en ajouter un nouveau sans modifier le reste du système.
-
-> Clarification terminologique : les seuils dynamiques et la moyenne mobile relèvent de méthodes statistiques classiques et non de l'intelligence artificielle au sens strict. Cette distinction a été clarifiée dans la conception pour éviter toute ambiguïté technique.
-
-Les trois mécanismes fonctionnent en parallèle, en continu, et génèrent chacun des alertes indépendamment.
+Les deux mécanismes fonctionnent en parallèle, en continu, et génèrent chacun des alertes indépendamment.
 
 ---
 
@@ -160,7 +124,7 @@ Les trois mécanismes fonctionnent en parallèle, en continu, et génèrent chac
 * Canaux de notification pris en charge : **email, Web Push natif navigateur (protocole VAPID, sans dépendance à un service tiers), notifications in-app (WebSocket STOMP)**
 * Le canal WhatsApp initialement prévu a été abandonné - retiré de l'enum Canal et des contraintes de base de données (migration V43)
 * Les préférences de canal sont gérées en code (mapping en dur par type d'événement) - la table `configuration_destinataire` initialement prévue a été supprimée (migration V38)
-* Une alerte est caractérisée par : la métrique concernée, le type (seuil absolu, seuil dynamique, dérive IA), la sévérité (faible, moyenne, critique), un statut (active/résolue)
+* Une alerte est caractérisée par : la métrique concernée, le type (seuil absolu, seuil dynamique), la sévérité (faible, moyenne, critique), un statut (active/résolue)
 * Les notifications couvrent plusieurs types d'événements : alertes créées/résolues, activation de compte superviseur, modification de configuration des seuils
 * Les abonnements Web Push (endpoint + clés de chiffrement du navigateur) sont stockés en base dans la table `abonnement_push_navigateur` - un superviseur peut avoir plusieurs abonnements actifs (plusieurs navigateurs/appareils)
 * Les notifications in-app sont poussées en temps réel via WebSocket STOMP sur le topic `/user/queue/notifications` (personnel par utilisateur)
@@ -212,16 +176,14 @@ En remplacement, chaque mesure peut être associée à un **identifiant de caiss
 * **Frontend** : React (TanStack Router, TanStack Query), style neumorphisme avec accent orange/gold
 * **Backend** : Architecture **polyglotte** - voir section 13 pour le détail complet
 * **Base de données** : PostgreSQL
-* **IA** : Python (scikit-learn)
-* **Chatbot** : Java (Spring AI, tool calling) - [À COMPLÉTER : provider LLM choisi]
+* **Chatbot** : Java (Spring AI, tool calling) 
 * **Conteneurisation** : Docker / docker-compose
 * **Intégration continue** : GitHub Actions
 * **Connexion PLC** : Snap7
 * **Stockage fichiers** : MinIO (stockage objet S3-compatible pour les rapports PDF générés)
 * **Authentification** : JWT (access token HttpOnly cookie 15 min + refresh token 7 jours avec rotation)
-* **Notifications push** : Web Push natif (protocole VAPID, clés ECDSA P-256, bibliothèque `nl.martijndwars:web-push`) - sans dépendance Firebase/FCM
-* **Migrations base de données** : Flyway (47 migrations au total)
-* **Gestion de projet** : à déterminer
+* **Notifications push** : Web Push natif (protocole VAPID, clés ECDSA P-256) - sans dépendance Firebase/FCM
+* **Migrations base de données** : Flyway
 
 ---
 
@@ -231,7 +193,6 @@ En remplacement, chaque mesure peut être associée à un **identifiant de caiss
 * Base de données d'historique des températures et de l'humidité
 * Tableau de bord avec graphes temps réel et historiques (double métrique)
 * Système d'alerting à seuils absolus et dynamiques
-* Module IA de détection de dérive (Isolation Forest et/ou régression)
 * Chatbot à appel d'outils pour l'interrogation de l'historique
 * Calcul et affichage des KPIs adaptés
 * Génération du rapport (PDF)
@@ -248,16 +209,14 @@ En remplacement, chaque mesure peut être associée à un **identifiant de caiss
 
 Le backend est réparti sur **deux services** répartis par affinité technique plutôt que par découpage arbitraire, chacun exploitant l'écosystème le plus mature pour sa responsabilité :
 
-* **Service "Data & Intelligence" (Python / FastAPI)** - tout ce qui touche au matériel et à l'intelligence artificielle
-* **Service "Business & Access" (Java / Spring Boot)** - tout ce qui touche à l'utilisateur et à la logique métier/accès
+* **Service "Data & Ingestion" (Python / FastAPI)** - tout ce qui touche au matériel, à l'ingestion des données PLC et au calcul des seuils au fil de l'eau
+* **Service "Business & Access" (Java / Spring Boot)** - tout ce qui touche à l'utilisateur, à la sécurité, au reporting et au chatbot
 
-Ce découpage reflète des patterns réels observés dans l'industrie (agent de collecte/IA en Python côté edge, couche applicative en Java/C# côté business), notamment dans des contextes industriels comparables au périmètre Renault de ce projet.
+Ce découpage reflète des patterns réels observés dans l'industrie (agent de collecte en Python côté edge, couche applicative en Java/C# côté business), notamment dans des contextes industriels comparables au périmètre Renault de ce projet.
 
 ### 13.2 Schéma d'architecture
 
 Le service Java est le **point d'entrée unique** du système : le frontend ne communique jamais directement avec le service Python.
-
-> **Écart assumé par rapport aux versions antérieures** : le schéma initial représentait le chatbot comme relayé de Java vers Python (via appel REST interne). Ce flux a été supprimé - le chatbot (tool calling) est désormais entièrement géré par Java via Spring AI, sans aller-retour vers Python.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -276,32 +235,29 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 │  • CRUD utilisateurs, export CSV/Excel, génération rapport PDF   │
 │  • Chatbot (Spring AI, tool calling)                             │
 │  • API REST + WebSocket vers le frontend                         │
-│  • Relaie en interne vers Python (prédiction IA à la demande)    │
-└──────┬────────────────────────────────────────────┬───────────┘
-       │ appel REST interne                          │ lit / écrit
-       │ (IA à la demande uniquement)                 ▼
-       │                                  ┌────────────────────┐
-       │                                  │   PostgreSQL          │
-       │                                  └────────────────────┘
-       │                                            ▲       ▲
-       │                                            │       │ NOTIFY (alerte créée)
-       │                                            │ lit/écrit  │
-       ▼                                            │       │
+└────────────────────────────────────────────┬────────────────┘
+                                             │ lit / écrit
+                                             ▼
+                                  ┌────────────────────┐
+                                  │   PostgreSQL          │
+                                  └────────────────────┘
+                                            ▲       ▲
+                                            │       │ NOTIFY (alerte créée)
+                                            │ lit/écrit  │
+                                            │       │
 ┌─────────────────────────────────────────────────────────────┐
-│    Service Python / FastAPI - "Data & Intelligence"           │
+│    Service Python / FastAPI - "Data & Ingestion"              │
 │    (jamais exposé directement au frontend)                     │
 │  • Lecture PLC (Snap7) - polling périodique                     │
 │  • Écriture des mesures en base                                 │
 │  • Calcul des seuils absolus et dynamiques (au fil de l'eau)     │
-│  • Isolation Forest / régression (module IA)                     │
 │  • NOTIFY PostgreSQL lors de la création d'une alerte             │
-│  • Répond aux appels REST internes venant de Java (IA)           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **Les deux flux de communication à bien distinguer :**
 
-* **Flux "action utilisateur"** (synchrone, initié par le frontend) : `Frontend → Java (vérifie l'auth/les droits) → Frontend`. Pour les prédictions IA à la demande : `Frontend → Java → Python (calcule/répond) → Java → Frontend`. Le chatbot est traité entièrement dans Java (tool calling).
+* **Flux "action utilisateur"** (synchrone, initié par le frontend) : `Frontend → Java (vérifie l'auth/les droits) → Frontend`. Le chatbot est traité entièrement dans Java (tool calling).
 * **Flux "collecte de données"** (asynchrone, initié en continu par Python, indépendant du frontend) : `PLC → Python (lit, écrit en base, calcule les seuils) → NOTIFY PostgreSQL → Java (LISTEN, déclenche les notifications)`. Python ne parle jamais directement au frontend ni à Java dans ce flux - tout passe par la base de données.
 
 ### 13.3 Répartition détaillée des responsabilités
@@ -311,8 +267,7 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 | Lecture PLC (Snap7/OPC UA) | Python | `python-snap7` et `asyncua` sont les librairies les plus matures pour ce cas d'usage |
 | Historisation des mesures | Python | Écrit directement à la source de la donnée collectée |
 | Calcul seuils absolus/dynamiques | Python | Calculé au fil de l'eau, au moment de l'ingestion de la mesure |
-| Module IA (Isolation Forest, régression) | Python | Écosystème scikit-learn, aucun équivalent aussi riche en Java |
-| Chatbot (tool calling, Spring AI) | **Java** | Données déjà exposées par les services Java existants ; Java déjà point d'entrée unique ; plus de justification technique pour Python une fois LangChain/embeddings écartés. _Écart assumé : anciennement attribué à Python (RAG vectoriel)._ |
+| Chatbot (tool calling, Spring AI) | **Java** | Données déjà exposées par les services Java existants ; Java déjà point d'entrée unique |
 | Authentification & rôles | Java | Spring Security offre une gestion de rôles plus fine et mature |
 | Configuration des seuils (côté Admin) | Java | Fonction d'administration, cohérente avec le reste des CRUD |
 | Notifications multicanal | Java | Logique métier de dispatch, indépendante de la donnée brute - canaux : EMAIL, Web Push (VAPID), IN_APP (WebSocket) |
@@ -325,6 +280,5 @@ Le service Java est le **point d'entrée unique** du système : le frontend ne c
 
 * **PostgreSQL LISTEN/NOTIFY** est utilisé comme mécanisme événementiel léger : le service Python exécute un `NOTIFY` après écriture d'une nouvelle alerte, le service Java reste en écoute (`LISTEN`) pour déclencher le dispatch des notifications.
 * Ce choix évite l'introduction d'un message broker dédié (RabbitMQ/Kafka), jugé disproportionné au regard du volume de données et de la criticité temporelle du projet.
-* Les échanges ponctuels (ex : Java interrogeant Python pour une prédiction IA à la demande) passent par une API REST interne simple entre les deux services.
 
 
